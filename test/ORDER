@@ -1,0 +1,17 @@
+ 
+ First Compile Tests, that should test wether
+   macros/stats/exprs are compilable.
+ 
+ Second Core Tests. They test core Macros that should
+  halt/abort the machine, Basic Control Flow and 
+  several things used in further testing (e.g. typechecking,
+  early checks done in vm rather then on script objects).
+  (create both fail/success tests)
+ 
+ Third Oper0 Tests. They test basic Operations (Script Object
+ stuff) on level0 types nil/bool/int/list/dict ..
+ 
+ Fourth Internals Tests. Non basic internal checks, calls and so on.
+ Also Extended Objects.
+ 
+ Last but not Least, the Macro Tests for added Macros.

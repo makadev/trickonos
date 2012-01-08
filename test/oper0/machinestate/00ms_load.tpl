@@ -1,0 +1,3 @@
+{?
+  ms := System.MachineState;
+?}

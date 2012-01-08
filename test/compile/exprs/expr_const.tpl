@@ -1,0 +1,11 @@
+{? 
+  nil;
+  true;
+  false;
+  "string";
+  'string';
+  101;
+  $BEEF;
+  %0101;
+  &7777;
+?}

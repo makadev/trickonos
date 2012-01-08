@@ -1,0 +1,10 @@
+*.pc[tu]
+
+lib/*
+bin/*
+apidoc/*
+
+*.lps
+*.log
+
+

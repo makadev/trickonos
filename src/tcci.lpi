@@ -1,0 +1,256 @@
+<?xml version="1.0"?>
+<CONFIG>
+  <ProjectOptions>
+    <Version Value="9"/>
+    <General>
+      <Flags>
+        <MainUnitHasUsesSectionForAllUnits Value="False"/>
+        <MainUnitHasCreateFormStatements Value="False"/>
+        <MainUnitHasTitleStatement Value="False"/>
+      </Flags>
+      <SessionStorage Value="InProjectDir"/>
+      <MainUnit Value="0"/>
+      <Title Value="Trickonos Template Processor"/>
+      <ResourceType Value="res"/>
+      <UseXPManifest Value="True"/>
+    </General>
+    <i18n>
+      <EnableI18N LFM="False"/>
+    </i18n>
+    <VersionInfo>
+      <StringTable ProductVersion=""/>
+    </VersionInfo>
+    <BuildModes Count="1">
+      <Item1 Name="Default" Default="True"/>
+    </BuildModes>
+    <PublishOptions>
+      <Version Value="2"/>
+      <IncludeFileFilter Value="*.(pas|pp|inc|lfm|lpr|lrs|lpi|lpk|sh|xml)"/>
+      <ExcludeFileFilter Value="*.(bak|ppu|o|so);*~;backup"/>
+    </PublishOptions>
+    <RunParams>
+      <local>
+        <FormatVersion Value="1"/>
+      </local>
+    </RunParams>
+    <Units Count="38">
+      <Unit0>
+        <Filename Value="tcci.lpr"/>
+        <IsPartOfProject Value="True"/>
+      </Unit0>
+      <Unit1>
+        <Filename Value="util/commontl.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="commontl"/>
+      </Unit1>
+      <Unit2>
+        <Filename Value="appstart.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="appstart"/>
+      </Unit2>
+      <Unit3>
+        <Filename Value="compiler/cscan.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="cscan"/>
+      </Unit3>
+      <Unit4>
+        <Filename Value="machine/vmrun.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="vmrun"/>
+      </Unit4>
+      <Unit5>
+        <Filename Value="sobject/solnull.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="solnull"/>
+      </Unit5>
+      <Unit6>
+        <Filename Value="util/coreobj.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="coreobj"/>
+      </Unit6>
+      <Unit7>
+        <Filename Value="pver.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit7>
+      <Unit8>
+        <Filename Value="util/eomsg.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="eomsg"/>
+      </Unit8>
+      <Unit9>
+        <Filename Value="util/gens.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="gens"/>
+      </Unit9>
+      <Unit10>
+        <Filename Value="util/sstreams.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="sstreams"/>
+      </Unit10>
+      <Unit11>
+        <Filename Value="sobject/nullinc/soboolean.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit11>
+      <Unit12>
+        <Filename Value="sobject/socore.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="socore"/>
+      </Unit12>
+      <Unit13>
+        <Filename Value="sobject/nullinc/sodict.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit13>
+      <Unit14>
+        <Filename Value="sobject/nullinc/sodummyo.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit14>
+      <Unit15>
+        <Filename Value="sobject/nullinc/soerror.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit15>
+      <Unit16>
+        <Filename Value="sobject/nullinc/sofunc.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit16>
+      <Unit17>
+        <Filename Value="sobject/nullinc/sointeger.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit17>
+      <Unit18>
+        <Filename Value="sobject/nullinc/soiow.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit18>
+      <Unit19>
+        <Filename Value="sobject/nullinc/solist.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit19>
+      <Unit20>
+        <Filename Value="sobject/nullinc/sonone.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit20>
+      <Unit21>
+        <Filename Value="sobject/nullinc/soruntime.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit21>
+      <Unit22>
+        <Filename Value="sobject/nullinc/sostring.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit22>
+      <Unit23>
+        <Filename Value="sobject/nullinc/sosystem.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit23>
+      <Unit24>
+        <Filename Value="sobject/nullinc/sotypebase.inc"/>
+        <IsPartOfProject Value="True"/>
+      </Unit24>
+      <Unit25>
+        <Filename Value="machine/bytecode.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="bytecode"/>
+      </Unit25>
+      <Unit26>
+        <Filename Value="machine/compload.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="compload"/>
+      </Unit26>
+      <Unit27>
+        <Filename Value="machine/ccache.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="ccache"/>
+      </Unit27>
+      <Unit28>
+        <Filename Value="machine/fpath.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="fpath"/>
+      </Unit28>
+      <Unit29>
+        <Filename Value="machine/opcode.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="opcode"/>
+      </Unit29>
+      <Unit30>
+        <Filename Value="machine/vmstate.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="vmstate"/>
+      </Unit30>
+      <Unit31>
+        <Filename Value="compiler/assembl.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="assembl"/>
+      </Unit31>
+      <Unit32>
+        <Filename Value="compiler/ccbase.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="ccbase"/>
+      </Unit32>
+      <Unit33>
+        <Filename Value="compiler/ccexprn.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="ccexprn"/>
+      </Unit33>
+      <Unit34>
+        <Filename Value="compiler/ccexprp.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="ccexprp"/>
+      </Unit34>
+      <Unit35>
+        <Filename Value="compiler/ccstatn.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="ccstatn"/>
+      </Unit35>
+      <Unit36>
+        <Filename Value="compiler/cmacro.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="cmacro"/>
+      </Unit36>
+      <Unit37>
+        <Filename Value="compiler/csyms.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="csyms"/>
+      </Unit37>
+    </Units>
+  </ProjectOptions>
+  <CompilerOptions>
+    <Version Value="11"/>
+    <Target>
+      <Filename Value="tctpl"/>
+    </Target>
+    <SearchPaths>
+      <IncludeFiles Value="$(ProjOutDir);sobject;sobject/nullinc"/>
+      <OtherUnitFiles Value="compiler;machine;sobject;util"/>
+      <UnitOutputDirectory Value="../lib"/>
+    </SearchPaths>
+    <Other>
+      <CompilerMessages>
+        <UseMsgFile Value="True"/>
+      </CompilerMessages>
+      <CustomOptions Value="-dDEBUG"/>
+      <CompilerPath Value="$(CompPath)"/>
+      <ExecuteBefore>
+        <Command Value="$MAKE() -C $ProjPath()/.. clean"/>
+        <ScanForMakeMsgs Value="True"/>
+        <CompileReasons Compile="False"/>
+      </ExecuteBefore>
+      <ExecuteAfter>
+        <Command Value="$MAKE() -C $ProjPath()/.."/>
+        <ScanForFPCMsgs Value="True"/>
+        <ScanForMakeMsgs Value="True"/>
+      </ExecuteAfter>
+    </Other>
+    <CompileReasons Run="False" Build="False" Compile="False"/>
+  </CompilerOptions>
+  <Debugging>
+    <Exceptions Count="3">
+      <Item1>
+        <Name Value="EAbort"/>
+      </Item1>
+      <Item2>
+        <Name Value="ECodetoolError"/>
+      </Item2>
+      <Item3>
+        <Name Value="EFOpenError"/>
+      </Item3>
+    </Exceptions>
+  </Debugging>
+</CONFIG>

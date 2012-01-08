@@ -1,0 +1,4 @@
+
+{? while test do ?}
+dostuff
+{? end; ?}

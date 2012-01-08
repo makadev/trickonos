@@ -1,0 +1,11 @@
+This file is Part of the Trickonos Project.
+Copyright (C) 2011-2012  Matthias Karbe
+
+These Credits are subject to the Terms of the GPL and must not to be removed
+in any future Version(s) and/or Fork(s).
+
+--
+
+ * <Date> <Name> <Contact Information> <Changes>
+
+--
