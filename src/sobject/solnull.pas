@@ -629,6 +629,8 @@ begin
   AddInternalMethod(@_System_DummyObject_,C_SOTYPE_DUMMY_NAME,TSOSystem.BaseTypeName);
   AddInternalMethod(@_System_TypeOf_,'TypeOf',TSOSystem.BaseTypeName);
   AddInternalMethod(@_System_Marker_,'Marker',TSOSystem.BaseTypeName);
+  AddInternalMethod(@_System_ECCMarker_,'ECCMarker',TSOSystem.BaseTypeName);
+  AddInternalMethod(@_System_LNMarker_,'LNMarker',TSOSystem.BaseTypeName);
 end;
 
 (******************************************************************************

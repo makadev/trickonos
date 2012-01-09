@@ -559,6 +559,45 @@ begin
     Result := init_invargnum_error(soself,argnum,mname);
 end;
 
+{SYSTEM::ECCMarker(str,str) -> nil (dynamic ecc comment marker switching)}
+function _System_ECCMarker_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+begin
+  if argnum = 2 then
+    begin
+      if soargs^[0]^.IsType(so_string_class) then
+        begin
+          if soargs^[1]^.IsType(so_string_class) then
+            begin
+              cscan.StreamScannerSetECComment(so_string_get(soargs^[0]),so_string_get(soargs^[1]));
+              Result := so_nil;
+            end
+          else
+            Result := init_invargtype_error(soself,soargs^[1],2,mname);
+        end
+      else
+        Result := init_invargtype_error(soself,soargs^[0],1,mname);
+    end
+  else
+    Result := init_invargnum_error(soself,argnum,mname);
+end;
+
+{SYSTEM::LNMarker(str) -> nil (dynamic ln comment marker switching)}
+function _System_LNMarker_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+begin
+  if argnum = 1 then
+    begin
+      if soargs^[0]^.IsType(so_string_class) then
+        begin
+          cscan.StreamScannerSetLComment(so_string_get(soargs^[0]));
+          Result := so_nil;
+        end
+      else
+        Result := init_invargtype_error(soself,soargs^[0],1,mname);
+    end
+  else
+    Result := init_invargnum_error(soself,argnum,mname);
+end;
+
 (*******************************************************************************
   SYSTEM Registration
  ******************************************************************************)
