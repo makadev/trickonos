@@ -37,6 +37,20 @@ type
       function Compile: Boolean; override;
   end;
 
+  {2 arguments, both string, compiles to nothing (compiletime setter)}
+  TCoreMacro_ECCMarker = class(TPLDefaultMCall)
+    public
+      class function Parse: TParserNode; override;
+      function Compile: Boolean; override;
+  end;
+
+  {1 arguments, string, compiles to nothing (compiletime setter)}
+  TCoreMacro_LNMarker = class(TPLDefaultMCall)
+    public
+      class function Parse: TParserNode; override;
+      function Compile: Boolean; override;
+  end;
+
   {generic, 2 arguments, dont use directly}
   TCoreMacro_Echo_Ext = class(TPLDefaultMCall)
     public
@@ -89,6 +103,61 @@ type
   end;
 
 implementation
+
+{ TCoreMacro_LNMarker }
+
+class function TCoreMacro_LNMarker.Parse: TParserNode;
+var lmarker: String;
+begin
+  IncRec;
+  ExpectSym(SMES_ID);
+  Result := Self.Create;
+  Result.SetLineInfoFrom(CurrentToken);
+  NextToken;
+  ExpectSym(SMES_String);
+  lmarker := CurrentToken.Pattern;
+  NextToken;
+  ExpectSym(SMES_SColon);
+  StreamScannerSetLComment(lmarker);
+  NextToken;
+  DecRec;
+end;
+
+function TCoreMacro_LNMarker.Compile: Boolean;
+begin
+  CreateAssembly;
+  Result := true;
+end;
+
+{ TCoreMacro_ECCMarker }
+
+class function TCoreMacro_ECCMarker.Parse: TParserNode;
+var imarker, omarker: String;
+begin
+  IncRec;
+  ExpectSym(SMES_ID);
+  Result := Self.Create;
+  Result.SetLineInfoFrom(CurrentToken);
+  NextToken;
+  ExpectSym(SMES_String);
+  imarker := CurrentToken.Pattern;
+  NextToken;
+  ExpectSym(SMES_Comma);
+  NextToken;
+  ExpectSym(SMES_String);
+  omarker := CurrentToken.Pattern;
+  NextToken;
+  ExpectSym(SMES_SColon);
+  StreamScannerSetECComment(imarker,omarker);
+  NextToken;
+  DecRec;
+end;
+
+function TCoreMacro_ECCMarker.Compile: Boolean;
+begin
+  CreateAssembly;
+  Result := true;
+end;
 
 { TCoreMacro_Assert }
 
@@ -337,6 +406,8 @@ begin
   ccstatn.RegisterMacroCallNode('USE',TCoreMacro_Use);
   ccstatn.RegisterMacroCallNode('INCLUDE',TCoreMacro_Include);
   ccstatn.RegisterMacroCallNode('MARKER',TCoreMacro_Marker);
+  ccstatn.RegisterMacroCallNode('LNMARKER',TCoreMacro_LNMarker);
+  ccstatn.RegisterMacroCallNode('ECCMARKER',TCoreMacro_ECCMarker);
 end;
 
 initialization
