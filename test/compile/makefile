@@ -1,4 +1,4 @@
-TESTDIR =  exprs fexprs cmacro stats statspc comments
+TESTDIR =  exprs fexprs cmacro stats statspc fstats comments
 
 ##
 

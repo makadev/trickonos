@@ -1049,10 +1049,16 @@ begin
   DecRec;
   if CurrentToken.TokenType <> SMES_EOS then
     begin
-      {something wasn't fetched correctly (wrong expects, symbols sets,
-       missing keywords), so instead of an error, the parser terminates early.
-       And thats wrong, errors must be found.}
-      put_internalerror(2011120930);
+      {
+       probably:
+         something wasn't fetched correctly (wrong expects, symbols sets,
+         missing keywords), so instead of an error, the parser terminates early.
+       also possible:
+         root statement code outro sequence is wrong -> stats parser stops and
+         leaves invalid token..
+       -> prefered action, critical and not internal}
+      put_critical_for(CurrentToken.Line, CurrentToken.Column, CurrentStreamID,
+                       'Unexpected end of Statement');
     end;
 end;
 
