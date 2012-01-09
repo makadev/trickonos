@@ -229,6 +229,11 @@ begin
            set_outmode(omWarning)
          else
            Exit(False);
+    'e': if (Length(parms[0])=1) or
+            (LowerCase(parms[0])='error') then
+           set_outmode(omError)
+         else
+           Exit(False);
     'c': if (Length(parms[0])=1) or
             (LowerCase(parms[0])='critical') then
            set_outmode(omCritical)
@@ -497,7 +502,8 @@ begin
   RegisterOpt( 'verbosity', 'v', 'set verbosity, valid modes are'+#10+
                             ' d or debug     - lots of info'+#10+
                             ' i or info      - additional infos'+#10+
-                            ' w or warning   - only warnings or criticals'+#10+
+                            ' w or warning   - only errors, warnings and criticals'+#10+
+                            ' e or error     - only errors and criticals'+#10+
                             ' c or critical  - only criticals'+#10+
                             ' s or silent    - be as quite as possible',
                             1, @VerbosityHandler );
