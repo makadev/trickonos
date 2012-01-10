@@ -353,63 +353,102 @@ begin
             end;
         end;
       end;
-    {STRING}
-    '''','"':
+    {STRING_Q}
+    '''':
       begin
         Result.TokenType := SMES_Error;
         if not LookAhead then
           begin
-            Result.Pattern := 'Unexpected End of Stream (broken String)';
+            Result.Pattern := 'Unexpected End of Stream (broken quoted String)';
             Exit(Result);
           end;
-        if CChar = '''' then
+        repeat
+          {scan inner chars}
+          while LookAhead and (LAChar <> '''') do
           begin
-            repeat
-              {scan inner chars}
-              while LookAhead and (LAChar <> '''') do
-              begin
-                NextChar;
-                PatternAddCurrent;
-              end;
-              {expect end}
-              if LookAhead and (LAChar = '''') then
-                NextChar
-              else
-                begin
-                  Result.Pattern := 'Unexpected end of Stream (broken String)';
-                  Exit(Result);
-                end;
-              {check for double "escape"}
-              if LookAhead and (LAChar = '''') then
-                PatternAddCurrent
-              else
-                Result.TokenType := SMES_String;
-            until Result.TokenType = SMES_String;
-          end
-        else
-          begin
-            repeat
-              {scan inner chars}
-              while LookAhead and (LAChar <> '"') do
-              begin
-                NextChar;
-                PatternAddCurrent;
-              end;
-              {expect end}
-              if LookAhead and (LAChar = '"') then
-                NextChar
-              else
-                begin
-                  Result.Pattern := 'Unexpected end of Stream (broken String)';
-                  Exit(Result);
-                end;
-              {check for double "escape"}
-              if LookAhead and (LAChar = '"') then
-                PatternAddCurrent
-              else
-                Result.TokenType := SMES_String;
-            until Result.TokenType = SMES_String;
+            NextChar;
+            PatternAddCurrent;
           end;
+          {expect end}
+          if LookAhead and (LAChar = '''') then
+            NextChar
+          else
+            begin
+              Result.Pattern := 'Unexpected end of Stream (broken quoted String)';
+              Exit(Result);
+            end;
+          {check for double "escape"}
+          if LookAhead and (LAChar = '''') then
+            begin
+              PatternAddCurrent;
+              NextChar;
+            end
+          else
+            Result.TokenType := SMES_String;
+        until Result.TokenType = SMES_String;
+      end;
+    {STRING_E}
+    '"':
+      begin
+        Result.TokenType := SMES_Error;
+        if not LookAhead then
+          begin
+            Result.Pattern := 'Unexpected End of Stream (broken escaped String)';
+            Exit(Result);
+          end;
+        repeat
+          {scan inner chars}
+          while LookAhead and
+                (LAChar <> '"') and
+                (LAChar <> '\') do
+          begin
+            NextChar;
+            PatternAddCurrent;
+          end;
+          {expect end or escape}
+          if LookAhead and (LAChar = '\') then
+            begin
+              // load '\' which is currently lookahead
+              NextChar;
+              // load escape symbol, may not exist if escape was at
+              // end of file -> check nextchar
+              if not NextChar then
+                begin
+                  Result.Pattern := 'Unexpected end of Stream (broken escaped String)';
+                  Exit(Result);
+                end;
+              {convert known escapes}
+              case CChar of
+                'n': CChar := #10;
+                't': CChar := #9;
+                'l': CChar := #13;
+                '"', '\': {no need for conversion};
+                else
+                  begin
+                    {hmm, unknown escape -> error}
+                    Result.Pattern := 'Unknown Escape Sequence';
+                    Exit(Result);
+                  end;
+              end;
+              {add cchar to pattern}
+              PatternAddCurrent;
+            end
+          else
+            begin
+              if LookAhead and (LAChar = '"') then
+                begin
+                  {hit end of string, set end and break condition}
+                  NextChar;
+                  Result.TokenType := SMES_String;
+                end
+              else
+                begin
+                  {neither escape nor end of string -> unexpected end (no lookahead)}
+                  Result.Pattern := 'Unexpected end of Stream (broken escaped String)';
+                  Exit(Result);
+                end;
+            end;
+        until Result.TokenType = SMES_String;
       end;
     {MISC/MIXED}
     '+':
