@@ -92,7 +92,7 @@ vgrelease: makepathes
 makepathes:
 	-$(MKDIR) $(OBJ_PATH) $(BIN_PATH)
 
-## test
+## core test
 test: clean debug
 	$(MAKE) -C test clean
 	$(MAKE) -C test VALGRIND=
@@ -108,6 +108,49 @@ memtest: clean memdebug
 vgtest: clean vgdebug
 	$(MAKE) -C test clean
 	$(MAKE) -C test
+
+## extension test
+testext: clean debug
+	$(MAKE) -C testext clean
+	$(MAKE) -C testext VALGRIND=
+
+releasetestext: clean release
+	$(MAKE) -C testext clean
+	$(MAKE) -C testext VALGRIND=
+
+memtestext: clean memdebug
+	$(MAKE) -C testext clean
+	$(MAKE) -C testext VALGRIND=
+
+vgtestext: clean vgdebug
+	$(MAKE) -C testext clean
+	$(MAKE) -C testext
+
+## all tests
+
+testall: clean debug
+	$(MAKE) -C test clean
+	$(MAKE) -C test VALGRIND=
+	$(MAKE) -C testext clean
+	$(MAKE) -C testext VALGRIND=
+
+releasetestall: clean release
+	$(MAKE) -C test clean
+	$(MAKE) -C test VALGRIND=
+	$(MAKE) -C testext clean
+	$(MAKE) -C testext VALGRIND=
+
+memtestall: clean memdebug
+	$(MAKE) -C test clean
+	$(MAKE) -C test VALGRIND=
+	$(MAKE) -C testext clean
+	$(MAKE) -C testext VALGRIND=
+
+vgtestall: clean vgdebug
+	$(MAKE) -C test clean
+	$(MAKE) -C test
+	$(MAKE) -C testext clean
+	$(MAKE) -C testext
 
 ## stuff
 
@@ -137,3 +180,4 @@ cleanall: clean
 	-$(RM) -rf $(DOC_PATH)
 #	$(MAKE) -C doc cleanall
 	$(MAKE) -C test clean
+	$(MAKE) -C testext clean

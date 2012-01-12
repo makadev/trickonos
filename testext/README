@@ -1,0 +1,8 @@
+
+  This is for extension Tests.
+   non-core features or mostly autonomous features, 
+   where related core features are already tested
+  
+  This should reduce the (growing) amount of tests for the core parts and
+  mostly test extensions like type methods, subsystems, internal objects and
+  so on which are not used by core or core tests
