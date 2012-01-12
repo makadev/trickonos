@@ -332,6 +332,9 @@ function so_create_internalobject( const ioname: String; iotcls: TIntObjectClass
        This routine will IncRef pref!! (better said, it uses AddReference, which Increfs)}
 function so_create_internalobject_bound( const ioname: String; iotcls: TIntObjectClass; pref: PSOInstance ): PSOInstance;
 
+{DOC>> return internalobject instance}
+function so_internalobject_get( soios: PSOInstance ): TInternalObject;
+
 (******************************************************************************
  stuff..
  ******************************************************************************)

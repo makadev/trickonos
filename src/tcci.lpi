@@ -33,7 +33,7 @@
         <FormatVersion Value="1"/>
       </local>
     </RunParams>
-    <Units Count="38">
+    <Units Count="40">
       <Unit0>
         <Filename Value="tcci.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -209,6 +209,16 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="csyms"/>
       </Unit37>
+      <Unit38>
+        <Filename Value="sobject/sossi.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="sossi"/>
+      </Unit38>
+      <Unit39>
+        <Filename Value="sobject/subsscan.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="subsscan"/>
+      </Unit39>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

@@ -98,6 +98,10 @@ procedure fpath_rel_set( const suri: String );
 }
 function fpath_out_enter( const suri: String; onfile: Boolean; createpath: Boolean = False ): String;
 
+{DOC>> Convert filename/path/suri into absolute, using default servtype and current tos path}
+function fpath_rel_to_abs( const suri: String; onfile: Boolean = true;
+  const frel: String = ''; defserv: TRIServicePath = sspFileRelative ): String;
+
 procedure fpath_rel_leave;
 procedure fpath_out_leave;
 
@@ -715,6 +719,52 @@ begin
             put_critical('Path doesnt Exists: '+suri);
         end;
     end;
+end;
+
+function fpath_rel_to_abs(const suri: String; onfile: Boolean;
+  const frel: String; defserv: TRIServicePath): String;
+var surip: TSURIPath;
+    p,f: String;
+begin
+  {chunk into components}
+  StrToSURIPath(suri,surip);
+
+  {check onfile, needs at least a last component}
+  f := '';
+  if onfile and (Length(surip.comps) > 0) then
+    begin
+      f := surip.comps[High(surip.comps)];
+      SetLength(surip.comps,Length(surip.comps)-1);
+      Exit('');
+    end;
+  if onfile and
+     (Length(f) <= 0) then
+    begin
+      SetLength(surip.comps,0);
+      Exit('');
+    end;
+
+  {set default servtype for unknown}
+  if surip.servtype = sspUnknown then
+    surip.servtype := defserv;
+
+  {check/set relative start for rebuilding}
+  if Length(frel) > 0 then
+    fpath_rel_set(frel);
+
+  {rewrite using current path settings}
+  p := SURIRewrite(surip);
+  SetLength(surip.comps,0);
+
+  {unset relative start}
+  if Length(frel) > 0 then
+    fpath_rel_leave;
+
+  {rebuild filename if onfile}
+  if onfile then
+    Result := ExcludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(p)+f)
+  else
+    Result := p;
 end;
 
 procedure fpath_rel_leave;

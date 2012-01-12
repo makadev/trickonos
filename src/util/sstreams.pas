@@ -185,7 +185,55 @@ type
       destructor Destroy; override;
   end;
 
+  TStringReaderStream = class( TCharReaderStream )
+    private
+      FID: String;
+      FReadString: String;
+      FPos: Integer;
+      FChar: Char;
+    public
+      function CurrentChar: Char; override;
+      function NextChar: Boolean; override;
+      function StreamID: String; override;
+      constructor Create( const AID: String; const AReadString: String );
+  end;
+
 implementation
+
+{ TStringReaderStream }
+
+function TStringReaderStream.CurrentChar: Char;
+begin
+  Result := FChar;
+end;
+
+function TStringReaderStream.NextChar: Boolean;
+begin
+  if FPos < Length(FReadString) then
+    begin
+      Inc(FPos,1);
+      FChar := FReadString[ FPos ];
+      Result := true;
+    end
+  else
+    Result := false;
+end;
+
+function TStringReaderStream.StreamID: String;
+begin
+  Result := FID;
+end;
+
+constructor TStringReaderStream.Create(const AID: String;
+  const AReadString: String);
+begin
+  FID := AID;
+  FReadString := AReadString;
+  FPos := 0;
+  FChar := #0;
+end;
+
+{ TMemoryBlock }
 
 procedure TMemoryBlock.Reset;
 var i: Integer;

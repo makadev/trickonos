@@ -499,4 +499,13 @@ begin
   PSO_IOW(Result)^.ioo.AddReference(pref);
 end;
 
+function so_internalobject_get(soios: PSOInstance): TInternalObject;
+begin
+  if soios^.IsType(TSOTypeInternalObjectW) then
+    Result := PSO_IOW(soios)^.ioo
+  else
+    put_internalerror(2012011200);
+end;
+
+
 
