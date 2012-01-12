@@ -168,63 +168,34 @@ end;
 function _String_Length_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
 begin
   if argnum = 0 then
-    begin
-      Result := so_integer_init(Length(PSO_String(soself)^.str));
-    end
+    Result := so_integer_init(Length(PSO_String(soself)^.str))
   else
     Result := init_invargnum_error(soself,argnum,mname);
 end;
 
-{String::Trim() -> (self)}
+{String::Trim() -> (string)}
 function _String_Trim_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
 begin
   if argnum = 0 then
-    begin
-      if not soself^.GetLocked then
-        begin
-          PSO_String(soself)^.str := Trim(PSO_String(soself)^.str);
-          Result := soself;
-          Result^.IncRef;
-        end
-      else
-        Result := init_lockmod(soself,mname);
-    end
+    Result := so_string_init(Trim(PSO_String(soself)^.str))
   else
     Result := init_invargnum_error(soself,argnum,mname);
 end;
 
-{String::TrimLeft() -> (self)}
+{String::TrimLeft() -> (string)}
 function _String_TrimLeft_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
 begin
   if argnum = 0 then
-    begin
-      if not soself^.GetLocked then
-        begin
-          PSO_String(soself)^.str := TrimLeft(PSO_String(soself)^.str);
-          Result := soself;
-          Result^.IncRef;
-        end
-      else
-        Result := init_lockmod(soself,mname);
-    end
+    Result := so_string_init(TrimLeft(PSO_String(soself)^.str))
   else
     Result := init_invargnum_error(soself,argnum,mname);
 end;
 
-{String::TrimRight() -> (self)}
+{String::TrimRight() -> (string)}
 function _String_TrimRight_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
 begin
   if argnum = 0 then
-    begin
-      if not soself^.GetLocked then
-        begin
-          PSO_String(soself)^.str := TrimRight(PSO_String(soself)^.str);
-          Result := soself;
-          Result^.IncRef;
-        end
-      else
-        Result := init_lockmod(soself,mname);
-    end
+    Result := so_string_init(TrimRight(PSO_String(soself)^.str))
   else
     Result := init_invargnum_error(soself,argnum,mname);
 end;
@@ -365,7 +336,7 @@ begin
     Result := init_invargnum_error(soself,argnum,mname);
 end;
 
-{String::Join(<list of strings> or <strings>) (inverse to Split) -> (self)}
+{String::Join(<list of strings> or <strings>) (inverse to Split) -> (string)}
 function _String_Join_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
 var i: Integer;
     p: Pointer;
@@ -402,16 +373,16 @@ begin
                       check_so_shortbuf(Length(tmps));
                     end;
                 end;
-              PSO_String(soself)^.str := tmps;
+              Result := so_string_init(tmps);
             end
           else
             {joined with nothing}
-            PSO_String(soself)^.str := '';
+            Result := so_string_init('');
         end
       else if soargs^[0]^.IsType(so_string_class) then
         begin
           {only one string, nothing to join}
-          PSO_String(soself)^.str := PSO_String(soargs^[0])^.str;
+          Result := so_string_init(PSO_String(soargs^[0])^.str);
         end;
     end
   else if argnum > 1 then
@@ -436,16 +407,11 @@ begin
               check_so_shortbuf(Length(tmps));
             end;
         end;
-      PSO_String(soself)^.str := tmps;
+      Result := so_string_init(tmps);
     end
   else
     begin
       {argnum = 1, joined with nothing}
-      PSO_String(soself)^.str := '';
-    end;
-  if not Assigned(Result) then
-    begin
-      Result := soself;
-      Result^.IncRef;
+      Result := so_string_init('');
     end;
 end;

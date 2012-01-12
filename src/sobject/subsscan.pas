@@ -445,7 +445,7 @@ begin
       scstream := TScannerStream.Create(LAChars,readerstream);
 
       {create IO}
-      Result := so_create_internalobject('scannerstream',TScanStreamIO);
+      Result := so_create_internalobject('ScannerStream',TScanStreamIO);
       TScanStreamIO(so_internalobject_get(Result)).SetupOn(scstream);
 
       {done}
