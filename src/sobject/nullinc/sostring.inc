@@ -213,7 +213,8 @@ begin
           tmps := PSO_String(soself)^.str;
           tmpsplits := PSO_String(soargs^[0])^.str;
           Result := so_list_init;
-          if Length(tmpsplits) < Length(tmps) then
+          if (Length(tmpsplits) < Length(tmps)) and
+             (Length(tmpsplits) > 0) then
             begin
               if (Length(tmpsplits) > 2) and
                  (Length(tmpsplits) <= High(Word)) and
@@ -308,7 +309,8 @@ begin
               end;
             end
           else if (Length(tmpsplits) = Length(tmps)) and
-                  (tmpsplits = tmps) then
+                  (tmpsplits = tmps) and
+                  (tmpsplits <> '') then
             begin
               {splitstr = string -> ['','']}
               pins := so_string_init('');
@@ -322,7 +324,8 @@ begin
             end
           else
             begin
-              {splitstr < str -> return string since they cant match}
+              {splitstr < str or splitstr=''
+               -> return string since they cant match}
               pins := so_string_init(tmps);
               Result := so_list_append(Result,@pins,1);
               // fix refcount since append increfs again
