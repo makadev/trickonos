@@ -203,7 +203,11 @@ end;
 
 procedure ReleaseScanner;
 begin
-  scanstream.Free;
+  if Assigned(scanstream) then
+    begin
+      scanstream.Free;
+      scanstream := nil;
+    end;
 end;
 
 function MarkerCheck( const m: String; ff: Boolean ): Boolean;
@@ -760,6 +764,7 @@ initialization
 {$ifdef debug}
   scandebug := false;
 {$endif}
+  scanstream := nil;
   StreamScannerSetECComment( '/*', '*/' );
   StreamScannerSetLComment( '//' );
   StreamScannerSetMarker('{?','?}');

@@ -198,22 +198,14 @@ begin
               else
                 begin
                   put_error_for(CurrentStreamLine,-1,Result^.shortname,'Assembling failed');
-                  DoneAssembler;
-                  ReleaseScanner;
-                  ReleaseCC;
                   put_critical('Couldn''t load "'+Result^.fullname+'"');
                 end;
             end
           else
             begin
               put_error_for(CurrentStreamLine,-1,Result^.shortname,'Compilation failed');
-              DoneAssembler;
-              ReleaseScanner;
-              ReleaseCC;
               put_critical('Couldn''t load "'+Result^.fullname+'"');
             end;
-          DoneAssembler;
-          ReleaseScanner;
           ReleaseCC;
         end;
       Inc(compoundsize,Result^.pbcode^.bcsize);

@@ -214,6 +214,8 @@ end;
 
 procedure ReleaseCC;
 begin
+  DoneAssembler;
+  ReleaseScanner;
   if not Assigned(NodeList) then
     Exit;
   if Length(FrameStack) <> 0 then

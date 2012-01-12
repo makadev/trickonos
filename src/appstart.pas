@@ -26,7 +26,8 @@ unit appstart;
 interface
 
 uses SysUtils, eomsg, bytecode, fpath, ccache,
-     vmstate, compload, cscan, opcode, vmrun;
+     vmstate, compload, cscan, opcode, vmrun 
+     {$ifdef CLEANSHUTDOWN}, ccbase {$endif};
 
 const
 {$Include pver.inc}
@@ -601,6 +602,9 @@ begin
   SetLength(OptTable,0);
   SetLength(FStartBootCoder,0);
   SetLength(FShutdownBootCoder,0);
+{$ifdef CLEANSHUTDOWN}
+  ReleaseCC;
+{$endif}
   machine_fini;
   fcache_fini;
   fpath_fini;
