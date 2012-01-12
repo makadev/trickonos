@@ -1,4 +1,4 @@
-TESTDIR = 
+TESTDIR = scanning
 
 ##
 

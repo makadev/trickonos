@@ -421,6 +421,7 @@ begin
          (Upcase(mname) = 'MEMORYSCANSTREAM') then
         begin
           fname := fpath_rel_to_abs(so_string_get(soargs^[0]));
+          put_debug('open file for input: '+fname);
           if (Length(fname) <= 0) or
              (not FileExists(fname)) then
             Exit(so_nil);

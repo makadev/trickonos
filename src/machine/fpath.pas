@@ -735,7 +735,6 @@ begin
     begin
       f := surip.comps[High(surip.comps)];
       SetLength(surip.comps,Length(surip.comps)-1);
-      Exit('');
     end;
   if onfile and
      (Length(f) <= 0) then
