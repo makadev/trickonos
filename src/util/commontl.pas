@@ -28,8 +28,6 @@ unit commontl;
 {$mode objfpc}{$H+}
 {$MACRO ON}
 
-{$DEFINE MACHINETYPE}
-
 interface
 
 uses SysUtils;
@@ -38,7 +36,9 @@ type
 {$IF (SizeOf(PtrInt) = SizeOf(PtrUInt)) and
      (SizeOf(LongInt) = SizeOf(LongWord)) and
      (SizeOf(LongInt) = 4)}
-  {$IF (SizeOf(PtrInt) <> 4) and (SizeOf(PtrInt) <> 8)}
+  {$IF (SizeOf(PtrInt) = 4) or (SizeOf(PtrInt) = 8)}
+    {$DEFINE MACHINETYPE}
+  {$ELSE}
     {$WARNING explicit mw setting, may be less efficient}
     {$UNDEF MACHINETYPE}
   {$ENDIF}

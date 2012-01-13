@@ -40,7 +40,7 @@ TC_CC_TEST=-oc --scan-debug --pct-debug -vd
 TC_RUN_TEST=--pct-debug -vd
 
 ## pasdoc settings
-PASDOCSETTINGS = -v 1 --auto-abstract --marker 'DOC>> ' \
+PASDOCSETTINGS =  --auto-abstract --marker 'DOC>> ' \
   -L en -E $(DOC_PATH) \
   -O html $(foreach unit,$(UNIT_PATH),$(SRC_PATH)/$(unit)/*.pas)
 
