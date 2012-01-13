@@ -277,38 +277,36 @@ begin
         begin
           if Length(so_string_get(setter)) <= 7 then
             begin
-              case so_string_get(setter) of
-                'none':
-                  begin
-                    FScanStream.NewLineMode := nlmNone;
-                    Result := setter;
-                    Result^.IncRef;
-                  end;
-                'windows':
-                  begin
-                    FScanStream.NewLineMode := nlmWindows;
-                    Result := setter;
-                    Result^.IncRef;
-                  end;
-                'unix':
-                  begin
-                    FScanStream.NewLineMode := nlmUnix;
-                    Result := setter;
-                    Result^.IncRef;
-                  end;
-                'mac':
-                  begin
-                    FScanStream.NewLineMode := nlmMac;
-                    Result := setter;
-                    Result^.IncRef;
-                  end;
-                'mixed':
-                  begin
-                    FScanStream.NewLineMode := nlmMixed;
-                    Result := setter;
-                    Result^.IncRef;
-                  end;
-              end;
+              if so_string_get(setter) = 'none' then
+                begin
+                  FScanStream.NewLineMode := nlmNone;
+                  Result := setter;
+                  Result^.IncRef;
+                end
+              else if so_string_get(setter) = 'windows' then
+                begin
+                  FScanStream.NewLineMode := nlmWindows;
+                  Result := setter;
+                  Result^.IncRef;
+                end
+              else if so_string_get(setter) = 'unix' then
+                begin
+                  FScanStream.NewLineMode := nlmUnix;
+                  Result := setter;
+                  Result^.IncRef;
+                end
+              else if so_string_get(setter) = 'mac' then
+                begin
+                  FScanStream.NewLineMode := nlmMac;
+                  Result := setter;
+                  Result^.IncRef;
+                end
+              else if so_string_get(setter) = 'mixed' then
+                begin
+                  FScanStream.NewLineMode := nlmMixed;
+                  Result := setter;
+                  Result^.IncRef;
+                end;
             end;
         end;
     end;
