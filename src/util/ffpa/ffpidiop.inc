@@ -285,7 +285,7 @@ begin
           // load
           ws := intp[nw];
           // wm -> previous part that needs shift in
-          intp[nw] := ( ws shr a ) or (TFFPA_Word(0) shl TFFPA_Word(C_TTFM_WORD_BITS-a));
+          intp[nw] := ( ws shr a ) or (TFFPA_Word(not TFFPA_Word(0)) shl TFFPA_Word(C_TTFM_WORD_BITS-a));
         end
       else
         begin
