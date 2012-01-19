@@ -27,7 +27,7 @@ type
   {integer instance}
   PSO_Integer = ^TSO_Integer;
   TSO_Integer = object(TSOInstance)
-    val: VMInt;
+    fnum: PTFM_Integer;
   end;
 
   {Class for <Integer> Type}
@@ -35,14 +35,17 @@ type
     protected
       class function InstanceSize: MachineInt; override;
       class procedure PostConstructor(instance: PSOInstance); override;
+      class procedure PreDestructor(instance: PSOInstance); override;
     public
       class function BaseTypeName: String; override;
 
       class function BinOpAdd(soself, rightop: PSOInstance): PSOInstance; override;
       class function BinOpAnd(soself, rightop: PSOInstance): PSOInstance; override;
       class function BinOpDiv(soself, rightop: PSOInstance): PSOInstance; override;
+      class function BinOpMod(soself, rightop: PSOInstance): PSOInstance; override;
       class function BinOpMul(soself, rightop: PSOInstance): PSOInstance; override;
       class function BinOpOr(soself, rightop: PSOInstance): PSOInstance; override;
+      class function BinOpXor(soself, rightop: PSOInstance): PSOInstance; override;
       class function BinOpRol(soself, rightop: PSOInstance): PSOInstance; override;
       class function BinOpRor(soself, rightop: PSOInstance): PSOInstance; override;
       class function BinOpShl(soself, rightop: PSOInstance): PSOInstance; override;
@@ -70,20 +73,20 @@ end;
 
 class procedure TSOTypeInteger.PostConstructor(instance: PSOInstance);
 begin
-  PSO_Integer(instance)^.val := $DEAD;
+  PSO_Integer(instance)^.fnum := nil;
+end;
+
+class procedure TSOTypeInteger.PreDestructor(instance: PSOInstance);
+begin
+  tfm_release(PSO_Integer(instance)^.fnum);
+  PSO_Integer(instance)^.fnum := nil;
 end;
 
 class function TSOTypeInteger.BinOpAdd(soself, rightop: PSOInstance): PSOInstance;
 begin
   SelfCheck(soself,so_integer_class);
   if rightop^.IsType(so_integer_class) then
-    begin
-{$PUSH}
-{$R-}
-{$Q-}
-      Result := so_integer_init(PSO_Integer(soself)^.val + PSO_Integer(rightop)^.val);
-{$POP}
-    end
+    Result := so_integer_init_tfm(tfm_add(PSO_Integer(soself)^.fnum, PSO_Integer(rightop)^.fnum))
   else
     Result := init_invargtype_error(soself,rightop,1,DEFAULT_METHOD_BinOpAdd);
 end;
@@ -92,22 +95,20 @@ class function TSOTypeInteger.BinOpAnd(soself, rightop: PSOInstance): PSOInstanc
 begin
   SelfCheck(soself,so_integer_class);
   if rightop^.IsType(so_integer_class) then
-    begin
-      Result := so_integer_init(PSO_Integer(soself)^.val and PSO_Integer(rightop)^.val);
-    end
+    Result := so_integer_init_tfm(tfm_and(PSO_Integer(soself)^.fnum, PSO_Integer(rightop)^.fnum))
   else
     Result := init_invargtype_error(soself,rightop,1,DEFAULT_METHOD_BinOpAdd);
 end;
 
 class function TSOTypeInteger.BinOpDiv(soself, rightop: PSOInstance): PSOInstance;
+var i: PTFM_Integer;
 begin
   SelfCheck(soself,so_integer_class);
   if rightop^.IsType(so_integer_class) then
     begin
-      if so_integer_get(rightop) <> 0 then
-        begin
-          Result := so_integer_init(PSO_Integer(soself)^.val div PSO_Integer(rightop)^.val)
-        end
+      i := tfm_div(PSO_Integer(soself)^.fnum, PSO_Integer(rightop)^.fnum);
+      if Assigned(i) then
+        Result := so_integer_init_tfm(i)
       else
         Result := init_range_error(soself,rightop,1,DEFAULT_METHOD_BinOpDiv);
     end
@@ -115,17 +116,28 @@ begin
     Result := init_invargtype_error(soself,rightop,1,DEFAULT_METHOD_BinOpDiv);
 end;
 
-class function TSOTypeInteger.BinOpMul(soself, rightop: PSOInstance): PSOInstance;
+class function TSOTypeInteger.BinOpMod(soself, rightop: PSOInstance
+  ): PSOInstance;
+var i: PTFM_Integer;
 begin
   SelfCheck(soself,so_integer_class);
   if rightop^.IsType(so_integer_class) then
     begin
-{$PUSH}
-{$R-}
-{$Q-}
-      Result := so_integer_init(PSO_Integer(soself)^.val * PSO_Integer(rightop)^.val);
-{$POP}
+      i := tfm_mod(PSO_Integer(soself)^.fnum, PSO_Integer(rightop)^.fnum);
+      if Assigned(i) then
+        Result := so_integer_init_tfm(i)
+      else
+        Result := init_range_error(soself,rightop,1,DEFAULT_METHOD_BinOpMod);
     end
+  else
+    Result := init_invargtype_error(soself,rightop,1,DEFAULT_METHOD_BinOpMod);
+end;
+
+class function TSOTypeInteger.BinOpMul(soself, rightop: PSOInstance): PSOInstance;
+begin
+  SelfCheck(soself,so_integer_class);
+  if rightop^.IsType(so_integer_class) then
+    Result := so_integer_init_tfm(tfm_mul(PSO_Integer(soself)^.fnum, PSO_Integer(rightop)^.fnum))
   else
     Result := init_invargtype_error(soself,rightop,1,DEFAULT_METHOD_BinOpMul);
 end;
@@ -134,28 +146,29 @@ class function TSOTypeInteger.BinOpOr(soself, rightop: PSOInstance): PSOInstance
 begin
   SelfCheck(soself,so_integer_class);
   if rightop^.IsType(so_integer_class) then
-    begin
-      Result := so_integer_init(PSO_Integer(soself)^.val or PSO_Integer(rightop)^.val);
-    end
+    Result := so_integer_init_tfm(tfm_or(PSO_Integer(soself)^.fnum, PSO_Integer(rightop)^.fnum))
   else
     Result := init_invargtype_error(soself,rightop,1,DEFAULT_METHOD_BinOpOr);
 end;
 
+class function TSOTypeInteger.BinOpXor(soself, rightop: PSOInstance
+  ): PSOInstance;
+begin
+  SelfCheck(soself,so_integer_class);
+  if rightop^.IsType(so_integer_class) then
+    Result := so_integer_init_tfm(tfm_xor(PSO_Integer(soself)^.fnum, PSO_Integer(rightop)^.fnum))
+  else
+    Result := init_invargtype_error(soself,rightop,1,DEFAULT_METHOD_BinOpXor);
+end;
+
 class function TSOTypeInteger.BinOpRol(soself, rightop: PSOInstance): PSOInstance;
-var i: VMInt;
 begin
   SelfCheck(soself,so_integer_class);
   if rightop^.IsType(so_integer_class) then
     begin
-      if PSO_Integer(rightop)^.val >= 0 then
-        begin
-          i := PSO_Integer(rightop)^.val mod (SizeOf(VMInt)*8);
-{$PUSH}
-{$R-}
-{$Q-}
-          Result := so_integer_init(RolDWord(PSO_Integer(soself)^.val,i));
-{$POP}
-        end
+      if so_integer_fits(rightop) and
+         (not PSO_Integer(rightop)^.fnum^.is_signed) then
+        Result := so_integer_init_tfm(tfm_rol(PSO_Integer(soself)^.fnum,so_integer_get(rightop,true)))
       else
         Result := init_invargvalue_error(soself,rightop,1,DEFAULT_METHOD_BinOpRol);
     end
@@ -164,20 +177,13 @@ begin
 end;
 
 class function TSOTypeInteger.BinOpRor(soself, rightop: PSOInstance): PSOInstance;
-var i: VMInt;
 begin
   SelfCheck(soself,so_integer_class);
   if rightop^.IsType(so_integer_class) then
     begin
-      if PSO_Integer(rightop)^.val >= 0 then
-        begin
-          i := PSO_Integer(rightop)^.val mod (SizeOf(VMInt)*8);
-{$PUSH}
-{$R-}
-{$Q-}
-          Result := so_integer_init(RorDWord(PSO_Integer(soself)^.val,i));
-{$POP}
-        end
+      if so_integer_fits(rightop) and
+         (not PSO_Integer(rightop)^.fnum^.is_signed) then
+        Result := so_integer_init_tfm(tfm_ror(PSO_Integer(soself)^.fnum,so_integer_get(rightop,true)))
       else
         Result := init_invargvalue_error(soself,rightop,1,DEFAULT_METHOD_BinOpRor);
     end
@@ -190,13 +196,9 @@ begin
   SelfCheck(soself,so_integer_class);
   if rightop^.IsType(so_integer_class) then
     begin
-      if PSO_Integer(rightop)^.val >= 0 then
-        begin
-          if PSO_Integer(rightop)^.val < (SizeOf(VMInt)*8) then
-            Result := so_integer_init(PSO_Integer(soself)^.val shl PSO_Integer(rightop)^.val)
-          else
-            Result := so_integer_init(0);
-        end
+      if so_integer_fits(rightop) and
+         (not PSO_Integer(rightop)^.fnum^.is_signed) then
+        Result := so_integer_init_tfm(tfm_shl(PSO_Integer(soself)^.fnum,so_integer_get(rightop,true)))
       else
         Result := init_invargvalue_error(soself,rightop,1,DEFAULT_METHOD_BinOpShl);
     end
@@ -209,28 +211,9 @@ begin
   SelfCheck(soself,so_integer_class);
   if rightop^.IsType(so_integer_class) then
     begin
-      if PSO_Integer(rightop)^.val >= 0 then
-        begin
-          if PSO_Integer(rightop)^.val < (SizeOf(VMInt)*8) then
-            begin
-              Result := so_integer_init(PSO_Integer(soself)^.val shr PSO_Integer(rightop)^.val);
-              if so_integer_get(soself) < 0 then
-                 begin
-{$PUSH}
-{$R-}
-{$Q-}
-                   {fix non sar}
-                   VMWord(PSO_Integer(Result)^.val) := VMWord(PSO_Integer(Result)^.val) or (VMWord(1) shl VMWord(31));
-{$POP}
-                 end;
-            end
-          else
-            begin
-              Result := so_integer_init(0);
-              if so_integer_get(soself) < 0 then
-                so_integer_init(-1);
-            end;
-        end
+      if so_integer_fits(rightop) and
+         (not PSO_Integer(rightop)^.fnum^.is_signed) then
+        Result := so_integer_init_tfm(tfm_sar(PSO_Integer(soself)^.fnum,so_integer_get(rightop,true)))
       else
         Result := init_invargvalue_error(soself,rightop,1,DEFAULT_METHOD_BinOpShr);
     end
@@ -242,13 +225,7 @@ class function TSOTypeInteger.BinOpSub(soself, rightop: PSOInstance): PSOInstanc
 begin
   SelfCheck(soself,so_integer_class);
   if rightop^.IsType(so_integer_class) then
-    begin
-{$PUSH}
-{$R-}
-{$Q-}
-      Result := so_integer_init(PSO_Integer(soself)^.val - PSO_Integer(rightop)^.val);
-{$POP}
-    end
+    Result := so_integer_init_tfm(tfm_sub(PSO_Integer(soself)^.fnum, PSO_Integer(rightop)^.fnum))
   else
     Result := init_invargtype_error(soself,rightop,1,DEFAULT_METHOD_BinOpSub);
 end;
@@ -256,33 +233,32 @@ end;
 class function TSOTypeInteger.UnOpAbs(soself: PSOInstance): PSOInstance;
 begin
   SelfCheck(soself,so_integer_class);
-  Result := so_integer_init(abs(PSO_Integer(soself)^.val));
+  Result := so_integer_init_tfm(tfm_abs(PSO_Integer(soself)^.fnum))
 end;
 
 class function TSOTypeInteger.UnOpNeg(soself: PSOInstance): PSOInstance;
 begin
   SelfCheck(soself,so_integer_class);
-{$PUSH}
-{$R-}
-{$Q-}
-  Result := so_integer_init(-(PSO_Integer(soself)^.val));
-{$POP}
+  Result := so_integer_init_tfm(tfm_neg(PSO_Integer(soself)^.fnum))
 end;
 
 class function TSOTypeInteger.UnOpNot(soself: PSOInstance): PSOInstance;
 begin
-  Result := so_integer_init(not so_integer_get(soself));
+  SelfCheck(soself,so_integer_class);
+  Result := so_integer_init_tfm(tfm_not(PSO_Integer(soself)^.fnum));
 end;
 
 class function TSOTypeInteger.Compare(soself, rightop: PSOInstance
   ): TSOCompareResult;
+var ncmp: VMInt;
 begin
   SelfCheck(soself,so_integer_class);
   if rightop^.IsType(so_integer_class) then
     begin
-      if PSO_Integer(soself)^.val = PSO_Integer(rightop)^.val then
+      ncmp := PSO_Integer(soself)^.fnum^.compare(PSO_Integer(rightop)^.fnum);
+      if ncmp = 0 then
         Result := socmp_isEqual
-      else if PSO_Integer(soself)^.val < PSO_Integer(rightop)^.val then
+      else if ncmp < 0 then
         Result := socmp_isLess
       else
         Result := socmp_isGreater;
@@ -298,13 +274,45 @@ end;
 function so_integer_init( const i: VMInt ): PSOInstance;
 begin
   Result := InitInstance(TSOTypeInteger);
-  PSO_Integer(Result)^.val := i;
+  PSO_Integer(Result)^.fnum := tfm_load_int(i,SizeOf(VMInt)*8);
 end;
 
-function so_integer_get(soint: PSOInstance): VMInt;
+function so_integer_init_tfm( num: PTFM_Integer ): PSOInstance;
+begin
+  ASSERT(num <> nil);
+  Result := InitInstance(TSOTypeInteger);
+  PSO_Integer(Result)^.fnum := num;
+end;
+
+function so_integer_fits( soint: PSOInstance ): Boolean;
 begin
   SelfCheck(soint,TSOTypeInteger);
-  Result := PSO_Integer(soint)^.val;
+  Result := PSO_Integer(soint)^.fnum^.is_wordsize;
+  if Result then
+    begin
+      PSO_Integer(soint)^.fnum^.expand;
+      Result := (MachineInt(PSO_Integer(soint)^.fnum^.logic_expanded_word(0)) >= Low(VMInt)) and
+                (MachineInt(PSO_Integer(soint)^.fnum^.logic_expanded_word(0)) <= High(VMInt));
+    end;
+end;
+
+function so_integer_string( soint: PSOInstance ): String;
+begin
+  SelfCheck(soint,TSOTypeInteger);
+  Result := tfm_to_string(PSO_Integer(soint)^.fnum);
+end;
+
+function so_integer_get( soint: PSOInstance; usecut: Boolean ): VMInt;
+begin
+  SelfCheck(soint,TSOTypeInteger);
+  if usecut or
+     so_integer_fits(soint) then
+    begin
+      PSO_Integer(soint)^.fnum^.expand;
+      Result := VMInt(MachineInt(PSO_Integer(soint)^.fnum^.logic_expanded_word(0)));
+    end
+  else
+    put_internalerror($12011900); // number too big
 end;
 
 {INT::ToString()}
@@ -312,7 +320,7 @@ function _Int_ToString_( const mname: String; soself: PSOInstance; soargs: PSOMe
 begin
   if argnum = 0 then
     begin
-      Result := so_string_init(IntToStr(PSO_Integer(soself)^.val));
+      Result := so_string_init(tfm_to_string(PSO_Integer(soself)^.fnum));
     end
   else
     Result := init_invargnum_error(soself,argnum,mname);

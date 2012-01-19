@@ -92,10 +92,11 @@ begin
   SelfCheck(soself,so_string_class);
   if idx^.IsType(so_integer_class) then
     begin
-      if (so_integer_get(idx) > 0) or
-         (so_integer_get(idx) <= Length(PSO_String(soself)^.str)) then
+      if so_integer_fits(idx) and
+         ((so_integer_get(idx,true) > 0) or
+          (so_integer_get(idx,true) <= Length(PSO_String(soself)^.str))) then
         begin
-          Result := so_string_init(PSO_String(soself)^.str[so_integer_get(idx)]);
+          Result := so_string_init(PSO_String(soself)^.str[so_integer_get(idx,true)]);
         end
       else
         Result := init_range_error(soself,idx,1,DEFAULT_METHOD_GetIndex);
@@ -111,14 +112,15 @@ begin
     begin
       if value^.IsType(so_string_class) then
         begin
-          if (so_integer_get(idx) > 0) or
-             (so_integer_get(idx) <= Length(PSO_String(soself)^.str)) then
+          if so_integer_fits(idx) and
+             ((so_integer_get(idx,true) > 0) or
+              (so_integer_get(idx,true) <= Length(PSO_String(soself)^.str))) then
             begin
               if Length(PSO_String(value)^.str) = 1 then
                 begin
                   if not soself^.GetLocked then
                     begin
-                      PSO_String(soself)^.str[so_integer_get(idx)] := PSO_String(value)^.str[1];
+                      PSO_String(soself)^.str[so_integer_get(idx,true)] := PSO_String(value)^.str[1];
                       Result := value;
                       Result^.IncRef;
                     end

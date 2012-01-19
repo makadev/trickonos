@@ -28,9 +28,12 @@ type
     protected
       class function IsMortal: Boolean; override;
     public
+      class function BaseTypeName: String; override;
       class function BinOpAdd(soself, rightop: PSOInstance): PSOInstance; override;
       class function BinOpAnd(soself, rightop: PSOInstance): PSOInstance; override;
       class function BinOpDiv(soself, rightop: PSOInstance): PSOInstance; override;
+      class function BinOpMod(soself, rightop: PSOInstance): PSOInstance;
+        override;
       class function BinOpMul(soself, rightop: PSOInstance): PSOInstance; override;
       class function BinOpOr(soself, rightop: PSOInstance): PSOInstance; override;
       class function BinOpRol(soself, rightop: PSOInstance): PSOInstance; override;
@@ -38,6 +41,8 @@ type
       class function BinOpShl(soself, rightop: PSOInstance): PSOInstance; override;
       class function BinOpShr(soself, rightop: PSOInstance): PSOInstance; override;
       class function BinOpSub(soself, rightop: PSOInstance): PSOInstance; override;
+      class function BinOpXor(soself, rightop: PSOInstance): PSOInstance;
+        override;
       class function DirectCall(soself: PSOInstance; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance; override;
       class function GetIndex(soself, idx: PSOInstance): PSOInstance; override;
       class function GetMember(soself: PSOInstance; const name: String): PSOInstance; override;
@@ -70,6 +75,12 @@ begin
     rightop^.GetTypeCls.TypeQuery(rightop)+'>)');
 end;
 
+class function TSOTypeBase.BinOpMod(soself, rightop: PSOInstance): PSOInstance;
+begin
+  Result := init_operation_error(soself,DEFAULT_METHOD_BinOpMod+'(<'+
+    rightop^.GetTypeCls.TypeQuery(rightop)+'>)');
+end;
+
 class function TSOTypeBase.BinOpMul(soself, rightop: PSOInstance): PSOInstance;
 begin
   Result := init_operation_error(soself,DEFAULT_METHOD_BinOpMul+'(<'+
@@ -79,6 +90,12 @@ end;
 class function TSOTypeBase.BinOpOr(soself, rightop: PSOInstance): PSOInstance;
 begin
   Result := init_operation_error(soself,DEFAULT_METHOD_BinOpOr+'(<'+
+    rightop^.GetTypeCls.TypeQuery(rightop)+'>)');
+end;
+
+class function TSOTypeBase.BinOpXor(soself, rightop: PSOInstance): PSOInstance;
+begin
+  Result := init_operation_error(soself,DEFAULT_METHOD_BinOpXor+'(<'+
     rightop^.GetTypeCls.TypeQuery(rightop)+'>)');
 end;
 
@@ -121,6 +138,12 @@ end;
 class function TSOTypeBase.IsMortal: Boolean;
 begin
   Result := true;
+end;
+
+class function TSOTypeBase.BaseTypeName: String;
+begin
+  Result := '';
+  put_internalerror(1); // no
 end;
 
 class function TSOTypeBase.GetIndex(soself, idx: PSOInstance): PSOInstance;

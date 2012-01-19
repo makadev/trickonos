@@ -207,6 +207,7 @@ var
 
 procedure runtimestack_push(i: PSOInstance);
 begin
+  ASSERT(i<>nil);
   if i^.GetTypeCls = so_error_class then
    begin
      put_error('ABORT with Error: '+so_error_get(i));
@@ -579,15 +580,16 @@ function _MachineState_Meth_RelFrameType( const mname: String; var data: Pointer
 begin
   if (argnum = 1) and
      (soargs^[0]^.GetTypeCls = so_integer_class) and
-     (so_integer_get(soargs^[0]) >= 0) and
-     (so_integer_get(soargs^[0]) <= tpl_stackptr) then
+     so_integer_fits(soargs^[0]) and
+     (so_integer_get(soargs^[0],true) >= 0) and
+     (so_integer_get(soargs^[0],true) <= tpl_stackptr) then
     begin
-      if so_integer_get(soargs^[0]) <= 0 then
+      if so_integer_get(soargs^[0],true) <= 0 then
         Result := so_string_init('CURRENT')
       else
         begin
-          if tpl_stack[tpl_stackptr-so_integer_get(soargs^[0])].code^.pbcode^.image[
-            tpl_stack[tpl_stackptr-so_integer_get(soargs^[0])].ip ].GetOpcode in CTPLIncludeOpcodes then
+          if tpl_stack[tpl_stackptr-so_integer_get(soargs^[0],true)].code^.pbcode^.image[
+            tpl_stack[tpl_stackptr-so_integer_get(soargs^[0],true)].ip ].GetOpcode in CTPLIncludeOpcodes then
             Result := so_string_init('INCLUSION')
           else
             Result := so_string_init('CALL');
@@ -601,10 +603,11 @@ function _MachineState_Meth_RelFrameShortName( const mname: String; var data: Po
 begin
   if (argnum = 1) and
      (soargs^[0]^.GetTypeCls = so_integer_class) and
-     (so_integer_get(soargs^[0]) >= 0) and
-     (so_integer_get(soargs^[0]) <= tpl_stackptr) then
+     so_integer_fits(soargs^[0]) and
+     (so_integer_get(soargs^[0],true) >= 0) and
+     (so_integer_get(soargs^[0],true) <= tpl_stackptr) then
     begin
-      Result := so_string_init(tpl_stack[tpl_stackptr-so_integer_get(soargs^[0])].code^.shortname);
+      Result := so_string_init(tpl_stack[tpl_stackptr-so_integer_get(soargs^[0],true)].code^.shortname);
     end
   else
     Result := nil;
@@ -614,10 +617,11 @@ function _MachineState_Meth_RelFrameLongName( const mname: String; var data: Poi
 begin
   if (argnum = 1) and
      (soargs^[0]^.GetTypeCls = so_integer_class) and
-     (so_integer_get(soargs^[0]) >= 0) and
-     (so_integer_get(soargs^[0]) <= tpl_stackptr) then
+     so_integer_fits(soargs^[0]) and
+     (so_integer_get(soargs^[0],true) >= 0) and
+     (so_integer_get(soargs^[0],true) <= tpl_stackptr) then
     begin
-      Result := so_string_init(tpl_stack[tpl_stackptr-so_integer_get(soargs^[0])].code^.fullname);
+      Result := so_string_init(tpl_stack[tpl_stackptr-so_integer_get(soargs^[0],true)].code^.fullname);
     end
   else
     Result := nil;
@@ -627,11 +631,12 @@ function _MachineState_Meth_RelFrameLine( const mname: String; var data: Pointer
 begin
   if (argnum = 1) and
      (soargs^[0]^.GetTypeCls = so_integer_class) and
-     (so_integer_get(soargs^[0]) >= 0) and
-     (so_integer_get(soargs^[0]) <= tpl_stackptr) then
+     so_integer_fits(soargs^[0]) and
+     (so_integer_get(soargs^[0],true) >= 0) and
+     (so_integer_get(soargs^[0],true) <= tpl_stackptr) then
     begin
-      Result := so_integer_init(tpl_stack[tpl_stackptr-so_integer_get(soargs^[0])].code^.pbcode^.image[
-                 tpl_stack[tpl_stackptr-so_integer_get(soargs^[0])].ip ].GetLine);
+      Result := so_integer_init(tpl_stack[tpl_stackptr-so_integer_get(soargs^[0],true)].code^.pbcode^.image[
+                 tpl_stack[tpl_stackptr-so_integer_get(soargs^[0],true)].ip ].GetLine);
     end
   else
     Result := nil;
@@ -641,11 +646,12 @@ function _MachineState_Meth_RelFrameColumn( const mname: String; var data: Point
 begin
   if (argnum = 1) and
      (soargs^[0]^.GetTypeCls = so_integer_class) and
-     (so_integer_get(soargs^[0]) >= 0) and
-     (so_integer_get(soargs^[0]) <= tpl_stackptr) then
+     so_integer_fits(soargs^[0]) and
+     (so_integer_get(soargs^[0],true) >= 0) and
+     (so_integer_get(soargs^[0],true) <= tpl_stackptr) then
     begin
-      Result := so_integer_init(tpl_stack[tpl_stackptr-so_integer_get(soargs^[0])].code^.pbcode^.image[
-                 tpl_stack[tpl_stackptr-so_integer_get(soargs^[0])].ip ].GetColumn);
+      Result := so_integer_init(tpl_stack[tpl_stackptr-so_integer_get(soargs^[0],true)].code^.pbcode^.image[
+                 tpl_stack[tpl_stackptr-so_integer_get(soargs^[0],true)].ip ].GetColumn);
     end
   else
     Result := nil;

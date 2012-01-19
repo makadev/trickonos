@@ -26,7 +26,7 @@ unit solnull;
 interface
 
 uses
-  SysUtils, commontl, eomsg, socore, coreobj, ccache;
+  SysUtils, commontl, eomsg, socore, coreobj, ccache, ffpa;
 
 
 const
@@ -87,7 +87,10 @@ function so_string_get( sostring: PSOInstance ): String; inline;
 
 {integer}
 function so_integer_init( const i: VMInt ): PSOInstance; inline;
-function so_integer_get( soint: PSOInstance ): VMInt; inline;
+function so_integer_init_tfm( num: PTFM_Integer ): PSOInstance; inline;
+function so_integer_fits( soint: PSOInstance ): Boolean; inline;
+function so_integer_get( soint: PSOInstance; usecut: Boolean ): VMInt; inline;
+function so_integer_string( soint: PSOInstance ): String; inline;
 
 
 {list}
@@ -288,12 +291,14 @@ type
       function BinOpSub( soself, rightop: PSOInstance ): PSOInstance; virtual;
       function BinOpMul( soself, rightop: PSOInstance ): PSOInstance; virtual;
       function BinOpDiv( soself, rightop: PSOInstance ): PSOInstance; virtual;
+      function BinOpMod( soself, rightop: PSOInstance ): PSOInstance; virtual;
       function BinOpShl( soself, rightop: PSOInstance ): PSOInstance; virtual;
       function BinOpShr( soself, rightop: PSOInstance ): PSOInstance; virtual;
       function BinOpRol( soself, rightop: PSOInstance ): PSOInstance; virtual;
       function BinOpRor( soself, rightop: PSOInstance ): PSOInstance; virtual;
       function BinOpAnd( soself, rightop: PSOInstance ): PSOInstance; virtual;
       function BinOpOr( soself, rightop: PSOInstance ): PSOInstance; virtual;
+      function BinOpXor( soself, rightop: PSOInstance ): PSOInstance; virtual;
       function UnOpNeg( soself: PSOInstance ): PSOInstance; virtual;
       function UnOpAbs( soself: PSOInstance ): PSOInstance; virtual;
       function UnOpNot( soself: PSOInstance ): PSOInstance; virtual;
@@ -656,7 +661,7 @@ begin
     end
   else if soinstance^.GetTypeCls = so_integer_class then
     begin
-      Result := IntToStr(so_integer_get(soinstance));
+      Result := so_integer_string(soinstance);
     end
   else if soinstance^.GetTypeCls = so_string_class then
     begin

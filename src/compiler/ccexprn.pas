@@ -498,8 +498,10 @@ begin
         SMES_Plus: Assembly.InsOperand(Line,Column,isc_o_binaryop,Ord(sobinop_add));
         SMES_Minus: Assembly.InsOperand(Line,Column,isc_o_binaryop,Ord(sobinop_sub));
         SMES_Star: Assembly.InsOperand(Line,Column,isc_o_binaryop,Ord(sobinop_mul));
+        SMES_XOR: Assembly.InsOperand(Line,Column,isc_o_binaryop,Ord(sobinop_xor));
         {SMES_Slash: Assembly.InsIOperand(Line,Column,isc_o_binaryop,Ord(sobinop_div));}
         SMES_DIV: Assembly.InsOperand(Line,Column,isc_o_binaryop,Ord(sobinop_div));
+        SMES_MOD: Assembly.InsOperand(Line,Column,isc_o_binaryop,Ord(sobinop_mod));
         SMES_OAngel: Assembly.InsOperand(Line,Column,isc_o_compare,Ord(socompare_lt));
         SMES_CAngel: Assembly.InsOperand(Line,Column,isc_o_compare,Ord(socompare_gt));
         SMES_LE: Assembly.InsOperand(Line,Column,isc_o_compare,Ord(socompare_le));

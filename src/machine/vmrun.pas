@@ -168,7 +168,10 @@ procedure vmop_m_haltabort_ign;
  also try printing something if "abort" is used}
 begin
   if runtimestack_get(0) = so_true then
-    machine_halt(0)
+    begin
+      put_debug('HALT');
+      machine_halt(0);
+    end
   else if runtimestack_get(0) = so_nil then
     begin
       put_error('ABORT');
@@ -186,16 +189,20 @@ begin
     end
   else if runtimestack_get(0)^.IsType(so_integer_class) then
     begin
-      if (so_integer_get(runtimestack_get(0)) >= 0) and
-         (so_integer_get(runtimestack_get(0)) <= High(Byte)) then
-        machine_halt(Byte(so_integer_get(runtimestack_get(0))))
+      if so_integer_fits(runtimestack_get(0)) then
+        machine_halt(Byte(so_integer_get(runtimestack_get(0),true)))
       else
         machine_halt(1);
       if machine_exitcode > 0 then
-        put_error('ABORT with Code: '+IntToStr(machine_exitcode));
+        put_error('ABORT with Code: '+so_integer_string(runtimestack_get(0)))
+      else
+        put_debug('HALT');
     end
   else
-    machine_halt(1);
+    begin
+      machine_halt(1);
+      put_error('ABORT');
+    end;
 end;
 
 procedure vmop_m_puts_stab;
@@ -502,9 +509,9 @@ begin
     put_internalerror(2011121160);
   name := so_string_get(runtimestack_get(0));
   canv := runtimestack_get(1) = so_true;
-  slotn := so_integer_get(runtimestack_get(2));
-  argn := so_integer_get(runtimestack_get(3));
-  argf := so_integer_get(runtimestack_get(4));
+  slotn := so_integer_get(runtimestack_get(2),false);
+  argn := so_integer_get(runtimestack_get(3),false);
+  argf := so_integer_get(runtimestack_get(4),false);
   funobj := so_function_init(templatestack_tos,
                              argf,argn,slotn,template_ip+template_ip_operand,canv);
   globalenv_set(name,funobj,true); // increfs once (twice but decrefed with fixref) for adding
@@ -732,6 +739,9 @@ begin
         sobinop_div:
           runtimestack_push(runtimestack_get(1)^.GetOperTypeCls.BinOpDiv(
             runtimestack_get(1),runtimestack_get(0)));
+        sobinop_mod:
+          runtimestack_push(runtimestack_get(1)^.GetOperTypeCls.BinOpMod(
+            runtimestack_get(1),runtimestack_get(0)));
         sobinop_shl:
           runtimestack_push(runtimestack_get(1)^.GetOperTypeCls.BinOpShl(
             runtimestack_get(1),runtimestack_get(0)));
@@ -750,6 +760,9 @@ begin
         sobinop_or:
           runtimestack_push(runtimestack_get(1)^.GetOperTypeCls.BinOpOr(
             runtimestack_get(1),runtimestack_get(0)));
+        sobinop_xor:
+          runtimestack_push(runtimestack_get(1)^.GetOperTypeCls.BinOpXor(
+            runtimestack_get(1),runtimestack_get(0)));
         else
           put_internalerror(2011121812);
       end;
@@ -763,12 +776,14 @@ begin
         sobinop_sub: do_so_method_call(DEFAULT_METHOD_BinOpSub,1);
         sobinop_mul: do_so_method_call(DEFAULT_METHOD_BinOpMul,1);
         sobinop_div: do_so_method_call(DEFAULT_METHOD_BinOpDiv,1);
+        sobinop_mod: do_so_method_call(DEFAULT_METHOD_BinOpMod,1);
         sobinop_shl: do_so_method_call(DEFAULT_METHOD_BinOpShl,1);
         sobinop_shr: do_so_method_call(DEFAULT_METHOD_BinOpShr,1);
         sobinop_rol: do_so_method_call(DEFAULT_METHOD_BinOpRol,1);
         sobinop_ror: do_so_method_call(DEFAULT_METHOD_BinOpRor,1);
         sobinop_and: do_so_method_call(DEFAULT_METHOD_BinOpAnd,1);
         sobinop_or: do_so_method_call(DEFAULT_METHOD_BinOpOr,1);
+        sobinop_xor: do_so_method_call(DEFAULT_METHOD_BinOpXor,1);
         else
           put_internalerror(2011122061);
       end;

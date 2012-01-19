@@ -17,4 +17,6 @@
   x shr y;
   x rol y;
   x ror y;
+  x xor y;
+  x mod y;
 ?}

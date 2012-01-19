@@ -158,6 +158,8 @@ type
       class function BinOpMul( soself, rightop: PSOInstance ): PSOInstance; virtual; abstract;
       {DOC>> replaces soself.^Div(rightop) methodcall (built-in!)}
       class function BinOpDiv( soself, rightop: PSOInstance ): PSOInstance; virtual; abstract;
+      {DOC>> replaces soself.^Mod(rightop) methodcall (built-in!)}
+      class function BinOpMod( soself, rightop: PSOInstance ): PSOInstance; virtual; abstract;
 
       {DOC>> replaces soself.^Shl(rightop) methodcall (built-in!)}
       class function BinOpShl( soself, rightop: PSOInstance ): PSOInstance; virtual; abstract;
@@ -172,6 +174,8 @@ type
       class function BinOpAnd( soself, rightop: PSOInstance ): PSOInstance; virtual; abstract;
       {DOC>> replaces soself.^Or(rightop) methodcall (built-in!)}
       class function BinOpOr( soself, rightop: PSOInstance ): PSOInstance; virtual; abstract;
+      {DOC>> replaces soself.^Xor(rightop) methodcall (built-in!)}
+      class function BinOpXor( soself, rightop: PSOInstance ): PSOInstance; virtual; abstract;
 
       {DOC>> replaces soself.^Neg() methodcall (built-in!)}
       class function UnOpNeg( soself: PSOInstance ): PSOInstance; virtual; abstract;
@@ -226,12 +230,14 @@ const
     DEFAULT_METHOD_BinOpSub = '^SUB';
     DEFAULT_METHOD_BinOpMul = '^MUL';
     DEFAULT_METHOD_BinOpDiv = '^DIV';
+    DEFAULT_METHOD_BinOpMod = '^MOD';
     DEFAULT_METHOD_BinOpShl = '^SHL';
     DEFAULT_METHOD_BinOpShr = '^SHR';
     DEFAULT_METHOD_BinOpRol = '^ROL';
     DEFAULT_METHOD_BinOpRor = '^ROR';
     DEFAULT_METHOD_BinOpAnd = '^AND';
     DEFAULT_METHOD_BinOpOr = '^OR';
+    DEFAULT_METHOD_BinOpXor = '^XOR';
     DEFAULT_METHOD_UnOpNeg = '^NEG';
     DEFAULT_METHOD_UnOpAbs = '^ABS';
     DEFAULT_METHOD_UnOpNot = '^NOT';

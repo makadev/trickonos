@@ -227,7 +227,7 @@
       <Filename Value="tctpl"/>
     </Target>
     <SearchPaths>
-      <IncludeFiles Value="$(ProjOutDir);sobject;sobject/nullinc"/>
+      <IncludeFiles Value="$(ProjOutDir);util/ffpa;sobject;sobject/nullinc"/>
       <OtherUnitFiles Value="compiler;machine;sobject;util"/>
       <UnitOutputDirectory Value="../lib"/>
     </SearchPaths>

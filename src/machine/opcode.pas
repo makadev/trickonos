@@ -83,10 +83,12 @@ type
     sobinop_sub,
     sobinop_mul,
     sobinop_div,
+    sobinop_mod,
     sobinop_shl,
     sobinop_shr,
     sobinop_rol,
     sobinop_ror,
+    sobinop_xor,
 
     sobinop_and,
     sobinop_or,
@@ -429,12 +431,14 @@ begin
           sobinop_sub: Result := 'CALL (TOS-1).SUB(TOS), pop 2, push result';
           sobinop_mul: Result := 'CALL (TOS-1).MUL(TOS), pop 2, push result';
           sobinop_div: Result := 'CALL (TOS-1).DIV(TOS), pop 2, push result';
+          sobinop_mod: Result := 'CALL (TOS-1).MOD(TOS), pop 2, push result';
           sobinop_shl: Result := 'CALL (TOS-1).SHIFT_LEFT(TOS), pop 2, push result';
           sobinop_shr: Result := 'CALL (TOS-1).SHIFT_RIGHT(TOS), pop 2, push result';
           sobinop_rol: Result := 'CALL (TOS-1).ROTATE_LEFT(TOS), pop 2, push result';
           sobinop_ror: Result := 'CALL (TOS-1).ROTATE_RIGHT(TOS), pop 2, push result';
           sobinop_and: Result := 'CALL (TOS-1).AND(TOS), pop 2, push result';
           sobinop_or: Result := 'CALL (TOS-1).OR(TOS), pop 2, push result';
+          sobinop_xor: Result := 'CALL (TOS-1).XOR(TOS), pop 2, push result';
         end;
       end;
 

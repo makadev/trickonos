@@ -145,7 +145,7 @@ begin
   if (argnum = 1) and
      (soargs^[0]^.IsType(so_integer_class)) then
     begin
-      if FScanStream.LookAhead(so_integer_get(soargs^[0])) then
+      if FScanStream.LookAhead(so_integer_get(soargs^[0],true)) then
         Result := so_true
       else
         Result := so_false;
@@ -160,8 +160,8 @@ begin
   if (argnum = 1) and
      (soargs^[0]^.IsType(so_integer_class)) then
     begin
-      if FScanStream.LookAhead(so_integer_get(soargs^[0])) then
-        Result := so_string_init(FScanStream.LookAheadChar(so_integer_get(soargs^[0])))
+      if FScanStream.LookAhead(so_integer_get(soargs^[0],true)) then
+        Result := so_string_init(FScanStream.LookAheadChar(so_integer_get(soargs^[0],true)))
       else
         Result := so_nil;
     end
@@ -175,8 +175,8 @@ begin
   if (argnum = 1) and
      (soargs^[0]^.IsType(so_integer_class)) then
     begin
-      if FScanStream.LookAhead(so_integer_get(soargs^[0])) then
-        Result := so_integer_init(Ord(FScanStream.LookAheadChar(so_integer_get(soargs^[0]))))
+      if FScanStream.LookAhead(so_integer_get(soargs^[0],true)) then
+        Result := so_integer_init(Ord(FScanStream.LookAheadChar(so_integer_get(soargs^[0],true))))
       else
         Result := so_nil;
     end
@@ -190,7 +190,7 @@ begin
   if (argnum = 1) and
      (soargs^[0]^.IsType(so_integer_class)) then
     begin
-      if FScanStream.FastForward(so_integer_get(soargs^[0])) then
+      if FScanStream.FastForward(so_integer_get(soargs^[0],true)) then
         Result := so_true
       else
         Result := so_false;
@@ -395,7 +395,7 @@ begin
           if (argnum = 2) and
              (soargs^[1]^.IsType(so_integer_class)) then
             begin
-              LAChars := so_integer_get(soargs^[1]);
+              LAChars := so_integer_get(soargs^[1],true);
               if (LAChars <= 0) and
                  (LAChars > 1024) then
                 begin

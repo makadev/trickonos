@@ -33,6 +33,7 @@ type
       class function BaseTypeName: String; override;
       class function BinOpAnd(soself, rightop: PSOInstance): PSOInstance; override;
       class function BinOpOr(soself, rightop: PSOInstance): PSOInstance; override;
+      class function BinOpXor(soself, rightop: PSOInstance): PSOInstance; override;
       class function UnOpNot(soself: PSOInstance): PSOInstance; override;
   end;
 
@@ -76,6 +77,24 @@ begin
     Result := rightop;
   // rightop may not be bool
   Result^.IncRef;
+end;
+
+class function TSOTypeBoolean.BinOpXor(soself, rightop: PSOInstance
+  ): PSOInstance;
+{xor is not part of the object logic, simply operates on boolean
+  -> x.xor(x) = false, x.xor(not x) = true
+  -> x.xor(object) -> fail}
+begin
+  SelfCheck(soself,so_boolean_class);
+  if rightop^.IsType(so_boolean_class) then
+    begin
+      if soself = rightop then
+        Result := so_false
+      else
+        Result := so_true;
+    end
+  else
+    Result := init_invargtype_error(soself,rightop,1,DEFAULT_METHOD_BinOpXor);
 end;
 
 class function TSOTypeBoolean.UnOpNot(soself: PSOInstance): PSOInstance;

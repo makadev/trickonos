@@ -47,6 +47,8 @@ type
       class function BinOpSub( soself, rightop: PSOInstance ): PSOInstance; override;
       class function BinOpMul( soself, rightop: PSOInstance ): PSOInstance; override;
       class function BinOpDiv( soself, rightop: PSOInstance ): PSOInstance; override;
+      class function BinOpMod( soself, rightop: PSOInstance ): PSOInstance; override;
+      class function BinOpXor( soself, rightop: PSOInstance ): PSOInstance; override;
       class function BinOpShl( soself, rightop: PSOInstance ): PSOInstance; override;
       class function BinOpShr( soself, rightop: PSOInstance ): PSOInstance; override;
       class function BinOpRol( soself, rightop: PSOInstance ): PSOInstance; override;
@@ -177,6 +179,24 @@ begin
   Result := PSO_IOW(soself)^.ioo.BinOpDiv(soself,rightop);
   if not Assigned(Result) then
     Result := inherited BinOpDiv(soself, rightop);
+end;
+
+class function TSOTypeInternalObjectW.BinOpMod(soself, rightop: PSOInstance
+  ): PSOInstance;
+begin
+  SelfCheck(soself,self);
+  Result := PSO_IOW(soself)^.ioo.BinOpMod(soself,rightop);
+  if not Assigned(Result) then
+    Result := inherited BinOpMod(soself, rightop);
+end;
+
+class function TSOTypeInternalObjectW.BinOpXor(soself, rightop: PSOInstance
+  ): PSOInstance;
+begin
+  SelfCheck(soself,self);
+  Result := PSO_IOW(soself)^.ioo.BinOpXor(soself,rightop);
+  if not Assigned(Result) then
+    Result := inherited BinOpXor(soself, rightop);
 end;
 
 class function TSOTypeInternalObjectW.BinOpShl(soself, rightop: PSOInstance
@@ -398,6 +418,11 @@ begin
   Result := nil;
 end;
 
+function TInternalObject.BinOpMod(soself, rightop: PSOInstance): PSOInstance;
+begin
+  Result := nil;
+end;
+
 function TInternalObject.BinOpShl(soself, rightop: PSOInstance): PSOInstance;
 begin
   Result := nil;
@@ -424,6 +449,11 @@ begin
 end;
 
 function TInternalObject.BinOpOr(soself, rightop: PSOInstance): PSOInstance;
+begin
+  Result := nil;
+end;
+
+function TInternalObject.BinOpXor(soself, rightop: PSOInstance): PSOInstance;
 begin
   Result := nil;
 end;

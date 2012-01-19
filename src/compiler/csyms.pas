@@ -59,9 +59,11 @@ type
 
     SMES_AND,       // and
     SMES_OR,        // or
+    SMES_XOR,       // xor
     SMES_NOT,       // not
     SMES_IS,        // is
     SMES_DIV,       // div
+    SMES_MOD,       // mod
     SMES_SHLK,      // shl
     SMES_SHRK,      // shr
     SMES_ROLK,      // rol
@@ -122,9 +124,11 @@ const
       'TRUE',
       'AND',
       'OR',
+      'XOR',
       'NOT',
       'IS',
       'DIV',
+      'MOD',
       'SHL',
       'SHR',
       'ROL',
