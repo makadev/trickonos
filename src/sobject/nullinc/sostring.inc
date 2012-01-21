@@ -420,3 +420,22 @@ begin
       Result := so_string_init('');
     end;
 end;
+
+{String::Upcase() -> (string)}
+function _String_Upcase_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+begin
+  if argnum = 0 then
+    Result := so_string_init(Upcase(PSO_String(soself)^.str))
+  else
+    Result := init_invargnum_error(soself,argnum,mname);
+end;
+
+{String::Lowercase() -> (string)}
+function _String_Lowercase_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+begin
+  if argnum = 0 then
+    Result := so_string_init(LowerCase(PSO_String(soself)^.str))
+  else
+    Result := init_invargnum_error(soself,argnum,mname);
+end;
+

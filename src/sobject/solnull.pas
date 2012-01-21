@@ -624,6 +624,8 @@ begin
   AddInternalMethod(@_String_TrimRight_,'TrimRight',TSOTypeString.BaseTypeName);
   AddInternalMethod(@_String_Split_,'Split',TSOTypeString.BaseTypeName);
   AddInternalMethod(@_String_Join_,'Join',TSOTypeString.BaseTypeName);
+  AddInternalMethod(@_String_Upcase_,'Upcase',TSOTypeString.BaseTypeName);
+  AddInternalMethod(@_String_Lowercase_,'Lowercase',TSOTypeString.BaseTypeName);
 
   AddInternalMethod(@_List_Length_,'Length',TSOTypeList.BaseTypeName);
   AddInternalMethod(@_List_Append_,C_STDCALLM_LIST__APPEND,TSOTypeList.BaseTypeName);
