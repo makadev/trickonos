@@ -123,6 +123,7 @@ procedure so_dict_set_member( d, value: PSOInstance; const s: String; noincref: 
 
 {function}
 function so_function_init( coderef: PCodeReference; argf, argn, slotn, ip: Integer; canvararg: Boolean ): PSOInstance; inline;
+function so_function_codelnstr( f: PSOInstance ): String; inline;
 
 {rt env}
 function so_rtenv_set_member( e: PSOInstance; const s: String; i: PSOInstance ): PSOInstance; inline;
@@ -666,6 +667,10 @@ begin
   else if soinstance^.GetTypeCls = so_string_class then
     begin
       Result := so_string_get(soinstance);
+    end
+  else if soinstance^.GetTypeCls = so_function_class then
+    begin
+      Result := '<Object ' + so_function_codelnstr(soinstance) + '>';
     end
   else
     begin

@@ -87,19 +87,20 @@ begin
       {function setup}
 
       Result := nil;
-      // push code addr
-      templatestack_push(PSO_Function(soself)^.fun.code,
-                         PSO_Function(soself)^.fun.ip,true);
-
-      // fix framepointer
-      templatestack_fix_framepointer(
-        runtimestack_relptr(argnum)-1);
 
       // check nrargs, pack varargs ..
       if (PSO_Function(soself)^.fun.argf <= argnum) and
          ((PSO_Function(soself)^.fun.argn >= argnum) or
           PSO_Function(soself)^.fun.canvarargs) then
         begin
+          // push code addr
+          templatestack_push(PSO_Function(soself)^.fun.code,
+                             PSO_Function(soself)^.fun.ip,true);
+
+          // fix framepointer
+          templatestack_fix_framepointer(
+            runtimestack_relptr(argnum)-1);
+
           if PSO_Function(soself)^.fun.canvarargs then
             begin
               if argnum >= PSO_Function(soself)^.fun.argn then
@@ -121,7 +122,7 @@ begin
         end
       else
         begin
-          Result := so_error_init('Invalid Nr of Arguments for Call');
+          Result := so_error_init('Invalid Nr of Arguments for Call to '+so_function_codelnstr(soself));
           Exit(Result);
         end;
 
@@ -175,4 +176,22 @@ begin
   PSO_Function(Result)^.fun.argn := argn;
   PSO_Function(Result)^.fun.slotn := slotn;
   PSO_Function(Result)^.fun.canvarargs := canvararg;
-end; 
+end;
+
+function so_function_codelnstr( f: PSOInstance ): String;
+var resstring: String;
+begin
+  SelfCheck(f,TSOTypeFunction);
+  ASSERT( Assigned(PSO_Function(f)^.fun.code) );
+  ASSERT( Assigned(PSO_Function(f)^.fun.code^.pbcode) );
+  ASSERT( Length(PSO_Function(f)^.fun.code^.pbcode^.image) > (PSO_Function(f)^.fun.ip-1) );
+  ASSERT( PSO_Function(f)^.fun.ip >= 0 );
+
+  // report error on the decl jump, since it has correct lineinfo
+  WriteStr(resstring,
+    'Function(...)@',
+    PSO_Function(f)^.fun.code^.shortname,'.l',
+    PSO_Function(f)^.fun.code^.pbcode^.image[PSO_Function(f)^.fun.ip-1].GetLine,'.c',
+    PSO_Function(f)^.fun.code^.pbcode^.image[PSO_Function(f)^.fun.ip-1].GetColumn);
+  Result := resstring;
+end;
