@@ -28,7 +28,7 @@ VGRELEASE_DEFS = RELEASE
 ## flags
 DEFAULT_FLAGS = -Sg- -Sh -Sm- -Mobjfpc -Sc- -Ss-
 RELEASE_FLAGS = -B -Si -Sa- -Ci- -Co- -Cr- -Ct- -CR- -O2 -CX -XX -gs -gl
-DEBUG_FLAGS = -Si- -Sa -Cior -O- -CR -g -gl -gh-
+DEBUG_FLAGS = -aln -Si- -Sa -Cior -O- -CR -g -gl -gh-
 MEMDEBUG_FLAGS = -Si- -Sa -Cior -O- -CR -g -gl -gh
 VGDEBUG_FLAGS = -Si- -Sa -Cior -O- -CR -g -gl -gh- -gv -gp
 VGRELEASE_FLAGS = -B -Si -Sa- -Ci- -Co- -Cr- -Ct- -CR- -O2 -CX -Xs -XX -gh- -gl -gp -gv

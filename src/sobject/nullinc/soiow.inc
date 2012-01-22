@@ -42,14 +42,14 @@ begin
   PSO_IO(instance)^.ioo.GCTrace(tracer);
 end;
 
-function socls_IO_MethodCall(const name: String; soself: PSOInstance; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
+function socls_IO_MethodCall(hashk: MachineWord; const name: String; soself: PSOInstance; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
 begin
   SelfCheck(soself,so_io_class);
   check_so_maxargs(argnum);
-  Result := PSO_IO(soself)^.ioo.DispatchMethodCall(name,soself,args,argnum);
+  Result := PSO_IO(soself)^.ioo.DispatchMethodCall(hashk,name,soself,args,argnum);
 end;
 
-function socls_IO_MethodCallOverride( const name: String; soself: PSOInstance ): PSOInstance;
+function socls_IO_MethodCallOverride( hashk: MachineWord; const name: String; soself: PSOInstance ): PSOInstance;
 begin
   SelfCheck(soself,so_io_class);
   Result := nil;
@@ -67,10 +67,10 @@ end;
 
 { TInternalObject }
 
-function TInternalObject.DispatchMethodCall(const name: String; soself: PSOInstance; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
+function TInternalObject.DispatchMethodCall(hashk: MachineWord; const name: String; soself: PSOInstance; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
 var methhe: PSSDMethEntry;
 begin
-  methhe := PSSDMethEntry(FDispTab.MethProc.Lookup(name));
+  methhe := PSSDMethEntry(FDispTab.MethProc.LookupByHash(hashk,name));
   if Assigned(methhe) then
     begin
       Result := methhe^(name,soself,args,argnum);
@@ -82,13 +82,15 @@ begin
       {directly check getmember/setmember and dispatch, this allows overriding the
        getmember/setmember with MethodCall}
       Result := nil;
-      if (name = DEFAULT_METHOD_GetMember) and
+      if (hashk = DEFAULT_METHOD_GetMember_Hash) and
+         (name = DEFAULT_METHOD_GetMember) and
          (argnum = 1) then
         begin
           if args^[0]^.IsType(so_string_class) then
             Result := DispatchAttr(so_string_get(args^[0]),soself,nil);
         end
-      else if (name = DEFAULT_METHOD_SetMember) and
+      else if (hashk = DEFAULT_METHOD_SetMember_Hash) and
+              (name = DEFAULT_METHOD_SetMember) and
               (argnum = 2) then
         begin
           if args^[0]^.IsType(so_string_class) then

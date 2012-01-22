@@ -26,7 +26,7 @@
 var
   TMethodTrie_Dict: THashTrie;
 
-procedure so_dict_addmethod( const mname: String; methh: TSOMethodHandler );
+procedure so_dict_addmethod( const mname: String; methh: TSOMethodHandlerPure );
 begin
   if TMethodTrie_Dict.Add(UpCase(mname),methh) <> nil then
     put_internalerror(12012205);
@@ -97,11 +97,11 @@ begin
   PSO_Dict(instance)^.dict.Done;
 end;
 
-function socls_Dict_MethodCall( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function socls_Dict_MethodCall( hashk: MachineWord; const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
 {generic, lookup method and call}
-var m: TSOMethodHandler;
+var m: TSOMethodHandlerPure;
 begin
-  m := TSOMethodHandler( TMethodTrie_Dict.Lookup(mname) );
+  m := TSOMethodHandlerPure( TMethodTrie_Dict.Lookup(mname) );
   if Assigned(m) then
     Result := m( mname, soself, soargs, argnum )
   else

@@ -27,11 +27,11 @@
 type
   TSO_DummyObject = TSOInstance;
 
-function socls_DummyObject_MethodCall(const name: String; soself: PSOInstance; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
+function socls_DummyObject_MethodCall(hashk: MachineWord; const name: String; soself: PSOInstance; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
 var i: VMInt;
 begin
   SelfCheck(soself,so_dummy_class);
-  put_info(C_SOTYPE_DUMMY_NAME+' method '+name+' called with '+IntToStr(argnum)+' Args.');
+  put_info(C_SOTYPE_DUMMY_NAME+' method '+name+':'+hexStr(hashk,SizeOf(Pointer)*2)+' called with '+IntToStr(argnum)+' Args.');
   if debug_mode then
     for i := 0 to argnum-1 do
       put_debug('  ARG '+IntToStr(i+1)+' is '+args^[0]^.GetTypeCls^.TypeQuery(args^[0]));
@@ -52,9 +52,9 @@ begin
   Result := DefaultCompare(soself, rightop);
 end;
 
-function socls_DummyObject_MethodCallOverride(const name: String; soself: PSOInstance): PSOInstance;
+function socls_DummyObject_MethodCallOverride(hashk: MachineWord; const name: String; soself: PSOInstance): PSOInstance;
 begin
   SelfCheck(soself,so_dummy_class);
-  put_debug(C_SOTYPE_DUMMY_NAME+' getting Checked for MethodOverride '+name);
+  put_debug(C_SOTYPE_DUMMY_NAME+' getting Checked for MethodOverride '+name+':'+hexStr(hashk,SizeOf(Pointer)*2));
   Result := nil;
 end;

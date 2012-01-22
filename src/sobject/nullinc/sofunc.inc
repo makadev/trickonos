@@ -47,12 +47,13 @@ begin
   Result := C_SOTYPE_FUNCTION_NAME;
 end;
 
-function socls_Function_MethodCall(const name: String; soself: PSOInstance; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
+function socls_Function_MethodCall( hashk: MachineWord; const name: String; soself: PSOInstance; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
 var vararglist: PSOInstance;
 begin
   SelfCheck(soself,so_function_class);
   Result := nil;
-  if name = DEFAULT_METHOD_DirectCall then
+  if (hashk = DEFAULT_METHOD_DirectCall_Hash) and
+     (name = DEFAULT_METHOD_DirectCall) then
     begin
       {function setup}
       // check nrargs, pack varargs ..
@@ -98,10 +99,11 @@ begin
     end;
 end;
 
-function socls_Function_MethodCallOverride(const name: String;soself: PSOInstance): PSOInstance;
+function socls_Function_MethodCallOverride( hashk: MachineWord; const name: String;soself: PSOInstance): PSOInstance;
 begin
   SelfCheck(soself,so_function_class);
-  if name = DEFAULT_METHOD_DirectCall then
+  if (hashk = DEFAULT_METHOD_DirectCall_Hash) and
+     (name = DEFAULT_METHOD_DirectCall) then
     begin
       {return self on call}
       Result := soself;

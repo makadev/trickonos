@@ -26,7 +26,7 @@
 var
   TMethodTrie_Boolean: THashTrie;
 
-procedure so_boolean_addmethod( const mname: String; methh: TSOMethodHandler );
+procedure so_boolean_addmethod( const mname: String; methh: TSOMethodHandlerPure );
 begin
   if TMethodTrie_Boolean.Add(UpCase(mname),methh) <> nil then
     put_internalerror(12012201);
@@ -41,11 +41,11 @@ begin
   Result := C_SOTYPE_BOOLEAN_NAME;
 end;
 
-function socls_Boolean_MethodCall( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function socls_Boolean_MethodCall( hashk: MachineWord; const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
 {generic, lookup method and call}
-var m: TSOMethodHandler;
+var m: TSOMethodHandlerPure;
 begin
-  m := TSOMethodHandler( TMethodTrie_Boolean.Lookup(mname) );
+  m := TSOMethodHandlerPure( TMethodTrie_Boolean.LookupByHash(hashk,mname) );
   if Assigned(m) then
     Result := m( mname, soself, soargs, argnum )
   else

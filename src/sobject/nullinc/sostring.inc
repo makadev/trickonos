@@ -26,7 +26,7 @@
 var
   TMethodTrie_String: THashTrie;
 
-procedure so_string_addmethod( const mname: String; methh: TSOMethodHandler );
+procedure so_string_addmethod( const mname: String; methh: TSOMethodHandlerPure );
 begin
   if TMethodTrie_String.Add(UpCase(mname),methh) <> nil then
     put_internalerror(12012202);
@@ -62,11 +62,11 @@ begin
     Result := DefaultCompare(soself, rightop);
 end;
 
-function socls_String_MethodCall( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function socls_String_MethodCall( hashk: MachineWord; const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
 {generic, lookup method and call}
-var m: TSOMethodHandler;
+var m: TSOMethodHandlerPure;
 begin
-  m := TSOMethodHandler( TMethodTrie_String.Lookup(mname) );
+  m := TSOMethodHandlerPure( TMethodTrie_String.LookupByHash(hashk,mname) );
   if Assigned(m) then
     Result := m( mname, soself, soargs, argnum )
   else

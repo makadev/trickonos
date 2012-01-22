@@ -26,7 +26,7 @@
 var
   TMethodTrie_Integer: THashTrie;
 
-procedure so_integer_addmethod( const mname: String; methh: TSOMethodHandler );
+procedure so_integer_addmethod( const mname: String; methh: TSOMethodHandlerPure );
 begin
   if TMethodTrie_Integer.Add(UpCase(mname),methh) <> nil then
     put_internalerror(12012203);
@@ -56,11 +56,11 @@ begin
   PSO_Integer(instance)^.fnum := nil;
 end;
 
-function socls_Integer_MethodCall( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function socls_Integer_MethodCall( hashk: MachineWord; const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
 {generic, lookup method and call}
-var m: TSOMethodHandler;
+var m: TSOMethodHandlerPure;
 begin
-  m := TSOMethodHandler( TMethodTrie_Integer.Lookup(mname) );
+  m := TSOMethodHandlerPure( TMethodTrie_Integer.LookupByHash(hashk,mname) );
   if Assigned(m) then
     Result := m( mname, soself, soargs, argnum )
   else

@@ -235,6 +235,8 @@ type
       function Exists( const key: String ): Boolean;
       {DOC>> Lookup Data, returns the associated Data if key exists or nil}
       function Lookup( const key: String ): Pointer;
+      {DOC>> Lookup Data by hash, returns the associated Data if key exists or nil}
+      function LookupByHash( h: MachineWord; const key: String ): Pointer;
       {DOC>> Add/Replace, Creates an association for Key or Replaces
              the current one (returning the old data)}
       function Add( const key: String; newdata: Pointer ): Pointer;
@@ -464,6 +466,25 @@ var chain: PHashTrieCollision;
 begin
   Result := nil;
   idx := FTrie.Lookup(Hash(key));
+  if idx >= 0 then
+    begin
+      chain := FTrie.GetNodeData(idx);
+      while Assigned(chain) and
+            (chain^.colstring <> key) do
+        chain := chain^.next;
+      if Assigned(chain) then
+        begin
+          Result := chain^.data;
+        end;
+    end;
+end;
+
+function THashTrie.LookupByHash(h: MachineWord; const key: String): Pointer;
+var chain: PHashTrieCollision;
+    idx: MachineInt;
+begin
+  Result := nil;
+  idx := FTrie.Lookup(h);
   if idx >= 0 then
     begin
       chain := FTrie.GetNodeData(idx);

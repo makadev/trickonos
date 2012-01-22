@@ -59,14 +59,14 @@ begin
     Result := init_subsys_attr_error(soself,name);
 end;
 
-function socls_SubSys_Fw_MethodCall(const name: String; soself: PSOInstance; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
+function socls_SubSys_Fw_MethodCall(hashk: MachineWord; const name: String; soself: PSOInstance; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
 {MethodCall broker,
   lookup registered method for certain attribute methodname and call it
   or return nil which generates default error}
 var methh: TSSDMethodHandlerP;
 begin
   SelfCheck(soself,so_subsys_fw_class);
-  methh := TSSDMethodHandlerP(PSO_SubsystemFW(soself)^.disptab.MethProc.Lookup(name));
+  methh := TSSDMethodHandlerP(PSO_SubsystemFW(soself)^.disptab.MethProc.LookupByHash(hashk,name));
   if Assigned(methh) then
     begin
       check_so_maxargs(argnum);
@@ -78,13 +78,15 @@ begin
     begin
       {directly check getmember/setmember and dispatch, this allows overriding the
        getmember/setmember with MethodCall}
-      if (name = DEFAULT_METHOD_GetMember) and
+      if (hashk = DEFAULT_METHOD_GetMember_Hash) and
+         (name = DEFAULT_METHOD_GetMember) and
          (argnum = 1) and
          (args^[0]^.IsType(so_string_class)) then
         begin
           Result := SubSys_FW_Attr_Dispatch(so_string_get(args^[0]),soself,nil);
         end
-      else if (name = DEFAULT_METHOD_SetMember) and
+      else if (hashk = DEFAULT_METHOD_SetMember_Hash) and
+              (name = DEFAULT_METHOD_SetMember) and
               (argnum = 2) and
               (args^[0]^.IsType(so_string_class)) then
         begin
@@ -168,12 +170,12 @@ begin
     Result := init_subsys_attr_error( soself, name);
 end;
 
-function socls_SubSys_OW_MethodCall(const name: String; soself: PSOInstance; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
+function socls_SubSys_OW_MethodCall( hashk: MachineWord; const name: String; soself: PSOInstance; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
 {MethodCall dispatcher}
 var methhe: PSSDMethEntry;
 begin
   SelfCheck(soself,so_subsys_ow_class);
-  methhe := PSSDMethEntry(PSO_SubsystemOW(soself)^.ssdisp.FDispTab.MethProc.Lookup(name));
+  methhe := PSSDMethEntry(PSO_SubsystemOW(soself)^.ssdisp.FDispTab.MethProc.LookupByHash(hashk,name));
   if Assigned(methhe) then
     begin
       check_so_maxargs(argnum);
@@ -185,13 +187,15 @@ begin
     begin
       {directly check getmember/setmember and dispatch, this allows overriding the
        getmember/setmember with MethodCall}
-      if (name = DEFAULT_METHOD_GetMember) and
+      if (hashk = DEFAULT_METHOD_GetMember_Hash) and
+         (name = DEFAULT_METHOD_GetMember) and
          (argnum = 1) and
          (args^[0]^.IsType(so_string_class)) then
         begin
           Result := SubSys_OW_Attr_Dispatch(so_string_get(args^[0]),soself,nil);
         end
-      else if (name = DEFAULT_METHOD_SetMember) and
+      else if (hashk = DEFAULT_METHOD_SetMember_Hash) and
+              (name = DEFAULT_METHOD_SetMember) and
               (argnum = 2) and
               (args^[0]^.IsType(so_string_class)) then
         begin
@@ -271,7 +275,7 @@ end;
 var
   TMethodTrie_System: THashTrie;
 
-procedure so_system_addmethod( const mname: String; methh: TSOMethodHandler );
+procedure so_system_addmethod( const mname: String; methh: TSOMethodHandlerPure );
 begin
   if TMethodTrie_System.Add(UpCase(mname),methh) <> nil then
     put_internalerror(12012206);
@@ -327,12 +331,12 @@ begin
   Result := C_SOTYPE_SYSTEM_NAME;
 end;
 
-function socls_System_MethodCall( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function socls_System_MethodCall( hashk: MachineWord; const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
 {generic, lookup method and call}
-var m: TSOMethodHandler;
+var m: TSOMethodHandlerPure;
 begin
   SelfCheck(soself,so_system_class);
-  m := TSOMethodHandler( TMethodTrie_System.Lookup(mname) );
+  m := TSOMethodHandlerPure( TMethodTrie_System.Lookup(mname) );
   if Assigned(m) then
     Result := m( mname, soself, soargs, argnum )
   else

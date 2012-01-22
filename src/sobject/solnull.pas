@@ -278,7 +278,7 @@ type
     private
       FDispTab: TDispTables;
       FTypeName: String;
-      function DispatchMethodCall( const name: String; soself: PSOInstance; args: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+      function DispatchMethodCall( hashk: MachineWord; const name: String; soself: PSOInstance; args: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
       function DispatchAttr(const aname: String; soself: PSOInstance; setter: PSOInstance): PSOInstance;
     protected
       FReferings: array of PSOInstance;

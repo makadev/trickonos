@@ -27,7 +27,7 @@ interface
 
 uses
   SysUtils, commontl, eomsg, vmstate, ccache, fpath, compload, opcode,
-  solnull, socore;
+  solnull, socore, corealg;
 
 
 type
@@ -647,7 +647,7 @@ end;
      checks. Thats all, no magic.
  ******************************************************************************)
 
-procedure do_so_method_call(const name: String; args: Integer);
+procedure do_so_method_call( hashkey: MachineWord; const name: String; args: Integer);
 { Do a named method call. }
 var res,fres,mres: PSOInstance;
 begin
@@ -656,7 +656,7 @@ begin
   if not Assigned(runtimestack_get(args)^.GetTypeCls^.MethodCallOverride) then
     res := nil
   else
-    res := runtimestack_get(args)^.GetTypeCls^.MethodCallOverride(
+    res := runtimestack_get(args)^.GetTypeCls^.MethodCallOverride(hashkey,
              name, runtimestack_get(args));
 
 
@@ -666,10 +666,10 @@ begin
         begin
           {no named method override -> call object direct}
           if args > 0 then
-            mres := runtimestack_get(args)^.GetTypeCls^.MethodCall(name,
+            mres := runtimestack_get(args)^.GetTypeCls^.MethodCall(hashkey,name,
               runtimestack_get(args),runtimestack_getargf(args-1),args)
           else
-            mres := runtimestack_get(args)^.GetTypeCls^.MethodCall(name,
+            mres := runtimestack_get(args)^.GetTypeCls^.MethodCall(hashkey,name,
               runtimestack_get(args),nil,args);
           if Assigned(mres) then
             begin
@@ -700,7 +700,8 @@ begin
       ASSERT( res^.GetTypeCls = so_function_class ); // override must return function object..
       ASSERT( Assigned(res^.GetTypeCls^.MethodCall) ); // function type needs methodcall
       {setup the call}
-      fres := res^.GetTypeCls^.MethodCall(DEFAULT_METHOD_DirectCall,res,nil,args);
+      fres := res^.GetTypeCls^.MethodCall(DEFAULT_METHOD_DirectCall_Hash,
+        DEFAULT_METHOD_DirectCall,res,nil,args);
       res^.DecRef; // <- deref, since function object increfed with MethodCallOverride
       if Assigned(fres) then
         begin
@@ -716,9 +717,9 @@ procedure vmop_object_operation_unary;
 {call unary operation on so object}
 begin
   case TInsSOUnaryOp(template_ip_operand) of
-    sounop_abs: do_so_method_call(DEFAULT_METHOD_UnOpAbs,0);
-    sounop_neg: do_so_method_call(DEFAULT_METHOD_UnOpNeg,0);
-    sounop_not: do_so_method_call(DEFAULT_METHOD_UnOpNot,0);
+    sounop_abs: do_so_method_call(DEFAULT_METHOD_UnOpAbs_Hash,DEFAULT_METHOD_UnOpAbs,0);
+    sounop_neg: do_so_method_call(DEFAULT_METHOD_UnOpNeg_Hash,DEFAULT_METHOD_UnOpNeg,0);
+    sounop_not: do_so_method_call(DEFAULT_METHOD_UnOpNot_Hash,DEFAULT_METHOD_UnOpNot,0);
     else
       put_internalerror(2011122060);
   end;
@@ -728,18 +729,18 @@ procedure vmop_object_operation_binary;
 {call binary operation on so object}
 begin
   case TInsSOBinaryOp(template_ip_operand) of
-    sobinop_add: do_so_method_call(DEFAULT_METHOD_BinOpAdd,1);
-    sobinop_sub: do_so_method_call(DEFAULT_METHOD_BinOpSub,1);
-    sobinop_mul: do_so_method_call(DEFAULT_METHOD_BinOpMul,1);
-    sobinop_div: do_so_method_call(DEFAULT_METHOD_BinOpDiv,1);
-    sobinop_mod: do_so_method_call(DEFAULT_METHOD_BinOpMod,1);
-    sobinop_shl: do_so_method_call(DEFAULT_METHOD_BinOpShl,1);
-    sobinop_shr: do_so_method_call(DEFAULT_METHOD_BinOpShr,1);
-    sobinop_rol: do_so_method_call(DEFAULT_METHOD_BinOpRol,1);
-    sobinop_ror: do_so_method_call(DEFAULT_METHOD_BinOpRor,1);
-    sobinop_and: do_so_method_call(DEFAULT_METHOD_BinOpAnd,1);
-    sobinop_or: do_so_method_call(DEFAULT_METHOD_BinOpOr,1);
-    sobinop_xor: do_so_method_call(DEFAULT_METHOD_BinOpXor,1);
+    sobinop_add: do_so_method_call(DEFAULT_METHOD_BinOpAdd_Hash,DEFAULT_METHOD_BinOpAdd,1);
+    sobinop_sub: do_so_method_call(DEFAULT_METHOD_BinOpSub_Hash,DEFAULT_METHOD_BinOpSub,1);
+    sobinop_mul: do_so_method_call(DEFAULT_METHOD_BinOpMul_Hash,DEFAULT_METHOD_BinOpMul,1);
+    sobinop_div: do_so_method_call(DEFAULT_METHOD_BinOpDiv_Hash,DEFAULT_METHOD_BinOpDiv,1);
+    sobinop_mod: do_so_method_call(DEFAULT_METHOD_BinOpMod_Hash,DEFAULT_METHOD_BinOpMod,1);
+    sobinop_shl: do_so_method_call(DEFAULT_METHOD_BinOpShl_Hash,DEFAULT_METHOD_BinOpShl,1);
+    sobinop_shr: do_so_method_call(DEFAULT_METHOD_BinOpShr_Hash,DEFAULT_METHOD_BinOpShr,1);
+    sobinop_rol: do_so_method_call(DEFAULT_METHOD_BinOpRol_Hash,DEFAULT_METHOD_BinOpRol,1);
+    sobinop_ror: do_so_method_call(DEFAULT_METHOD_BinOpRor_Hash,DEFAULT_METHOD_BinOpRor,1);
+    sobinop_and: do_so_method_call(DEFAULT_METHOD_BinOpAnd_Hash,DEFAULT_METHOD_BinOpAnd,1);
+    sobinop_or: do_so_method_call(DEFAULT_METHOD_BinOpOr_Hash,DEFAULT_METHOD_BinOpOr,1);
+    sobinop_xor: do_so_method_call(DEFAULT_METHOD_BinOpXor_Hash,DEFAULT_METHOD_BinOpXor,1);
     else
       put_internalerror(2011122061);
   end;
@@ -754,16 +755,16 @@ begin
          and switch}
         runtimestack_push(so_string_init(template_stabentry(template_ip_operand)));
         runtimestack_switch(0,1);
-        do_so_method_call(DEFAULT_METHOD_SetMember,2);
+        do_so_method_call(DEFAULT_METHOD_SetMember_Hash,DEFAULT_METHOD_SetMember,2);
       end;
     isc_o_getm_stab:
       begin
         {push stab entry}
         runtimestack_push(so_string_init(template_stabentry(template_ip_operand)));
-        do_so_method_call(DEFAULT_METHOD_GetMember,1);
+        do_so_method_call(DEFAULT_METHOD_GetMember_Hash,DEFAULT_METHOD_GetMember,1);
       end;
-    isc_o_seti_ign: do_so_method_call(DEFAULT_METHOD_SetIndex,2);
-    isc_o_geti_ign: do_so_method_call(DEFAULT_METHOD_GetIndex,1);
+    isc_o_seti_ign: do_so_method_call(DEFAULT_METHOD_SetIndex_Hash,DEFAULT_METHOD_SetIndex,2);
+    isc_o_geti_ign: do_so_method_call(DEFAULT_METHOD_GetIndex_Hash,DEFAULT_METHOD_GetIndex,1);
     else
       put_internalerror(2011120970);
   end;
@@ -782,12 +783,15 @@ begin
         check_so_maxargs(template_ip_operand);
         name := so_string_get(runtimestack_get(0));
         runtimestack_pop(1);
-        do_so_method_call(name,template_ip_operand);
+        ASSERT(Length(name) > 0);
+        ASSERT(Upcase(name)=name);
+        {$WARNING hold hash in stab/additional table, load and hash ondemand}
+        do_so_method_call(mas3hash(name[1],Length(name)),name,template_ip_operand);
       end;
     isc_o_callcall_nrops:
       begin
         check_so_maxargs(template_ip_operand);
-        do_so_method_call(DEFAULT_METHOD_DirectCall,template_ip_operand);
+        do_so_method_call(DEFAULT_METHOD_DirectCall_Hash,DEFAULT_METHOD_DirectCall,template_ip_operand);
       end;
     else
       put_internalerror(2011121110);
