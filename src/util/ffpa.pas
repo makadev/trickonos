@@ -52,9 +52,6 @@ type
     // higher part (before comma) is word bound - must always be correct
     cf_hiwb,
 
-    // nr fits into machine word
-    cf_fitsmachine,
-
     // cf_hiwb or operand was expanded since last operation
     of_uppertested,
     // operands hi part is expanded (sign extended to word boundary)
@@ -95,14 +92,12 @@ const
 
   { constructive flags, i.g. destroyed/set on copy/construction }
   C_ConstructionFlags = [
-    cf_hiwb,
-    cf_fitsmachine
+    cf_hiwb
   ];
 
   { short flags, mostly for debug output }
   C_Flags_Short: array[TTFMIFlags] of String = (
     'W_' {cf_hiwb},
-    'MI' {cf_fitsmachine},
     '=H' {of_uppertested},
     'E_' {if_expanded},
     '=F' {of_fwtested},

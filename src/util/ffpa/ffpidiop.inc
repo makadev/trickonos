@@ -60,10 +60,32 @@ end;
 procedure TTFM_Integer.copy_num( opr: PTFM_Integer );
 var i: VMInt;
 begin
-  opr^.expand; // needed since range "logically" expanded
-  for i := 0 to props.sizewords-1 do
-    intp[i] := opr^.logic_expanded_word( i );
-  props.reset_of_flags;
+  if opr^.props.mbits = props.mbits then
+    begin
+      for i := 0 to props.sizewords-1 do
+        intp[i] := opr^.intp[i];
+      {same size <=> same flags after copy}
+      props.flags := opr^.props.flags;
+    end
+  else
+    begin
+      opr^.expand; // needed since range "logically" expanded
+      for i := 0 to props.sizewords-1 do
+        intp[i] := opr^.logic_expanded_word( i );
+      props.reset_of_flags;
+      {check zero, since zero is always same in different bit sizes}
+      if (of_zerotested in opr^.props.flags) and
+         (if_zero in opr^.props.flags) then
+        props.set_unset_flags([of_zerotested,if_zero],[]);
+      {on expansion, check/copy sign flags since they are auto expanded by
+       logic copy}
+      if props.mbits > opr^.props.mbits then
+        begin
+          // sinse set_unset first removes, then adds flags ->
+          // mask out expand and sign, then set them to the value from opr
+          props.set_unset_flags([if_signed,if_expanded] * opr^.props.flags,[if_signed,if_expanded]);
+        end;
+    end;
 end;
 
 procedure TTFM_Integer.not_direct;
@@ -72,7 +94,13 @@ var i: VMInt;
 begin
   for i := 0 to props.sizewords-1 do
     intp[i] := not intp[i];
-  props.reset_of_flags;
+  {invert sign flag since sign bit skips, dont test explicit,
+   also reset zerotest/fwtested flag
+   -> if_expanded, if set is still valid since sign extension skips all together}
+  if if_signed in props.flags then
+    props.set_unset_flags([],[if_signed,of_zerotested,of_fwtested])
+  else
+    props.set_unset_flags([if_signed],[of_zerotested,of_fwtested]);
 end;
 
 function TTFM_Integer.bit_test( bit: VMInt ): Boolean;
@@ -91,27 +119,41 @@ procedure TTFM_Integer.twoscomplement;
 { calculate 2s complement }
 var i: VMInt;
 begin
-  not_direct;
-  for i := 0 to props.sizewords-1 do
+  {soft check for zero, since zero is invariant to 2s complement}
+  if not ((of_zerotested in props.flags) and
+          (if_zero in props.flags)) then
     begin
+      not_direct;
+      for i := 0 to props.sizewords-1 do
+        begin
 {$PUSH}
 {$R-}
 {$Q-}
-      Inc(intp[i],1);
+          Inc(intp[i],1);
 {$POP}
-      if intp[i] <> 0 then
-        Break; // number wont propagate
+          if intp[i] <> 0 then
+            Break; // number wont propagate
+        end;
+      props.reset_of_flags;
     end;
-  props.reset_of_flags;
 end;
 
 procedure TTFM_Integer.and_direct( opr: PTFM_Integer );
 { direct and into this, oper is (obviously) not reranged }
 var w: VMInt;
 begin
-  opr^.expand; // needed since range "logically" expanded
-  for w := 0 to props.sizewords-1 do
-    intp[w] := intp[w] and opr^.logic_expanded_word(w);
+  if props.mbits = opr^.props.mbits then
+    begin
+      {same bitness/same wordness, no need for expand/logic expand}
+      for w := 0 to props.sizewords-1 do
+        intp[w] := intp[w] and opr^.intp[w];
+    end
+  else
+    begin
+      opr^.expand; // needed since range "logically" expanded
+      for w := 0 to props.sizewords-1 do
+        intp[w] := intp[w] and opr^.logic_expanded_word(w);
+    end;
   props.reset_of_flags;
 end;
 
@@ -119,9 +161,18 @@ procedure TTFM_Integer.or_direct( opr: PTFM_Integer );
 { direct or into this, oper is (obviously) not reranged }
 var w: VMInt;
 begin
-  opr^.expand; // needed since range "logically" expanded
-  for w := 0 to props.sizewords-1 do
-    intp[w] := intp[w] or opr^.logic_expanded_word(w);
+  if props.mbits = opr^.props.mbits then
+    begin
+      {same bitness/same wordness, no need for expand/logic expand}
+      for w := 0 to props.sizewords-1 do
+        intp[w] := intp[w] or opr^.intp[w];
+    end
+  else
+    begin
+      opr^.expand; // needed since range "logically" expanded
+      for w := 0 to props.sizewords-1 do
+        intp[w] := intp[w] or opr^.logic_expanded_word(w);
+    end;
   props.reset_of_flags;
 end;
 
@@ -129,9 +180,18 @@ procedure TTFM_Integer.xor_direct( opr: PTFM_Integer );
 { direct xor into this, oper is (obviously) not reranged }
 var w: VMInt;
 begin
-  opr^.expand; // needed since range "logically" expanded
-  for w := 0 to props.sizewords-1 do
-    intp[w] := intp[w] xor opr^.logic_expanded_word(w);
+  if props.mbits = opr^.props.mbits then
+    begin
+      {same bitness/same wordness, no need for expand/logic expand}
+      for w := 0 to props.sizewords-1 do
+        intp[w] := intp[w] xor opr^.intp[w];
+    end
+  else
+    begin
+      opr^.expand; // needed since range "logically" expanded
+      for w := 0 to props.sizewords-1 do
+        intp[w] := intp[w] xor opr^.logic_expanded_word(w);
+    end;
   props.reset_of_flags;
 end;
 
@@ -141,25 +201,51 @@ var nw: TFFPA_Word;
     w: VMInt;
     carry: Boolean;
 begin
-  opr^.expand;
-  carry := false;
-  for w := 0 to props.sizewords-1 do
+  if props.mbits = opr^.props.mbits then
     begin
-      nw := opr^.logic_expanded_word(w);
-      if carry then
+      {same bitness/same wordness, no need for expand/logic expand}
+      carry := false;
+      for w := 0 to props.sizewords-1 do
+        begin
+          nw := opr^.intp[w];
+          if carry then
 {$PUSH}
 {$R-}
 {$Q-}
-        begin
-          intp[w] := intp[w] + nw + 1;
-          carry := nw = 0;
-        end
-      else
-        begin
-          intp[w] := intp[w] + nw;
-          carry := intp[w] < nw;
-        end;
+            begin
+              intp[w] := intp[w] + nw + 1;
+              carry := nw = 0;
+            end
+          else
+            begin
+              intp[w] := intp[w] + nw;
+              carry := intp[w] < nw;
+            end;
 {$POP}
+        end;
+    end
+  else
+    begin
+      opr^.expand;
+      carry := false;
+      for w := 0 to props.sizewords-1 do
+        begin
+          nw := opr^.logic_expanded_word(w);
+          if carry then
+{$PUSH}
+{$R-}
+{$Q-}
+            begin
+              intp[w] := intp[w] + nw + 1;
+              carry := nw = 0;
+            end
+          else
+            begin
+              intp[w] := intp[w] + nw;
+              carry := intp[w] < nw;
+            end;
+{$POP}
+        end;
     end;
   props.reset_of_flags;
 end;

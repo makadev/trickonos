@@ -193,6 +193,21 @@ begin
   if tmpC.is_zero then
     Exit(false);
 
+  if tmpC.props.mbits <= C_TTFM_WORD_BITS then
+    begin
+{$PUSH}
+{$R-}
+{$Q-}
+       // assumed everything is properly expanded -> use machine instruction(s)
+       tmpB.intp[0] := tmpA.intp[0] mod tmpC.intp[0]; // direct mod into tmpB
+       tmpA.intp[0] := tmpA.intp[0] div tmpC.intp[0]; // direct div into tmpA
+       // reset of due to direct modification
+       tmpB.props.reset_of_flags;
+       tmpA.props.reset_of_flags;
+{$POP}
+       Exit(true);
+    end;
+
   {calculate the effictive number of needed division steps
    shifting left tmpB.tmpA until first bit is in remainder (or dividend is 0)}
 
@@ -266,7 +281,7 @@ begin
 end;
 
 procedure tfm_mul_temps;
-{ multiply tmpC by tmpA
+{ multiply tmpC by tmpA into tmpB
 
   Basic algorithm
 
@@ -282,6 +297,21 @@ procedure tfm_mul_temps;
 var nrbits, shiftn: VMInt;
     initshift: Boolean;
 begin
+  if (tmpC.props.mbits <= C_TTFM_WORD_BITS) then
+    begin
+{$PUSH}
+{$R-}
+{$Q-}
+       // assumed, everything is properly expanded -> use machine instruction
+       tmpB.intp[0] := tmpC.intp[0] * tmpA.intp[0]; // direct mul into tmpB
+       tmpA.intp[0] := 0; // clear A, since this would be the same after long multiply
+       // reset of due to direct modification
+       tmpB.props.reset_of_flags;
+       tmpA.props.reset_of_flags;
+       tmpA.props.set_unset_flags([of_zerotested,of_signtested,if_zero],[]);
+{$POP}
+       Exit;
+    end;
   initshift := true;
   nrbits := tmpC.props.mbits;
   while not tmpA.is_zero do
