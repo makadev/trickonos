@@ -30,49 +30,14 @@ type
     msg: String;
   end;
 
-  {Class for <Error> Type}
-  TSOTypeError = class(TSOType)
-    protected
-      class function InstanceSize: MachineInt; override;
-      class function IsMortal: Boolean; override;
-      class procedure PostConstructor(instance: PSOInstance); override;
-      class procedure PreDestructor(instance: PSOInstance); override;
-    public
-      class function MethodCall(soself: PSOInstance; const name: String; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance; override;
-      class function TypeQuery(soself: PSOInstance): String; override;
-  end;
-
-{ TSOTypeError }
-class function TSOTypeError.InstanceSize: MachineInt;
-begin
-  Result := SizeOf(TSO_Error);
-end;
-
-class function TSOTypeError.IsMortal: Boolean;
-begin
-  Result := true;
-end;
-
-class procedure TSOTypeError.PostConstructor(instance: PSOInstance);
+procedure socls_Error_PreDestructor(instance: PSOInstance);
 begin
   SetLength(PSO_Error(instance)^.msg,0);
 end;
 
-class procedure TSOTypeError.PreDestructor(instance: PSOInstance);
+function socls_Error_TypeQuery(soself: PSOInstance): String;
 begin
-  SetLength(PSO_Error(instance)^.msg,0);
-end;
-
-class function TSOTypeError.MethodCall(soself: PSOInstance; const name: String;
-  args: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
-begin
-  SelfCheck(soself,self);
-  Result := init_operation_error(soself,name);
-end;
-
-class function TSOTypeError.TypeQuery(soself: PSOInstance): String;
-begin
-  SelfCheck(soself,self);
+  SelfCheck(soself,so_error_class);
   Result := C_SOTYPE_ERROR_NAME;
 end;
 

@@ -23,6 +23,15 @@
  STRING
  ******************************************************************************)
 
+var
+  TMethodTrie_String: THashTrie;
+
+procedure so_string_addmethod( const mname: String; methh: TSOMethodHandler );
+begin
+  if TMethodTrie_String.Add(UpCase(mname),methh) <> nil then
+    put_internalerror(12012202);
+end;
+
 type
   {string instance}
   PSO_String = ^TSO_String;
@@ -30,46 +39,12 @@ type
     str: String;
   end;
 
-  {Class for <String> Type}
-  TSOTypeString = class(TSOTypeBase)
-    protected
-      class function InstanceSize: MachineInt; override;
-      class procedure PostConstructor(instance: PSOInstance); override;
-      class procedure PreDestructor(instance: PSOInstance); override;
-    public
-      class function BaseTypeName: String; override;
-      class function BinOpAdd(soself, rightop: PSOInstance): PSOInstance; override;
-      class function Compare(soself, rightop: PSOInstance): TSOCompareResult; override;
-      class function GetIndex(soself, idx: PSOInstance): PSOInstance; override;
-      class function SetIndex(soself, idx, value: PSOInstance): PSOInstance; override;
-  end;
-
-
-{ TSOTypeString }
-
-class function TSOTypeString.BaseTypeName: String;
+function socls_String_TypeQuery( soself: PSOInstance ): String;
 begin
   Result := C_SOTYPE_STRING_NAME;
 end;
 
-class function TSOTypeString.InstanceSize: MachineInt;
-begin
-  Result := SizeOf(TSO_String);
-end;
-
-class function TSOTypeString.BinOpAdd(soself, rightop: PSOInstance): PSOInstance;
-begin
-  SelfCheck(soself,so_string_class);
-  if rightop^.IsType(so_string_class) then
-    begin
-      Result := so_string_init( PSO_String(soself)^.str + PSO_String(rightop)^.str );
-      check_so_shortbuf(Length(PSO_String(Result)^.str));
-    end
-  else
-    Result := init_invargtype_error(soself,rightop,1,DEFAULT_METHOD_BinOpAdd);
-end;
-
-class function TSOTypeString.Compare(soself, rightop: PSOInstance): TSOCompareResult;
+function socls_String_Compare(soself, rightop: PSOInstance): TSOCompareResult;
 var res: Integer;
 begin
   SelfCheck(soself,so_string_class);
@@ -84,68 +59,21 @@ begin
         Result := socmp_isLess;
     end
   else
-    Result := inherited Compare(soself, rightop);
+    Result := DefaultCompare(soself, rightop);
 end;
 
-class function TSOTypeString.GetIndex(soself, idx: PSOInstance): PSOInstance;
+function socls_String_MethodCall( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+{generic, lookup method and call}
+var m: TSOMethodHandler;
 begin
-  SelfCheck(soself,so_string_class);
-  if idx^.IsType(so_integer_class) then
-    begin
-      if so_integer_fits(idx) and
-         ((so_integer_get(idx,true) > 0) or
-          (so_integer_get(idx,true) <= Length(PSO_String(soself)^.str))) then
-        begin
-          Result := so_string_init(PSO_String(soself)^.str[so_integer_get(idx,true)]);
-        end
-      else
-        Result := init_range_error(soself,idx,1,DEFAULT_METHOD_GetIndex);
-    end
+  m := TSOMethodHandler( TMethodTrie_String.Lookup(mname) );
+  if Assigned(m) then
+    Result := m( mname, soself, soargs, argnum )
   else
-    Result := init_invargtype_error(soself,idx,1,DEFAULT_METHOD_GetIndex);
+    Result := nil;
 end;
 
-class function TSOTypeString.SetIndex(soself, idx, value: PSOInstance): PSOInstance;
-begin
-  SelfCheck(soself,so_string_class);
-  if idx^.IsType(so_integer_class) then
-    begin
-      if value^.IsType(so_string_class) then
-        begin
-          if so_integer_fits(idx) and
-             ((so_integer_get(idx,true) > 0) or
-              (so_integer_get(idx,true) <= Length(PSO_String(soself)^.str))) then
-            begin
-              if Length(PSO_String(value)^.str) = 1 then
-                begin
-                  if not soself^.GetLocked then
-                    begin
-                      PSO_String(soself)^.str[so_integer_get(idx,true)] := PSO_String(value)^.str[1];
-                      Result := value;
-                      Result^.IncRef;
-                    end
-                  else
-                    Result := init_lockmod(soself,DEFAULT_METHOD_SetIndex);
-                end
-              else
-                Result := init_invargvalue_error(soself,value,2,DEFAULT_METHOD_SetIndex);
-            end
-          else
-            Result := init_range_error(soself,idx,1,DEFAULT_METHOD_SetIndex);
-        end
-      else
-        Result := init_invargtype_error(soself,value,2,DEFAULT_METHOD_SetIndex);
-    end
-  else
-    Result := init_invargtype_error(soself,idx,1,DEFAULT_METHOD_SetIndex);
-end;
-
-class procedure TSOTypeString.PostConstructor(instance: PSOInstance);
-begin
-  SetLength(PSO_String(instance)^.str,0);
-end;
-
-class procedure TSOTypeString.PreDestructor(instance: PSOInstance);
+procedure socls_String_PreDestructor(instance: PSOInstance);
 begin
   SetLength(PSO_String(instance)^.str,0);
 end;
@@ -154,15 +82,105 @@ end;
   STRING Methods/Attr/Helpers
  ******************************************************************************)
 
+{String::Add(string) -> string}
+function _String_Add_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+begin
+  SelfCheck(soself,so_string_class);
+  if argnum = 1 then
+    begin
+      if soargs^[0]^.IsType(so_string_class) then
+        begin
+          Result := so_string_init( PSO_String(soself)^.str + PSO_String(soargs^[0])^.str );
+          check_so_shortbuf(Length(PSO_String(soargs^[0])^.str));
+        end
+      else
+        Result := init_invargtype_error(soself,soargs^[0],1,mname);
+    end
+  else
+    Result := init_invargnum_error(soself,argnum,mname);
+end;
+
+{String::GetIndex(integer) -> string}
+function _String_GetIndex_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+begin
+  SelfCheck(soself,so_string_class);
+  if argnum = 1 then
+    begin
+      {check for integer arg}
+      if soargs^[0]^.IsType(so_integer_class) then
+        begin
+          {check integer arg is in range}
+          if so_integer_fits(soargs^[0]) and
+             ((so_integer_get(soargs^[0],true) > 0) or
+              (so_integer_get(soargs^[0],true) <= Length(PSO_String(soself)^.str))) then
+            begin
+              {and access, return character as new string}
+              Result := so_string_init(PSO_String(soself)^.str[so_integer_get(soargs^[0],true)]);
+            end
+          else
+            Result := init_range_error(soself,soargs^[0],1,mname);
+        end
+      else
+        Result := init_invargtype_error(soself,soargs^[0],1,mname);
+    end
+  else
+    Result := init_invargnum_error(soself,argnum,mname);
+end;
+
+{String::SetIndex(integer,string) -> string (setter)}
+function _String_SetIndex_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+begin
+  SelfCheck(soself,so_string_class);
+  if argnum = 2 then
+    begin
+      {check first arg is integer}
+      if soargs^[0]^.IsType(so_integer_class) then
+        begin
+          {check integer is in range}
+          if so_integer_fits(soargs^[0]) and
+             ((so_integer_get(soargs^[0],true) > 0) or
+              (so_integer_get(soargs^[0],true) <= Length(PSO_String(soself)^.str))) then
+            begin
+              {check second arg is string}
+              if soargs^[1]^.IsType(so_string_class) then
+                begin
+                  {check second arg is string of length 1}
+                  if Length(PSO_String(soargs^[1])^.str) = 1 then
+                    begin
+                      {check for modify locks on string}
+                      if not soself^.GetLocked then
+                        begin
+                          {and set}
+                          PSO_String(soself)^.str[so_integer_get(soargs^[0],true)] := PSO_String(soargs^[1])^.str[1];
+                          Result := soargs^[1];
+                          Result^.IncRef;
+                        end
+                      else
+                        Result := init_lockmod(soself,mname);
+                    end
+                  else
+                    Result := init_invargvalue_error(soself,soargs^[1],2,mname);
+                end
+              else
+                Result := init_invargtype_error(soself,soargs^[1],2,mname);
+            end
+          else
+            Result := init_range_error(soself,soargs^[0],1,mname);
+        end
+      else
+        Result := init_invargtype_error(soself,soargs^[0],1,mname);
+    end;
+end;
+
 function so_string_init( const s: string ): PSOInstance;
 begin
-  Result := InitInstance(TSOTypeString);
+  Result := InitInstance(so_string_class);
   PSO_String(Result)^.str := s;
 end;
 
 function so_string_get(sostring: PSOInstance): String;
 begin
-  SelfCheck(sostring,TSOTypeString);
+  SelfCheck(sostring,so_string_class);
   Result := PSO_String(sostring)^.str;
 end;
 

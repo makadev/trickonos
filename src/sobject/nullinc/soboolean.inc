@@ -23,87 +23,103 @@
  BOOLEAN (Immortal, 2 Instances)
  ******************************************************************************)
 
+var
+  TMethodTrie_Boolean: THashTrie;
+
+procedure so_boolean_addmethod( const mname: String; methh: TSOMethodHandler );
+begin
+  if TMethodTrie_Boolean.Add(UpCase(mname),methh) <> nil then
+    put_internalerror(12012201);
+end;
+
 type
-  {Class for <Boolean> Type}
-  TSOTypeBoolean = class(TSOTypeBase)
-    protected
-      class function InstanceSize: MachineInt; override;
-      class function IsMortal: Boolean; override;
-    public
-      class function BaseTypeName: String; override;
-      class function BinOpAnd(soself, rightop: PSOInstance): PSOInstance; override;
-      class function BinOpOr(soself, rightop: PSOInstance): PSOInstance; override;
-      class function BinOpXor(soself, rightop: PSOInstance): PSOInstance; override;
-      class function UnOpNot(soself: PSOInstance): PSOInstance; override;
-  end;
+  TSO_Boolean = TSOInstance;
 
 
-{ TSOTypeBoolean }
-
-class function TSOTypeBoolean.InstanceSize: MachineInt;
-begin
-  Result := SizeOf(TSOInstance);
-end;
-
-class function TSOTypeBoolean.IsMortal: Boolean;
-begin
-  Result := false;
-end;
-
-class function TSOTypeBoolean.BaseTypeName: String;
+function socls_Boolean_TypeQuery( soself: PSOInstance ): String;
 begin
   Result := C_SOTYPE_BOOLEAN_NAME;
 end;
 
-class function TSOTypeBoolean.BinOpAnd(soself, rightop: PSOInstance): PSOInstance;
+function socls_Boolean_MethodCall( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+{generic, lookup method and call}
+var m: TSOMethodHandler;
+begin
+  m := TSOMethodHandler( TMethodTrie_Boolean.Lookup(mname) );
+  if Assigned(m) then
+    Result := m( mname, soself, soargs, argnum )
+  else
+    Result := nil;
+end;
+
+function _Boolean_And_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
 {if true, return other, else return false}
 begin
   SelfCheck(soself,so_boolean_class);
-  if soself = so_true then
-    Result := rightop
+  if argnum = 1 then
+    begin
+      if soself = so_true then
+        Result := soargs^[0]
+      else
+        Result := soself;
+      // rightop may not be bool
+      Result^.IncRef;
+    end
   else
-    Result := soself;
-  // rightop may not be bool
-  Result^.IncRef;
+    Result := init_invargnum_error(soself,argnum,mname);
 end;
 
-class function TSOTypeBoolean.BinOpOr(soself, rightop: PSOInstance): PSOInstance;
+function _Boolean_Or_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
 {if false return other, else return self}
 begin
   SelfCheck(soself,so_boolean_class);
-  if soself = so_true then
-    Result := soself
+  if argnum = 1 then
+    begin
+      if soself = so_true then
+        Result := soself
+      else
+        Result := soargs^[0];
+      // rightop may not be bool
+      Result^.IncRef;
+    end
   else
-    Result := rightop;
-  // rightop may not be bool
-  Result^.IncRef;
+    Result := init_invargnum_error(soself,argnum,mname);
 end;
 
-class function TSOTypeBoolean.BinOpXor(soself, rightop: PSOInstance
-  ): PSOInstance;
+function _Boolean_Xor_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
 {xor is not part of the object logic, simply operates on boolean
   -> x.xor(x) = false, x.xor(not x) = true
   -> x.xor(object) -> fail}
 begin
   SelfCheck(soself,so_boolean_class);
-  if rightop^.IsType(so_boolean_class) then
+  if argnum = 1 then
     begin
-      if soself = rightop then
+      if soargs^[0]^.IsType(so_boolean_class) then
+        begin
+          if soself = soargs^[0] then
+            Result := so_false
+          else
+            Result := so_true;
+        end
+      else
+        Result := init_invargtype_error(soself,soargs^[0],1,mname);
+    end
+  else
+    Result := init_invargnum_error(soself,argnum,mname);
+end;
+
+function _Boolean_Not_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+{Return true/false}
+begin
+  SelfCheck(soself,so_boolean_class);
+  if argnum = 0 then
+    begin
+      if soself = so_true then
         Result := so_false
       else
         Result := so_true;
     end
   else
-    Result := init_invargtype_error(soself,rightop,1,DEFAULT_METHOD_BinOpXor);
-end;
-
-class function TSOTypeBoolean.UnOpNot(soself: PSOInstance): PSOInstance;
-{Return true/false}
-begin
-  SelfCheck(soself,so_boolean_class);
-  if soself = so_true then
-    Result := so_false
-  else
-    Result := so_true;
+    Result := init_invargnum_error(soself,argnum,mname);
 end;
 

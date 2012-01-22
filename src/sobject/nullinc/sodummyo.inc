@@ -23,55 +23,38 @@
  Immortal Dummy Object, for Debugging (and fun :<)
   "it knows" every method and returns itself while printing debug infos
  ******************************************************************************)
+
 type
-  TSODummyObject = class(TSOType)
-    protected
-      class function IsMortal: Boolean; override;
-    public
-      class function MethodCall(soself: PSOInstance; const name: String; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance; override;
-      class function TypeQuery(soself: PSOInstance): String; override;
-      class function Compare( soself, rightop: PSOInstance ): TSOCompareResult; override;
-      class function MethodCallOverride( soself: PSOInstance; const name: String ): PSOInstance; override;
-  end;
+  TSO_DummyObject = TSOInstance;
 
-{ TSODummyObject }
-
-class function TSODummyObject.IsMortal: Boolean;
+function socls_DummyObject_MethodCall(const name: String; soself: PSOInstance; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
+var i: VMInt;
 begin
-  Result := false;
-end;
-
-class function TSODummyObject.MethodCall(soself: PSOInstance;
-  const name: String; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
-var i: Integer;
-begin
-  SelfCheck(soself,self);
+  SelfCheck(soself,so_dummy_class);
   put_info(C_SOTYPE_DUMMY_NAME+' method '+name+' called with '+IntToStr(argnum)+' Args.');
   if debug_mode then
     for i := 0 to argnum-1 do
-      put_debug('  ARG '+IntToStr(i+1)+' is '+args^[0]^.GetTypeCls.TypeQuery(args^[0]));
+      put_debug('  ARG '+IntToStr(i+1)+' is '+args^[0]^.GetTypeCls^.TypeQuery(args^[0]));
   Result := soself;
 end;
 
-class function TSODummyObject.TypeQuery(soself: PSOInstance): String;
+function socls_DummyObject_TypeQuery(soself: PSOInstance): String;
 begin
-  SelfCheck(soself,self);
+  SelfCheck(soself,so_dummy_class);
   Result := C_SOTYPE_DUMMY_NAME;
   put_debug(C_SOTYPE_DUMMY_NAME+' got (Type)checked :o');
 end;
 
-class function TSODummyObject.Compare(soself, rightop: PSOInstance
-  ): TSOCompareResult;
+function socls_DummyObject_Compare(soself, rightop: PSOInstance): TSOCompareResult;
 begin
-  SelfCheck(soself,self);
-  put_debug(C_SOTYPE_DUMMY_NAME+' getting Compared against '+rightop^.GetTypeCls.TypeQuery(rightop));
-  Result := inherited Compare(soself, rightop);
+  SelfCheck(soself,so_dummy_class);
+  put_debug(C_SOTYPE_DUMMY_NAME+' getting Compared against '+rightop^.GetTypeCls^.TypeQuery(rightop));
+  Result := DefaultCompare(soself, rightop);
 end;
 
-class function TSODummyObject.MethodCallOverride(soself: PSOInstance;
-  const name: String): PSOInstance;
+function socls_DummyObject_MethodCallOverride(const name: String; soself: PSOInstance): PSOInstance;
 begin
-  SelfCheck(soself,self);
+  SelfCheck(soself,so_dummy_class);
   put_debug(C_SOTYPE_DUMMY_NAME+' getting Checked for MethodOverride '+name);
-  Result := inherited MethodCallOverride(soself, name);
+  Result := nil;
 end;

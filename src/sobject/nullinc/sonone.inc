@@ -24,37 +24,23 @@
  ******************************************************************************)
 
 type
-  {Class for <None> Type}
-  TSOTypeNone = class(TSOTypeBase)
-    protected
-      class function InstanceSize: MachineInt; override;
-      class function IsMortal: Boolean; override;
-    public
-      class function BaseTypeName: String; override;
-      class function UnOpNot(soself: PSOInstance): PSOInstance; override;
-  end;
+  TSO_None = TSOInstance;
 
-{ TSOTypeNone }
-
-class function TSOTypeNone.InstanceSize: MachineInt;
-{doesnt have extra space, only a reference}
+function socls_None_TypeQuery( soself: PSOInstance ): String;
 begin
-  Result := SizeOf(TSOInstance);
-end;
-
-class function TSOTypeNone.IsMortal: Boolean;
-begin
-  Result := false;
-end;
-
-class function TSOTypeNone.BaseTypeName: String;
-begin
+  SelfCheck(soself,so_none_class);
   Result := C_SOTYPE_NONE_NAME;
 end;
 
-class function TSOTypeNone.UnOpNot(soself: PSOInstance): PSOInstance;
-{not nil = nil}
+function socls_None_MethodCall( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
 begin
   SelfCheck(soself,so_none_class);
-  Result := soself;
+  if mname = DEFAULT_METHOD_UnOpNot then
+    begin
+      {NONE::Not() -> nil}
+      Result := soself;
+    end
+  else
+    Result := nil;
 end;
+

@@ -23,6 +23,15 @@
   LIST
  ******************************************************************************)
 
+var
+  TMethodTrie_List: THashTrie;
+
+procedure so_list_addmethod( const mname: String; methh: TSOMethodHandler );
+begin
+  if TMethodTrie_List.Add(UpCase(mname),methh) <> nil then
+    put_internalerror(12012204);
+end;
+
 type
   {doubly linked list instance}
   PSOListElement = ^TSOListElement;
@@ -39,31 +48,13 @@ type
     count: VMInt;
   end;
 
-  {Class for <List> Type}
-  TSOTypeList = class(TSOTypeBase)
-    protected
-      class function InstanceSize: MachineInt; override;
-      class procedure GCEnumerator(instance: PSOInstance; tracer: TGarbageCollectorTracer); override;
-      class procedure PreDestructor(instance: PSOInstance); override;
-    public
-      class function BaseTypeName: String; override;
-      class function Compare(soself, rightop: PSOInstance): TSOCompareResult; override;
-  end;
-
-{ TSOTypeList }
-
-class function TSOTypeList.BaseTypeName: String;
+function socls_List_TypeQuery( soself: PSOInstance ): String;
 begin
+  SelfCheck(soself,so_list_class);
   Result := C_SOTYPE_LIST_NAME;
 end;
 
-class function TSOTypeList.InstanceSize: MachineInt;
-begin
-  Result:= SizeOf(TSO_List);
-end;
-
-class procedure TSOTypeList.GCEnumerator(instance: PSOInstance;
-  tracer: TGarbageCollectorTracer);
+procedure socls_List_GCEnumerator(instance: PSOInstance; tracer: TGarbageCollectorTracer);
 var d: PSOListElement;
 begin
   d := PSO_List(instance)^.first;
@@ -74,7 +65,14 @@ begin
     end;
 end;
 
-class procedure TSOTypeList.PreDestructor(instance: PSOInstance);
+procedure socls_List_PostConstructor(instance: PSOInstance);
+begin
+  PSO_List(instance)^.first := nil;
+  PSO_List(instance)^.last := nil;
+  PSO_List(instance)^.count := 0;
+end;
+
+procedure socls_List_PreDestructor(instance: PSOInstance);
 var d,n: PSOListElement;
 begin
   d := PSO_List(instance)^.first;
@@ -89,11 +87,11 @@ begin
   PSO_List(instance)^.count := 0;
 end;
 
-class function TSOTypeList.Compare(soself, rightop: PSOInstance): TSOCompareResult;
+function socls_List_Compare(soself, rightop: PSOInstance): TSOCompareResult;
 var ld,rd: PSOListElement;
 begin
-  SelfCheck(soself,self);
-  if rightop^.IsType(self) then
+  SelfCheck(soself,so_list_class);
+  if rightop^.IsType(so_list_class) then
     begin
       if soself = rightop then
         Result := socmp_isEqual
@@ -109,7 +107,7 @@ begin
           while (Result = socmp_isEqual) and
                 Assigned(ld) do
             begin
-              Result := ld^.elem^.GetTypeCls.Compare(ld^.elem,rd^.elem);
+              Result := ld^.elem^.GetTypeCls^.Compare(ld^.elem,rd^.elem);
               ld := ld^.next;
               rd := rd^.next;
             end;
@@ -117,6 +115,17 @@ begin
     end
   else
     Result := socmp_NotComparable;
+end;
+
+function socls_List_MethodCall( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+{generic, lookup method and call}
+var m: TSOMethodHandler;
+begin
+  m := TSOMethodHandler( TMethodTrie_List.Lookup(mname) );
+  if Assigned(m) then
+    Result := m( mname, soself, soargs, argnum )
+  else
+    Result := nil;
 end;
 
 (*******************************************************************************
@@ -131,7 +140,7 @@ type
       function Next( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
       function Current( const aname: String; soself: PSOInstance; setter: PSOInstance ): PSOInstance;
       constructor Create; override;
-      procedure PreCollect; override;
+      destructor Destroy; override;
   end;
 
 { TSOList_IOListIterator }
@@ -197,13 +206,13 @@ begin
   Self.RegisterAttribute(C_STDMEMBR_LISTITER__CURRENT,@Current);
 end;
 
-procedure TSOList_IOListIterator.PreCollect;
+destructor TSOList_IOListIterator.Destroy;
 {iterator is collected, check if its still in iteration and those holds a lock
  on the list -> remove it}
 begin
   if Assigned(FLstElem) then
     PSO_List(FReferings[0])^.DecLocks; // didnt iter til end -> unlock
-  inherited PreCollect;
+  inherited Destroy;
 end;
 
 
@@ -213,7 +222,7 @@ end;
 
 function so_list_init: PSOInstance;
 begin
-  Result := InitInstance(TSOTypeList);
+  Result := InitInstance(so_list_class);
 end;
 
 function internal_list_append( soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
