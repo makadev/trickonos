@@ -489,34 +489,30 @@ end;
 procedure vmop_m_declfun;
 {
   stack layout:
-    .operandI = relative addr for function init
-    TOS    = name string
-    TOS-1  = canvararg
-    TOS-2  = slotn
-    TOS-3  = argn
-    TOS-4  = argf
+    TOS  = canvararg
+    TOS-1  = slotn
+    TOS-2  = argn
+    TOS-3  = argf
 }
 var funobj: PSOInstance;
     slotn,argn,argf: Integer;
     canv: Boolean;
     name: String;
 begin
-  if (runtimestack_get(0)^.GetTypeCls <> so_string_class) or
-     (runtimestack_get(1)^.GetTypeCls <> so_boolean_class) or
+  if (runtimestack_get(0)^.GetTypeCls <> so_boolean_class) or
+     (runtimestack_get(1)^.GetTypeCls <> so_integer_class) or
      (runtimestack_get(2)^.GetTypeCls <> so_integer_class) or
-     (runtimestack_get(3)^.GetTypeCls <> so_integer_class) or
-     (runtimestack_get(4)^.GetTypeCls <> so_integer_class) then
+     (runtimestack_get(3)^.GetTypeCls <> so_integer_class) then
     put_internalerror(2011121160);
-  name := so_string_get(runtimestack_get(0));
-  canv := runtimestack_get(1) = so_true;
-  slotn := so_integer_get(runtimestack_get(2),false);
-  argn := so_integer_get(runtimestack_get(3),false);
-  argf := so_integer_get(runtimestack_get(4),false);
+  canv := runtimestack_get(0) = so_true;
+  slotn := so_integer_get(runtimestack_get(1),false);
+  argn := so_integer_get(runtimestack_get(2),false);
+  argf := so_integer_get(runtimestack_get(3),false);
   funobj := so_function_init(templatestack_tos,
                              argf,argn,slotn,template_ip+template_ip_operand,canv);
-  globalenv_set(name,funobj,true); // increfs once (twice but decrefed with fixref) for adding
-  funobj^.DecRef; // <- fix ref
-  runtimestack_pop(5);
+  runtimestack_push(funobj);
+  runtimestack_moved(0,4);
+  runtimestack_pop(4);
 end;
 
 procedure vmop_m_fprel;

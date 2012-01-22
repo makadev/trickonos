@@ -761,10 +761,14 @@ begin
      Assembly.InsOperand(Line,Column,isc_m_load_type,Ord(soload_true))
    else
      Assembly.InsOperand(Line,Column,isc_m_load_type,Ord(soload_false));
-   Assembly.InsStabLoad(Line,Column,isc_m_load_string_stab,upcase(TScanRecord(Occ[0]).Pattern));
    Assembly.InsLRefOp(Line,Column,isc_m_decl_fun_addr,FrameStackTop^.callintro_lab); // and declare
 
    FrameStackPop;
+
+   // compile TOS setting after FrameStackPop since it will set it in the frame below
+   // which may be again a function
+   ExprAssembleTOSSetter(Line,Column,Assembly,Upcase(TScanRecord(Occ[0]).Pattern)); // function @ TOS -> set by name
+   Assembly.InsOperand(Line,Column,isc_m_pop_nr,1); // pop after setting
 
    if not check_cc_maxframe(slotn) then
      begin
