@@ -41,53 +41,20 @@ type
     fun: TSO_FunctionType;
   end;
 
-  {Class for <Function> Type}
-  TSOTypeFunction = class(TSOType)
-    protected
-      class function IsMortal: Boolean; override;
-      class function InstanceSize: MachineInt; override;
-    public
-      class function BaseInterface: TSOTypeInterface; override;
-      class function MethodCall(soself: PSOInstance; const name: String; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance; override;
-      class function MethodCallOverride(soself: PSOInstance; const name: String): PSOInstance; override;
-      class function Compare(soself, rightop: PSOInstance): TSOCompareResult; override;
-      class function TypeQuery(soself: PSOInstance): String; override;
-  end;
-
-{ TSOTypeFunction }
-
-class function TSOTypeFunction.IsMortal: Boolean;
+function socls_Function_TypeQuery(soself: PSOInstance): String;
 begin
-  Result := true;
-end;
-
-class function TSOTypeFunction.InstanceSize: MachineInt;
-begin
-  Result := SizeOf(TSO_Function);
-end;
-
-class function TSOTypeFunction.TypeQuery(soself: PSOInstance): String;
-begin
-  SelfCheck(soself,self);
+  SelfCheck(soself,so_function_class);
   Result := C_SOTYPE_FUNCTION_NAME;
 end;
 
-class function TSOTypeFunction.BaseInterface: TSOTypeInterface;
-begin
-  Result := sotif_funcsetup;
-end;
-
-class function TSOTypeFunction.MethodCall(soself: PSOInstance;
-  const name: String; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
+function socls_Function_MethodCall(const name: String; soself: PSOInstance; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
 var vararglist: PSOInstance;
 begin
-  SelfCheck(soself,self);
+  SelfCheck(soself,so_function_class);
+  Result := nil;
   if name = DEFAULT_METHOD_DirectCall then
     begin
       {function setup}
-
-      Result := nil;
-
       // check nrargs, pack varargs ..
       if (PSO_Function(soself)^.fun.argf <= argnum) and
          ((PSO_Function(soself)^.fun.argn >= argnum) or
@@ -128,15 +95,12 @@ begin
 
       // grow frame
       runtimestack_framegrow(PSO_Function(soself)^.fun.slotn-argnum);
-    end
-  else
-    Result := init_operation_error(soself,name+'(..<'+IntToStr(argnum)+' Arguments>..)');
+    end;
 end;
 
-class function TSOTypeFunction.MethodCallOverride(soself: PSOInstance;
-  const name: String): PSOInstance;
+function socls_Function_MethodCallOverride(const name: String;soself: PSOInstance): PSOInstance;
 begin
-  SelfCheck(soself,self);
+  SelfCheck(soself,so_function_class);
   if name = DEFAULT_METHOD_DirectCall then
     begin
       {return self on call}
@@ -147,8 +111,7 @@ begin
     Result := nil;
 end;
 
-class function TSOTypeFunction.Compare(soself, rightop: PSOInstance
-  ): TSOCompareResult;
+function socls_Function_Compare(soself, rightop: PSOInstance): TSOCompareResult;
 begin
   if soself = rightop then
     Result := socmp_isEqual
@@ -169,7 +132,7 @@ end;
 function so_function_init(coderef: PCodeReference; argf, argn, slotn,
   ip: Integer; canvararg: Boolean): PSOInstance;
 begin
-  Result := InitInstance(TSOTypeFunction);
+  Result := InitInstance(so_function_class);
   PSO_Function(Result)^.fun.code := coderef;
   PSO_Function(Result)^.fun.ip := ip;
   PSO_Function(Result)^.fun.argf := argf;
@@ -181,7 +144,7 @@ end;
 function so_function_codelnstr( f: PSOInstance ): String;
 var resstring: String;
 begin
-  SelfCheck(f,TSOTypeFunction);
+  SelfCheck(f,so_function_class);
   ASSERT( Assigned(PSO_Function(f)^.fun.code) );
   ASSERT( Assigned(PSO_Function(f)^.fun.code^.pbcode) );
   ASSERT( Length(PSO_Function(f)^.fun.code^.pbcode^.image) > (PSO_Function(f)^.fun.ip-1) );

@@ -25,109 +25,63 @@
 
 type
   {rt env}
-  PSO_RuntimeEnv = ^TSO_RuntimeEnv;
-  TSO_RuntimeEnv = TSO_Dict;
+  PSO_RuntimeEnv = ^TSO_RT_ENV;
+  TSO_RT_ENV = TSO_Dict;
 
-  {Class for <RTEnv> Type}
-  TSOTypeRTEnv = class(TSOType)
-    protected
-      class function InstanceSize: MachineInt; override;
-      class function IsMortal: Boolean; override;
-      class procedure GCEnumerator(instance: PSOInstance; tracer: TGarbageCollectorTracer); override;
-      class procedure PostConstructor(instance: PSOInstance); override;
-      class procedure PreDestructor(instance: PSOInstance); override;
-    public
-      class function MethodCall(soself: PSOInstance; const name: String; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance; override;
-      class function SetMember(soself, value: PSOInstance; const name: String): PSOInstance;
-      class function GetMember(soself: PSOInstance; const name: String): PSOInstance;
-      class function TypeQuery(soself: PSOInstance): String; override;
-  end;
-
-{ TSOTypeRTEnv }
-
-class procedure TSOTypeRTEnv.GCEnumerator(instance: PSOInstance;
-  tracer: TGarbageCollectorTracer);
+procedure socls_RT_ENV_GCEnumerator(instance: PSOInstance; tracer: TGarbageCollectorTracer);
 begin
   PSO_RuntimeEnv(instance)^.dict.ForEach(@dict_collenum,tracer);
 end;
 
-class procedure TSOTypeRTEnv.PostConstructor(instance: PSOInstance);
+procedure socls_RT_ENV_PostConstructor(instance: PSOInstance);
 begin
   PSO_RuntimeEnv(instance)^.dict.Init(CL_LinearRegrow_Medium);
 end;
 
-class procedure TSOTypeRTEnv.PreDestructor(instance: PSOInstance);
+procedure socls_RT_ENV_PreDestructor(instance: PSOInstance);
 begin
   PSO_RuntimeEnv(instance)^.dict.Done;
 end;
 
-class function TSOTypeRTEnv.MethodCall(soself: PSOInstance; const name: String;
-  args: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
+function socls_RT_ENV_TypeQuery(soself: PSOInstance): String;
 begin
-  put_internalerror(1); // no
-  Result := nil;
-end;
-
-class function TSOTypeRTEnv.SetMember(soself, value: PSOInstance; const name: String
-  ): PSOInstance;
-{lookupadd, incref, return}
-var oldval: PSOInstance;
-begin
-  SelfCheck(soself,self);
-  if value <> so_nil then
-    begin
-      check_so_maxcollection(PSO_RuntimeEnv(soself)^.dict.GetCount+1);
-      value^.IncRef; // << entry in table
-      value^.IncRef; // << incref again for result
-      oldval := PSOInstance(PSO_RuntimeEnv(soself)^.dict.Add(name,value))
-    end
-  else
-    oldval := PSOInstance(PSO_RuntimeEnv(soself)^.dict.Delete(name));
-  if Assigned(oldval) then
-    oldval^.DecRef;
-  Result := value;
-end;
-
-class function TSOTypeRTEnv.GetMember(soself: PSOInstance; const name: String
-): PSOInstance;
-{lookup, incref, return}
-begin
-  SelfCheck(soself,self);
-  Result := PSO_RuntimeEnv(soself)^.dict.Lookup(name);
-  if Assigned(Result) then
-    Result^.IncRef
-  else
-    Result := so_nil;
-end;
-
-class function TSOTypeRTEnv.TypeQuery(soself: PSOInstance): String;
-begin
-  SelfCheck(soself,self);
+  SelfCheck(soself,so_rtenv_class);
   Result := C_SOTYPE_RTENV;
-end;
-
-class function TSOTypeRTEnv.InstanceSize: MachineInt;
-begin
-  Result := SizeOf(TSO_RuntimeEnv);
-end;
-
-class function TSOTypeRTEnv.IsMortal: Boolean;
-begin
-  Result := false;
 end;
 
 (*******************************************************************************
   RTENV Helpers
  ******************************************************************************)
 
-function so_rtenv_set_member( e: PSOInstance; const s: string; i: PSOInstance ): PSOInstance;
+function so_rtenv_set_member( e: PSOInstance; const s: string; i: PSOInstance; noretref: Boolean ): PSOInstance;
+var oldval: PSOInstance;
 begin
-  Result := TSOTypeRTEnv.SetMember(e,i,s);
+  SelfCheck(e,so_rtenv_class);
+  ASSERT(i<>nil);
+  ASSERT(s=UpCase(s));
+  if i <> so_nil then
+    begin
+      check_so_maxcollection(PSO_RuntimeEnv(e)^.dict.GetCount+1);
+      i^.IncRef; // << entry in table
+      if not noretref then
+        i^.IncRef; // << incref again for result
+      oldval := PSOInstance(PSO_RuntimeEnv(e)^.dict.Add(s,i))
+    end
+  else
+    oldval := PSOInstance(PSO_RuntimeEnv(e)^.dict.Delete(s));
+  if Assigned(oldval) then
+    oldval^.DecRef;
+  Result := i;
 end;
 
 function so_rtenv_get_member( e: PSOInstance; const s: string ): PSOInstance;
 begin
-  Result := TSOTypeRTEnv.GetMember(e,s);
+  SelfCheck(e,so_rtenv_class);
+  Result := PSO_RuntimeEnv(e)^.dict.Lookup(s);
+  if Assigned(Result) then
+    Result^.IncRef
+  else
+    Result := so_nil;
 end;
 
 (*******************************************************************************
@@ -136,38 +90,12 @@ end;
 
 type
   {rt stack}
-  PSO_RuntimeStack = ^TSO_RuntimeStack;
-  TSO_RuntimeStack = object(TSOInstance)
+  PSO_RuntimeStack = ^TSO_RT_STACK;
+  TSO_RT_STACK = object(TSOInstance)
     stack: array of PSOInstance;
   end;
 
-  {Class for <RTStack> Type}
-  TSOTypeRTStack = class(TSOType)
-    protected
-      class function InstanceSize: MachineInt; override;
-      class function IsMortal: Boolean; override;
-      class procedure GCEnumerator(instance: PSOInstance; tracer: TGarbageCollectorTracer); override;
-      class procedure PostConstructor(instance: PSOInstance); override;
-      class procedure PreDestructor(instance: PSOInstance); override;
-    public
-      class function MethodCall(soself: PSOInstance; const name: String; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance; override;
-      class function TypeQuery(soself: PSOInstance): String; override;
-  end;
-
-{ TSOTypeRTStack }
-
-class function TSOTypeRTStack.InstanceSize: MachineInt;
-begin
-  Result := SizeOf(TSO_RuntimeStack);
-end;
-
-class function TSOTypeRTStack.IsMortal: Boolean;
-begin
-  Result := false;
-end;
-
-class procedure TSOTypeRTStack.GCEnumerator(instance: PSOInstance;
-  tracer: TGarbageCollectorTracer);
+procedure socls_RT_STACK_GCEnumerator(instance: PSOInstance; tracer: TGarbageCollectorTracer);
 var i: MachineInt;
 begin
   for i := 0 to High(PSO_RuntimeStack(instance)^.stack) do
@@ -175,24 +103,17 @@ begin
       tracer(PSO_RuntimeStack(instance)^.stack[i]);
 end;
 
-class procedure TSOTypeRTStack.PostConstructor(instance: PSOInstance);
+procedure socls_RT_STACK_PostConstructor(instance: PSOInstance);
 begin
   SetLength(PSO_RuntimeStack(instance)^.stack,0);
 end;
 
-class procedure TSOTypeRTStack.PreDestructor(instance: PSOInstance);
+procedure socls_RT_STACK_PreDestructor(instance: PSOInstance);
 begin
   SetLength(PSO_RuntimeStack(instance)^.stack,0);
 end;
 
-class function TSOTypeRTStack.MethodCall(soself: PSOInstance;
-  const name: String; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
-begin
-  put_internalerror(1); //no
-  Result := nil;
-end;
-
-class function TSOTypeRTStack.TypeQuery(soself: PSOInstance): String;
+function socls_RT_STACK_TypeQuery(soself: PSOInstance): String;
 begin
   Result := C_SOTYPE_RTSTACK;
 end;
@@ -201,6 +122,7 @@ end;
   RTSTACK Helpers
  ******************************************************************************)
 
+{$WARNING replace ptrint with machineint}
 procedure so_rtstack_setlength( s: PSOInstance; len: PtrInt );
 var oldl: PtrInt;
 begin

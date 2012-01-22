@@ -369,7 +369,7 @@ procedure vmop_object_typecheck;
 {hardcoded typecheck call, checks TOS against TOS.Cls.TypeQuery}
 begin
   {check typenames}
-  if Upcase(runtimestack_get(0)^.GetTypeCls.TypeQuery(runtimestack_get(0))) =
+  if Upcase(runtimestack_get(0)^.GetTypeCls^.TypeQuery(runtimestack_get(0))) =
      template_stabentry(template_ip_operand) then
     runtimestack_push(so_true)
   else
@@ -573,40 +573,40 @@ procedure vmop_compare;
 begin
   case TInsSOCompareOp(template_ip_operand) of
     socompare_lt:
-      if runtimestack_get(1)^.GetTypeCls.Compare(
+      if runtimestack_get(1)^.GetTypeCls^.Compare(
             runtimestack_get(1),
             runtimestack_get(0)) = socmp_isLess then
         runtimestack_push(so_true)
       else
         runtimestack_push(so_false);
     socompare_gt:
-      if runtimestack_get(1)^.GetTypeCls.Compare(
+      if runtimestack_get(1)^.GetTypeCls^.Compare(
             runtimestack_get(1),
             runtimestack_get(0)) = socmp_isGreater then
         runtimestack_push(so_true)
       else
         runtimestack_push(so_false);
     socompare_le:
-      if runtimestack_get(1)^.GetTypeCls.Compare(
+      if runtimestack_get(1)^.GetTypeCls^.Compare(
             runtimestack_get(1),
             runtimestack_get(0)) in [socmp_isEqual,socmp_isLess] then
         runtimestack_push(so_true)
       else
         runtimestack_push(so_false);
     socompare_ge:
-      if runtimestack_get(1)^.GetTypeCls.Compare(
+      if runtimestack_get(1)^.GetTypeCls^.Compare(
             runtimestack_get(1),
             runtimestack_get(0)) in [socmp_isEqual,socmp_isGreater] then
         runtimestack_push(so_true)
       else
         runtimestack_push(so_false);
     socompare_equ:
-      if runtimestack_get(1)^.GetTypeCls.Compare(runtimestack_get(1),runtimestack_get(0)) = socmp_isEqual then
+      if runtimestack_get(1)^.GetTypeCls^.Compare(runtimestack_get(1),runtimestack_get(0)) = socmp_isEqual then
         runtimestack_push(so_true)
       else
         runtimestack_push(so_false);
     socompare_neq:
-        if runtimestack_get(1)^.GetTypeCls.Compare(runtimestack_get(1),runtimestack_get(0)) <> socmp_isEqual then
+        if runtimestack_get(1)^.GetTypeCls^.Compare(runtimestack_get(1),runtimestack_get(0)) <> socmp_isEqual then
           runtimestack_push(so_true)
         else
           runtimestack_push(so_false);
@@ -649,34 +649,58 @@ end;
 
 procedure do_so_method_call(const name: String; args: Integer);
 { Do a named method call. }
-var res,fres: PSOInstance;
+var res,fres,mres: PSOInstance;
 begin
   {check for override, some SO_Function Object, which will be used as
    handler for given method call}
-  res := runtimestack_get(args)^.GetTypeCls.MethodCallOverride(
-           runtimestack_get(args),name);
+  if not Assigned(runtimestack_get(args)^.GetTypeCls^.MethodCallOverride) then
+    res := nil
+  else
+    res := runtimestack_get(args)^.GetTypeCls^.MethodCallOverride(
+             name, runtimestack_get(args));
+
 
   if not Assigned(res) then
     begin
-      {no named method override -> call object direct}
-      if args > 0 then
-        runtimestack_push(
-          runtimestack_get(args)^.GetTypeCls.MethodCall(
-            runtimestack_get(args),name,runtimestack_getargf(args-1),args))
+      if Assigned(runtimestack_get(args)^.GetTypeCls^.MethodCall) then
+        begin
+          {no named method override -> call object direct}
+          if args > 0 then
+            mres := runtimestack_get(args)^.GetTypeCls^.MethodCall(name,
+              runtimestack_get(args),runtimestack_getargf(args-1),args)
+          else
+            mres := runtimestack_get(args)^.GetTypeCls^.MethodCall(name,
+              runtimestack_get(args),nil,args);
+          if Assigned(mres) then
+            begin
+              {check for error, this may be interesting when
+               errorhandling is introduced someday -> stack modification
+               after call may introduce problems then}
+              if mres^.GetTypeCls <> so_error_class then
+                begin
+                  runtimestack_push(mres);
+                  runtimestack_moved(0,args+1);
+                  runtimestack_pop(args+1);
+                end
+              else
+                begin
+                  runtimestack_push(mres);
+                end;
+            end;
+        end
       else
-        runtimestack_push(
-          runtimestack_get(args)^.GetTypeCls.MethodCall(
-            runtimestack_get(args),name,nil,args));
-      runtimestack_moved(0,args+1);
-      runtimestack_pop(args+1);
+        begin
+          {object doesnt have method call interface -> error}
+          runtimestack_push(init_operation_error(runtimestack_get(args),name));
+        end;
     end
   else
     begin
       {methodcalloverride returned something, check if its an function object}
-      if res^.GetTypeCls.BaseInterface <> sotif_funcsetup then
-        put_internalerror(2011122050); // no function object..
+      ASSERT( res^.GetTypeCls = so_function_class ); // override must return function object..
+      ASSERT( Assigned(res^.GetTypeCls^.MethodCall) ); // function type needs methodcall
       {setup the call}
-      fres := res^.GetTypeCls.MethodCall(res,DEFAULT_METHOD_DirectCall,nil,args);
+      fres := res^.GetTypeCls^.MethodCall(DEFAULT_METHOD_DirectCall,res,nil,args);
       res^.DecRef; // <- deref, since function object increfed with MethodCallOverride
       if Assigned(fres) then
         begin
@@ -691,103 +715,34 @@ end;
 procedure vmop_object_operation_unary;
 {call unary operation on so object}
 begin
-  if runtimestack_get(0)^.GetTypeCls.BaseInterface = sotif_baseOperType then
-    begin
-      case TInsSOUnaryOp(template_ip_operand) of
-        sounop_abs:
-          runtimestack_push(runtimestack_get(0)^.GetOperTypeCls.UnOpAbs(
-            runtimestack_get(0)));
-        sounop_neg:
-          runtimestack_push(runtimestack_get(0)^.GetOperTypeCls.UnOpNeg(
-            runtimestack_get(0)));
-        sounop_not:
-          runtimestack_push(runtimestack_get(0)^.GetOperTypeCls.UnOpNot(
-            runtimestack_get(0)));
-        else
-          put_internalerror(2011121810);
-      end;
-      runtimestack_moved(0,1);
-      runtimestack_pop(1);
-    end
-  else
-    begin
-      case TInsSOUnaryOp(template_ip_operand) of
-        sounop_abs: do_so_method_call(DEFAULT_METHOD_UnOpAbs,0);
-        sounop_neg: do_so_method_call(DEFAULT_METHOD_UnOpNeg,0);
-        sounop_not: do_so_method_call(DEFAULT_METHOD_UnOpNot,0);
-        else
-          put_internalerror(2011122060);
-      end;
-    end;
+  case TInsSOUnaryOp(template_ip_operand) of
+    sounop_abs: do_so_method_call(DEFAULT_METHOD_UnOpAbs,0);
+    sounop_neg: do_so_method_call(DEFAULT_METHOD_UnOpNeg,0);
+    sounop_not: do_so_method_call(DEFAULT_METHOD_UnOpNot,0);
+    else
+      put_internalerror(2011122060);
+  end;
 end;
 
 procedure vmop_object_operation_binary;
 {call binary operation on so object}
 begin
-  if runtimestack_get(1)^.GetTypeCls.BaseInterface = sotif_baseOperType then
-    begin
-      case TInsSOBinaryOp(template_ip_operand) of
-        sobinop_add:
-          runtimestack_push(runtimestack_get(1)^.GetOperTypeCls.BinOpAdd(
-            runtimestack_get(1),runtimestack_get(0)));
-        sobinop_sub:
-          runtimestack_push(runtimestack_get(1)^.GetOperTypeCls.BinOpSub(
-            runtimestack_get(1),runtimestack_get(0)));
-        sobinop_mul:
-          runtimestack_push(runtimestack_get(1)^.GetOperTypeCls.BinOpMul(
-            runtimestack_get(1),runtimestack_get(0)));
-        sobinop_div:
-          runtimestack_push(runtimestack_get(1)^.GetOperTypeCls.BinOpDiv(
-            runtimestack_get(1),runtimestack_get(0)));
-        sobinop_mod:
-          runtimestack_push(runtimestack_get(1)^.GetOperTypeCls.BinOpMod(
-            runtimestack_get(1),runtimestack_get(0)));
-        sobinop_shl:
-          runtimestack_push(runtimestack_get(1)^.GetOperTypeCls.BinOpShl(
-            runtimestack_get(1),runtimestack_get(0)));
-        sobinop_shr:
-          runtimestack_push(runtimestack_get(1)^.GetOperTypeCls.BinOpShr(
-            runtimestack_get(1),runtimestack_get(0)));
-        sobinop_rol:
-          runtimestack_push(runtimestack_get(1)^.GetOperTypeCls.BinOpRol(
-            runtimestack_get(1),runtimestack_get(0)));
-        sobinop_ror:
-          runtimestack_push(runtimestack_get(1)^.GetOperTypeCls.BinOpRor(
-            runtimestack_get(1),runtimestack_get(0)));
-        sobinop_and:
-          runtimestack_push(runtimestack_get(1)^.GetOperTypeCls.BinOpAnd(
-            runtimestack_get(1),runtimestack_get(0)));
-        sobinop_or:
-          runtimestack_push(runtimestack_get(1)^.GetOperTypeCls.BinOpOr(
-            runtimestack_get(1),runtimestack_get(0)));
-        sobinop_xor:
-          runtimestack_push(runtimestack_get(1)^.GetOperTypeCls.BinOpXor(
-            runtimestack_get(1),runtimestack_get(0)));
-        else
-          put_internalerror(2011121812);
-      end;
-      runtimestack_moved(0,2);
-      runtimestack_pop(2);
-    end
-  else
-    begin
-      case TInsSOBinaryOp(template_ip_operand) of
-        sobinop_add: do_so_method_call(DEFAULT_METHOD_BinOpAdd,1);
-        sobinop_sub: do_so_method_call(DEFAULT_METHOD_BinOpSub,1);
-        sobinop_mul: do_so_method_call(DEFAULT_METHOD_BinOpMul,1);
-        sobinop_div: do_so_method_call(DEFAULT_METHOD_BinOpDiv,1);
-        sobinop_mod: do_so_method_call(DEFAULT_METHOD_BinOpMod,1);
-        sobinop_shl: do_so_method_call(DEFAULT_METHOD_BinOpShl,1);
-        sobinop_shr: do_so_method_call(DEFAULT_METHOD_BinOpShr,1);
-        sobinop_rol: do_so_method_call(DEFAULT_METHOD_BinOpRol,1);
-        sobinop_ror: do_so_method_call(DEFAULT_METHOD_BinOpRor,1);
-        sobinop_and: do_so_method_call(DEFAULT_METHOD_BinOpAnd,1);
-        sobinop_or: do_so_method_call(DEFAULT_METHOD_BinOpOr,1);
-        sobinop_xor: do_so_method_call(DEFAULT_METHOD_BinOpXor,1);
-        else
-          put_internalerror(2011122061);
-      end;
-    end;
+  case TInsSOBinaryOp(template_ip_operand) of
+    sobinop_add: do_so_method_call(DEFAULT_METHOD_BinOpAdd,1);
+    sobinop_sub: do_so_method_call(DEFAULT_METHOD_BinOpSub,1);
+    sobinop_mul: do_so_method_call(DEFAULT_METHOD_BinOpMul,1);
+    sobinop_div: do_so_method_call(DEFAULT_METHOD_BinOpDiv,1);
+    sobinop_mod: do_so_method_call(DEFAULT_METHOD_BinOpMod,1);
+    sobinop_shl: do_so_method_call(DEFAULT_METHOD_BinOpShl,1);
+    sobinop_shr: do_so_method_call(DEFAULT_METHOD_BinOpShr,1);
+    sobinop_rol: do_so_method_call(DEFAULT_METHOD_BinOpRol,1);
+    sobinop_ror: do_so_method_call(DEFAULT_METHOD_BinOpRor,1);
+    sobinop_and: do_so_method_call(DEFAULT_METHOD_BinOpAnd,1);
+    sobinop_or: do_so_method_call(DEFAULT_METHOD_BinOpOr,1);
+    sobinop_xor: do_so_method_call(DEFAULT_METHOD_BinOpXor,1);
+    else
+      put_internalerror(2011122061);
+  end;
 end;
 
 procedure vmop_object_operation_setget;
@@ -795,60 +750,20 @@ begin
   case template_ip_opcode of
     isc_o_setm_stab:
       begin
-        if runtimestack_get(1)^.GetTypeCls.BaseInterface = sotif_baseOperType then
-          begin
-            runtimestack_push(runtimestack_get(1)^.GetOperTypeCls.SetMember(
-              runtimestack_get(1),runtimestack_get(0),template_stabentry(template_ip_operand)));
-            runtimestack_moved(0,2);
-            runtimestack_pop(2);
-          end
-        else
-          begin
-            {need fix, currently its: <caller,value>, we need <caller,value,name> -> push stab entry}
-            runtimestack_push(so_string_init(template_stabentry(template_ip_operand)));
-            do_so_method_call(DEFAULT_METHOD_SetMember,2);
-          end;
+        {need fix, currently its: <caller,value>, we need <caller,name,value> -> push stab entry
+         and switch}
+        runtimestack_push(so_string_init(template_stabentry(template_ip_operand)));
+        runtimestack_switch(0,1);
+        do_so_method_call(DEFAULT_METHOD_SetMember,2);
       end;
     isc_o_getm_stab:
       begin
-        if runtimestack_get(0)^.GetTypeCls.BaseInterface = sotif_baseOperType then
-          begin
-            runtimestack_push(runtimestack_get(0)^.GetOperTypeCls.GetMember(
-                runtimestack_get(0),template_stabentry(template_ip_operand)));
-            runtimestack_moved(0,1);
-            runtimestack_pop(1);
-          end
-        else
-          begin
-            {push stab entry}
-            runtimestack_push(so_string_init(template_stabentry(template_ip_operand)));
-            do_so_method_call(DEFAULT_METHOD_GetMember,1);
-          end;
+        {push stab entry}
+        runtimestack_push(so_string_init(template_stabentry(template_ip_operand)));
+        do_so_method_call(DEFAULT_METHOD_GetMember,1);
       end;
-    isc_o_seti_ign:
-      begin
-        if runtimestack_get(2)^.GetTypeCls.BaseInterface = sotif_baseOperType then
-          begin
-            runtimestack_push(runtimestack_get(2)^.GetOperTypeCls.SetIndex(
-              runtimestack_get(2),runtimestack_get(1),runtimestack_get(0)));
-            runtimestack_moved(0,3);
-            runtimestack_pop(3);
-          end
-        else
-          do_so_method_call(DEFAULT_METHOD_SetIndex,2);
-      end;
-    isc_o_geti_ign:
-      begin
-        if runtimestack_get(1)^.GetTypeCls.BaseInterface = sotif_baseOperType then
-          begin
-            runtimestack_push(runtimestack_get(1)^.GetOperTypeCls.GetIndex(
-              runtimestack_get(1),runtimestack_get(0)));
-            runtimestack_moved(0,2);
-            runtimestack_pop(2);
-          end
-        else
-          do_so_method_call(DEFAULT_METHOD_GetIndex,1);
-      end
+    isc_o_seti_ign: do_so_method_call(DEFAULT_METHOD_SetIndex,2);
+    isc_o_geti_ign: do_so_method_call(DEFAULT_METHOD_GetIndex,1);
     else
       put_internalerror(2011120970);
   end;
@@ -863,8 +778,7 @@ begin
       begin
         {simple, no interface check since every so object has a methodcall
          interface}
-        if runtimestack_get(0)^.GetTypeCls <> so_string_class then
-          put_internalerror(2011121111); {invalid stack layout}
+        ASSERT( runtimestack_get(0)^.GetTypeCls = so_string_class ); // invalid stack layout
         check_so_maxargs(template_ip_operand);
         name := so_string_get(runtimestack_get(0));
         runtimestack_pop(1);
@@ -873,26 +787,7 @@ begin
     isc_o_callcall_nrops:
       begin
         check_so_maxargs(template_ip_operand);
-        if runtimestack_get(template_ip_operand)^.GetTypeCls.BaseInterface = sotif_baseOperType then
-          begin
-            {OperType has a Call Method that replaces ^CALL built-in}
-            args := template_ip_operand;
-            if args > 0 then
-              runtimestack_push(
-                runtimestack_get(args)^.GetOperTypeCls.DirectCall(
-                  runtimestack_get(args),runtimestack_getargf(args-1),args))
-            else
-              runtimestack_push(
-                runtimestack_get(args)^.GetOperTypeCls.DirectCall(
-                  runtimestack_get(args),nil,args));
-            runtimestack_moved(0,args+1);
-            runtimestack_pop(args+1);
-          end
-        else
-          begin
-            {otherwise, do a methodcall}
-            do_so_method_call(DEFAULT_METHOD_DirectCall,template_ip_operand);
-          end;
+        do_so_method_call(DEFAULT_METHOD_DirectCall,template_ip_operand);
       end;
     else
       put_internalerror(2011121110);

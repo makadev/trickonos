@@ -159,15 +159,13 @@ var j: PSOInstance;
 begin
   if s <> 'SYSTEM' then
     begin
-      j := so_rtenv_set_member(rtenv,s,i);
+      j := so_rtenv_set_member(rtenv,s,i,fixref);
       if i <> j then
         begin
           if j^.GetTypeCls = so_error_class then
             put_debug(so_error_get(j));
           put_internalerror(2011120530);
         end;
-      if fixref then
-        i^.DecRef;
     end
   else
     put_critical('System Object is Protected - stop');
@@ -188,7 +186,7 @@ end;
 procedure init_globalenv;
 begin
   rtenv := InitInstance(so_rtenv_class);
-  so_rtenv_set_member(rtenv,'SYSTEM',so_system); // dont care about refs, system is immortal
+  so_rtenv_set_member(rtenv,'SYSTEM',so_system,true); // dont care about refs, system is immortal
 end;
 
 procedure fini_globalenv;
@@ -575,7 +573,7 @@ end;
   VMState IntroSpection
  ******************************************************************************)
 
-function _MachineState_Meth_RelFrameType( const mname: String; var data: Pointer; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function _MachineState_Meth_RelFrameType( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
 {return Frame Creation Type (either call/inclusion/current [current for last frame])}
 begin
   if (argnum = 1) and
@@ -599,7 +597,7 @@ begin
     Result := nil;
 end;
 
-function _MachineState_Meth_RelFrameShortName( const mname: String; var data: Pointer; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function _MachineState_Meth_RelFrameShortName( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
 begin
   if (argnum = 1) and
      (soargs^[0]^.GetTypeCls = so_integer_class) and
@@ -613,7 +611,7 @@ begin
     Result := nil;
 end;
 
-function _MachineState_Meth_RelFrameLongName( const mname: String; var data: Pointer; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function _MachineState_Meth_RelFrameLongName( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
 begin
   if (argnum = 1) and
      (soargs^[0]^.GetTypeCls = so_integer_class) and
@@ -627,7 +625,7 @@ begin
     Result := nil;
 end;
 
-function _MachineState_Meth_RelFrameLine( const mname: String; var data: Pointer; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function _MachineState_Meth_RelFrameLine( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
 begin
   if (argnum = 1) and
      (soargs^[0]^.GetTypeCls = so_integer_class) and
@@ -642,7 +640,7 @@ begin
     Result := nil;
 end;
 
-function _MachineState_Meth_RelFrameColumn( const mname: String; var data: Pointer; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function _MachineState_Meth_RelFrameColumn( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
 begin
   if (argnum = 1) and
      (soargs^[0]^.GetTypeCls = so_integer_class) and
@@ -657,7 +655,7 @@ begin
     Result := nil;
 end;
 
-function _MachineState_Attr_StackFrames( const aname: String; var data: Pointer; soself: PSOInstance; setter: PSOInstance ): PSOInstance;
+function _MachineState_Attr_StackFrames( const aname: String; soself: PSOInstance; setter: PSOInstance ): PSOInstance;
 begin
   if not Assigned(setter) then
     Result := so_integer_init( tpl_stackptr+1 )

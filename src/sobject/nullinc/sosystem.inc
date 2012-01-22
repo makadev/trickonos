@@ -24,34 +24,15 @@
  ******************************************************************************)
 
 type
-  PSO_SubsystemFW = ^TSO_SubsystemFW;
-  TSO_SubsystemFW = object(TSOInstance)
+  PSO_SubsystemFW = ^TSO_SubSys_FW;
+  TSO_SubSys_FW = object(TSOInstance)
      typename: String;
      data: Pointer;
      disptab: TDispTables;
      unload: TSystemUnloadCallBack
   end;
 
-  TSOSubsystemFW = class(TSOTypeBase)
-    protected
-      class function InstanceSize: MachineInt; override;
-      class procedure PreDestructor(instance: PSOInstance); override;
-    public
-      class function BaseTypeName: String; override;
-      class function GetMember(soself: PSOInstance; const name: String): PSOInstance; override;
-      class function SetMember(soself, value: PSOInstance; const name: String): PSOInstance; override;
-      class function MethodCall(soself: PSOInstance; const name: String; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance; override;
-      class function TypeQuery(soself: PSOInstance): String; override;
-  end;
-
-{ TSOSubsystemFW }
-
-class function TSOSubsystemFW.InstanceSize: MachineInt;
-begin
-  Result := SizeOf(TSO_SubsystemFW);
-end;
-
-class procedure TSOSubsystemFW.PreDestructor(instance: PSOInstance);
+procedure socls_SubSys_FW_PreDestructor(instance: PSOInstance);
 begin
   SetLength(PSO_SubsystemFW(instance)^.typename,0);
   if Assigned(PSO_SubsystemFW(instance)^.unload) then
@@ -60,68 +41,80 @@ begin
   PSO_SubsystemFW(instance)^.disptab.AttrProc.Done;
 end;
 
-class function TSOSubsystemFW.BaseTypeName: String;
-begin
-  Result := C_SOTYPE_SUBSYSTEM_NAME;
-end;
-
-class function TSOSubsystemFW.GetMember(soself: PSOInstance; const name: String
-  ): PSOInstance;
+function SubSys_FW_Attr_Dispatch(const name: String; soself: PSOInstance; setter: PSOInstance ): PSOInstance; inline;
+{Get/SetMember (member select) broker,
+  lookup registered method for certain attribute name and call it
+  or generate default error}
 var attrh: TSSDAttributHandlerP;
 begin
-  SelfCheck(soself,self);
+  SelfCheck(soself,so_subsys_fw_class);
   attrh := TSSDAttributHandlerP(PSO_SubsystemFW(soself)^.disptab.AttrProc.Lookup(name));
   if Assigned(attrh) then
     begin
-      Result := attrh(name,PSO_SubsystemFW(soself)^.data,soself,nil);
-      if not Assigned(Result) then
-        Result := init_subsys_attr_error( soself, name);
-    end
-  else
-    Result := inherited GetMember(soself, name);
-end;
-
-class function TSOSubsystemFW.SetMember(soself, value: PSOInstance;
-  const name: String): PSOInstance;
-var attrh: TSSDAttributHandlerP;
-begin
-  SelfCheck(soself,self);
-  attrh := TSSDAttributHandlerP(PSO_SubsystemFW(soself)^.disptab.AttrProc.Lookup(name));
-  if Assigned(attrh) then
-    begin
-      Result := attrh(name,PSO_SubsystemFW(soself)^.data,soself,value);
+      Result := attrh(name,soself,setter);
       if not Assigned(Result) then
         Result := init_subsys_attr_error( soself, name );
     end
   else
-    Result := inherited SetMember(soself, value, name);
+    Result := init_subsys_attr_error(soself,name);
 end;
 
-class function TSOSubsystemFW.MethodCall(soself: PSOInstance;
-  const name: String; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
+function socls_SubSys_Fw_MethodCall(const name: String; soself: PSOInstance; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
+{MethodCall broker,
+  lookup registered method for certain attribute methodname and call it
+  or return nil which generates default error}
 var methh: TSSDMethodHandlerP;
 begin
-  SelfCheck(soself,self);
+  SelfCheck(soself,so_subsys_fw_class);
   methh := TSSDMethodHandlerP(PSO_SubsystemFW(soself)^.disptab.MethProc.Lookup(name));
   if Assigned(methh) then
     begin
       check_so_maxargs(argnum);
-      Result := methh(name,PSO_SubsystemFW(soself)^.data,soself,args,argnum);
+      Result := methh(name,soself,args,argnum);
       if not Assigned(Result) then
         Result := init_subsys_meth_error( soself, name );
     end
   else
-    Result := inherited MethodCall(soself, name, args, argnum);
+    begin
+      {directly check getmember/setmember and dispatch, this allows overriding the
+       getmember/setmember with MethodCall}
+      if (name = DEFAULT_METHOD_GetMember) and
+         (argnum = 1) and
+         (args^[0]^.IsType(so_string_class)) then
+        begin
+          Result := SubSys_FW_Attr_Dispatch(so_string_get(args^[0]),soself,nil);
+        end
+      else if (name = DEFAULT_METHOD_SetMember) and
+              (argnum = 2) and
+              (args^[0]^.IsType(so_string_class)) then
+        begin
+          Result := SubSys_FW_Attr_Dispatch(so_string_get(args^[0]),soself,args^[1]);
+        end
+      else
+        Result := init_subsys_meth_error(soself,name);
+    end;
 end;
 
-class function TSOSubsystemFW.TypeQuery(soself: PSOInstance): String;
+function socls_SubSys_Fw_TypeQuery(soself: PSOInstance): String;
 begin
   Result := C_SOTYPE_SUBSYS_BASENAME+PSO_SubsystemFW(soself)^.typename;
 end;
 
 (*******************************************************************************
-  SUBSYSTEM Function Reg
+  SUBSYSTEM Function Reg / Helpers
  ******************************************************************************)
+
+function subsysfw_get_data( soself: PSOInstance ): Pointer;
+begin
+  SelfCheck(soself,so_subsys_fw_class);
+  Result := PSO_SubsystemFW(soself)^.data;
+end;
+
+procedure subsysfw_set_data( soself: PSOInstance; data: Pointer );
+begin
+  SelfCheck(soself,so_subsys_fw_class);
+  PSO_SubsystemFW(soself)^.data := data;
+end;
 
 procedure RegisterSubSystemAttribute(var disptab: TDispTables;
   const name: String; attrh: TSSDAttributHandlerP);
@@ -146,80 +139,40 @@ end;
  ******************************************************************************)
 
 type
-  PSO_SubsystemOW = ^TSO_SubsystemOW;
-  TSO_SubsystemOW = object(TSOInstance)
+  PSO_SubsystemOW = ^TSO_SubSys_OW;
+  TSO_SubSys_OW = object(TSOInstance)
      typename: String;
      ssdisp: TSubSystemDispatcher;
   end;
 
-  TSOSubsystemOW = class(TSOTypeBase)
-    protected
-      class function InstanceSize: MachineInt; override;
-      class procedure PreDestructor(instance: PSOInstance); override;
-    public
-      class function BaseTypeName: String; override;
-      class function GetMember(soself: PSOInstance; const name: String): PSOInstance; override;
-      class function SetMember(soself, value: PSOInstance; const name: String): PSOInstance; override;
-      class function MethodCall(soself: PSOInstance; const name: String; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance; override;
-      class function TypeQuery(soself: PSOInstance): String; override;
-  end;
-
-{ TSOSubsystemOW }
-
-class function TSOSubsystemOW.InstanceSize: MachineInt;
-begin
-  Result := SizeOf(TSO_SubsystemOW);
-end;
-
-class procedure TSOSubsystemOW.PreDestructor(instance: PSOInstance);
+procedure socls_SubSys_OW_PreDestructor(instance: PSOInstance);
 begin
   SetLength(PSO_SubsystemOW(instance)^.typename,0);
   PSO_SubsystemOW(instance)^.ssdisp.OnSubSystemUnLoad;
   PSO_SubsystemOW(instance)^.ssdisp.Free;
 end;
 
-class function TSOSubsystemOW.BaseTypeName: String;
-begin
-  Result := C_SOTYPE_SUBSYSTEM_NAME;
-end;
-
-class function TSOSubsystemOW.GetMember(soself: PSOInstance; const name: String
-  ): PSOInstance;
+function SubSys_OW_Attr_Dispatch(const name: String; soself, setter: PSOInstance): PSOInstance; inline;
+{Attribute to Attr Handler dispatcher}
 var attrhe: PSSDAttrEntry;
 begin
-  SelfCheck(soself,self);
+  SelfCheck(soself,so_subsys_ow_class);
   attrhe := PSSDAttrEntry(PSO_SubsystemOW(soself)^.ssdisp.FDispTab.AttrProc.Lookup(name));
   if Assigned(attrhe) then
     begin
-      Result := attrhe^(name,soself,nil);
+      Result := attrhe^(name,soself,setter);
       if not Assigned(Result) then
         Result := init_subsys_attr_error( soself, name);
     end
   else
-    Result := inherited GetMember(soself, name);
+    Result := init_subsys_attr_error( soself, name);
 end;
 
-class function TSOSubsystemOW.SetMember(soself, value: PSOInstance;
-  const name: String): PSOInstance;
-var attrhe: PSSDAttrEntry;
-begin
-  SelfCheck(soself,self);
-  attrhe := PSSDAttrEntry(PSO_SubsystemOW(soself)^.ssdisp.FDispTab.AttrProc.Lookup(name));
-  if Assigned(attrhe) then
-    begin
-      Result := attrhe^(name,soself,value);
-      if not Assigned(Result) then
-        Result := init_subsys_attr_error( soself, name);
-    end
-  else
-    Result := inherited SetMember(soself, value, name);
-end;
-
-class function TSOSubsystemOW.MethodCall(soself: PSOInstance;
-  const name: String; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
+function socls_SubSys_OW_MethodCall(const name: String; soself: PSOInstance; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
+{MethodCall dispatcher}
 var methhe: PSSDMethEntry;
 begin
-  SelfCheck(soself,self);
+  SelfCheck(soself,so_subsys_ow_class);
   methhe := PSSDMethEntry(PSO_SubsystemOW(soself)^.ssdisp.FDispTab.MethProc.Lookup(name));
   if Assigned(methhe) then
     begin
@@ -229,10 +182,27 @@ begin
         Result := init_subsys_meth_error( soself, name );
     end
   else
-    Result := inherited MethodCall(soself, name, args, argnum);
+    begin
+      {directly check getmember/setmember and dispatch, this allows overriding the
+       getmember/setmember with MethodCall}
+      if (name = DEFAULT_METHOD_GetMember) and
+         (argnum = 1) and
+         (args^[0]^.IsType(so_string_class)) then
+        begin
+          Result := SubSys_OW_Attr_Dispatch(so_string_get(args^[0]),soself,nil);
+        end
+      else if (name = DEFAULT_METHOD_SetMember) and
+              (argnum = 2) and
+              (args^[0]^.IsType(so_string_class)) then
+        begin
+          Result := SubSys_OW_Attr_Dispatch(so_string_get(args^[0]),soself,args^[1]);
+        end
+      else
+        Result := init_subsys_meth_error(soself,name);
+    end;
 end;
 
-class function TSOSubsystemOW.TypeQuery(soself: PSOInstance): String;
+function socls_SubSys_Ow_TypeQuery(soself: PSOInstance): String;
 begin
   Result := C_SOTYPE_SUBSYS_BASENAME+PSO_SubsystemOW(soself)^.typename;
 end;
@@ -298,6 +268,15 @@ end;
   SYSTEM SINGLETON
  ******************************************************************************)
 
+var
+  TMethodTrie_System: THashTrie;
+
+procedure so_system_addmethod( const mname: String; methh: TSOMethodHandler );
+begin
+  if TMethodTrie_System.Add(UpCase(mname),methh) <> nil then
+    put_internalerror(12012206);
+end;
+
 type
   PSubsystemEntry = ^TSubsystemEntry;
   TSubsystemEntry = record
@@ -313,32 +292,7 @@ type
     subsysteme: THashTrie { of PSubsystemEntry };
   end;
 
-  TSOSystem = class(TSOTypeBase)
-    protected
-      class function IsMortal: Boolean; override;
-      class function InstanceSize: MachineInt; override;
-      class procedure PostConstructor(instance: PSOInstance); override;
-      class procedure PreDestructor(instance: PSOInstance); override;
-      class procedure GCEnumerator(instance: PSOInstance; tracer: TGarbageCollectorTracer); override;
-    public
-      class function BaseTypeName: String; override;
-      class function GetMember(soself: PSOInstance; const name: String): PSOInstance; override;
-      class function SetMember(soself, value: PSOInstance; const name: String): PSOInstance; override;
-  end;
-
-{ TSOSystem }
-
-class function TSOSystem.IsMortal: Boolean;
-begin
-  Result := false;
-end;
-
-class function TSOSystem.InstanceSize: MachineInt;
-begin
-  Result := SizeOf(TSO_System);
-end;
-
-class procedure TSOSystem.PostConstructor(instance: PSOInstance);
+procedure socls_System_PostConstructor(instance: PSOInstance);
 begin
   PSO_System(instance)^.subsysteme.Init(0,2);
 end;
@@ -349,7 +303,7 @@ begin
   Result := true;
 end;
 
-class procedure TSOSystem.PreDestructor(instance: PSOInstance);
+procedure socls_System_PreDestructor(instance: PSOInstance);
 begin
   PSO_System(instance)^.subsysteme.ForEach(@psse_disposer,nil);
   PSO_System(instance)^.subsysteme.Done;
@@ -362,24 +316,45 @@ begin
   Result := true;
 end;
 
-class procedure TSOSystem.GCEnumerator(instance: PSOInstance;
-  tracer: TGarbageCollectorTracer);
+procedure socls_System_GCEnumerator(instance: PSOInstance; tracer: TGarbageCollectorTracer);
 begin
   PSO_System(instance)^.subsysteme.ForEach(@sys_collenum,tracer);
 end;
 
-class function TSOSystem.BaseTypeName: String;
+function socls_System_TypeQuery( soself: PSOInstance ): String;
 begin
+  SelfCheck(soself,so_system_class);
   Result := C_SOTYPE_SYSTEM_NAME;
 end;
 
-class function TSOSystem.GetMember(soself: PSOInstance; const name: String
-  ): PSOInstance;
+function socls_System_MethodCall( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+{generic, lookup method and call}
+var m: TSOMethodHandler;
+begin
+  SelfCheck(soself,so_system_class);
+  m := TSOMethodHandler( TMethodTrie_System.Lookup(mname) );
+  if Assigned(m) then
+    Result := m( mname, soself, soargs, argnum )
+  else
+    Result := nil;
+end;
+
+{System::GetMember(string) -> subsystem}
+function _System_GetMember_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
 var ssentry: PSubsystemEntry;
     f: PSO_SubsystemFW;
     o: PSO_SubsystemOW;
+    name: String;
 begin
-  SelfCheck(soself,self);
+  SelfCheck(soself,so_system_class);
+  ASSERT(mname = DEFAULT_METHOD_GetMember);
+  if (argnum = 1) and
+     (soargs^[0]^.IsType(so_string_class)) then
+    begin
+      name := so_string_get(soargs^[0]);
+    end
+  else
+    Exit(nil);
   ssentry := PSubsystemEntry(PSO_System(soself)^.subsysteme.Lookup(name));
   if Assigned(ssentry) then
     begin
@@ -388,7 +363,7 @@ begin
           {load}
           if ssentry^.oopwrapper then
             begin
-              o := PSO_SubsystemOW(socore.InitInstance(TSOSubsystemOW));
+              o := PSO_SubsystemOW(socore.InitInstance(so_subsys_ow_class));
               o^.typename := name;
               o^.ssdisp := nil;
               try
@@ -423,7 +398,7 @@ begin
             end
           else
             begin
-              f := PSO_SubsystemFW(socore.InitInstance(TSOSubsystemFW));
+              f := PSO_SubsystemFW(socore.InitInstance(so_subsys_fw_class));
               f^.typename := name;
               f^.disptab.AttrProc.Init(0,2);
               f^.disptab.MethProc.Init(0,2);
@@ -452,13 +427,23 @@ begin
     Result := so_error_init('No such '+C_SOTYPE_SUBSYSTEM_NAME+': '+name);
 end;
 
-class function TSOSystem.SetMember(soself, value: PSOInstance;
-  const name: String): PSOInstance;
+{System::SetMember(string,value) -> value (only used for freeable subsystems)}
+function _System_SetMember_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
 var ssentry: PSubsystemEntry;
     i: PSOInstance;
+    name: String;
 begin
+  SelfCheck(soself,so_system_class);
+  ASSERT(mname = DEFAULT_METHOD_SetMember);
+  if (argnum = 2) and
+     (soargs^[0]^.IsType(so_string_class)) then
+    begin
+      name := so_string_get(soargs^[0]);
+    end
+  else
+    Exit(nil);
   ssentry := PSubsystemEntry(PSO_System(soself)^.subsysteme.Lookup(name));
-  if value^.IsType(so_none_class) then
+  if soargs^[1]^.IsType(so_none_class) then
     begin
       if Assigned(ssentry) then
         begin
@@ -489,7 +474,7 @@ begin
         Result := so_error_init('No such '+C_SOTYPE_SUBSYSTEM_NAME+': '+name);
     end
   else
-    init_invargtype_error(soself,value,1,DEFAULT_METHOD_SetMember);
+    Result := init_invargtype_error(soself,soargs^[1],1,DEFAULT_METHOD_SetMember);
 end;
 
 (*******************************************************************************
@@ -532,7 +517,7 @@ end;
 function _System_TypeOf_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
 begin
   if argnum = 1 then
-    Result := so_string_init(soargs^[0]^.GetTypeCls.TypeQuery(soargs^[0]))
+    Result := so_string_init(soargs^[0]^.GetTypeCls^.TypeQuery(soargs^[0]))
   else
     Result := init_invargnum_error(soself,argnum,mname);
 end;

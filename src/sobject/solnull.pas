@@ -22,6 +22,7 @@
 unit solnull;
 
 {$mode objfpc}{$H+}
+{ $X-} // see fpc bug 0017598, but good for debugging
 
 interface
 
@@ -31,15 +32,19 @@ uses
 
 const
   {special method}
-  C_STDCALLM_LIST__APPEND = 'Append';
+  C_STDCALLM_LIST__APPEND            = 'APPEND';
 
   {iterator interface}
-  C_STDCALLM_SEQ_ITERATOR            = 'Iterator';
-  C_STDCALLM_ITER__NEXT              = 'Next';
+  C_STDCALLM_SEQ_ITERATOR            = 'ITERATOR';
+  C_STDCALLM_ITER__NEXT              = 'NEXT';
 
-  C_STDMEMBR_LISTITER__CURRENT       = 'Current'; // list iterator only
-  C_STDMEMBR_DICTITER__CURRENTKEY    = 'CurrentKey'; // dict iterator only
-  C_STDMEMBR_DICTITER__CURRENTVALUE  = 'CurrentValue'; // dict iterator only
+  {typical methods}
+  C_STDCALLM_LENGTH                  = 'LENGTH'; // ordered collection length
+  C_STDCALLM_COUNT                   = 'COUNT';  // unordered collection count
+
+  C_STDMEMBR_LISTITER__CURRENT       = 'CURRENT'; // list iterator only
+  C_STDMEMBR_DICTITER__CURRENTKEY    = 'CURRENTKEY'; // dict iterator only
+  C_STDMEMBR_DICTITER__CURRENTVALUE  = 'CURRENTVALUE'; // dict iterator only
 
 const
   // External visible
@@ -126,7 +131,7 @@ function so_function_init( coderef: PCodeReference; argf, argn, slotn, ip: Integ
 function so_function_codelnstr( f: PSOInstance ): String; inline;
 
 {rt env}
-function so_rtenv_set_member( e: PSOInstance; const s: String; i: PSOInstance ): PSOInstance; inline;
+function so_rtenv_set_member( e: PSOInstance; const s: String; i: PSOInstance; noretref: Boolean ): PSOInstance; inline;
 function so_rtenv_get_member( e: PSOInstance; const s: String ): PSOInstance; inline;
 
 
@@ -144,21 +149,26 @@ procedure so_rtstack_switch( s: PSOInstance; sidx, didx: PtrInt ); inline;
  CLASS POINTER (Mortal Base Types)
  ******************************************************************************)
 
-function so_string_class: TSOClassType; inline;
-function so_integer_class: TSOClassType; inline;
-function so_dict_class: TSOClassType; inline;
-function so_list_class: TSOClassType; inline;
-function so_function_class: TSOClassType; inline;
-function so_error_class: TSOClassType; inline;
+function so_string_class: PSOTypeCls; inline;
+function so_integer_class: PSOTypeCls; inline;
+function so_dict_class: PSOTypeCls; inline;
+function so_list_class: PSOTypeCls; inline;
+function so_function_class: PSOTypeCls; inline;
+function so_error_class: PSOTypeCls; inline;
+function so_io_class: PSOTypeCls; inline;
+function so_subsys_fw_class: PSOTypeCls; inline;
+function so_subsys_ow_class: PSOTypeCls; inline;
 
 (******************************************************************************
  CLASS POINTER (Immortal Base Types)
  ******************************************************************************)
 
-function so_boolean_class: TSOClassType; inline;
-function so_none_class: TSOClassType; inline;
-function so_rtenv_class: TSOClassType; inline;
-function so_rtstack_class: TSOClassType; inline;
+function so_boolean_class: PSOTypeCls; inline;
+function so_none_class: PSOTypeCls; inline;
+function so_rtenv_class: PSOTypeCls; inline;
+function so_rtstack_class: PSOTypeCls; inline;
+function so_system_class: PSOTypeCls; inline;
+function so_dummy_class: PSOTypeCls; inline;
 
 (******************************************************************************
  Special (or Unique) Instances (Immortal Class Instances)
@@ -222,10 +232,14 @@ procedure RegisterSubsystemObject( const subsysname: String; subsyso: TSubSysDis
  ******************************************************************************)
 
 type
-  TSSDMethodHandlerP = function( const mname: String; var data: Pointer; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
-  TSSDAttributHandlerP = function( const aname: String; var data: Pointer; soself: PSOInstance; setter: PSOInstance ): PSOInstance;
+  TSSDMethodHandlerP = function( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+  TSSDAttributHandlerP = function( const aname: String; soself: PSOInstance; setter: PSOInstance ): PSOInstance;
   TSystemLoadCallBack = procedure( var disptab: TDispTables; out data: Pointer );
   TSystemUnloadCallBack = procedure( var data: Pointer );
+
+{access to data pointer for ssd methodhandler/attributehandler}
+function subsysfw_get_data( soself: PSOInstance ): Pointer; inline;
+procedure subsysfw_set_data( soself: PSOInstance; data: Pointer ); inline;
 
 {use for subsystem registration}
 procedure RegisterSubSystemHandler( const subsysname: String; loader: TSystemLoadCallBack;
@@ -264,9 +278,8 @@ type
     private
       FDispTab: TDispTables;
       FTypeName: String;
-      function DispatchMethodCall( soself: PSOInstance; const name: String; args: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
-      function DispatchAttrGet(const aname: String; soself: PSOInstance): PSOInstance;
-      function DispatchAttrSet(const aname: String; soself: PSOInstance; setter: PSOInstance): PSOInstance;
+      function DispatchMethodCall( const name: String; soself: PSOInstance; args: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+      function DispatchAttr(const aname: String; soself: PSOInstance; setter: PSOInstance): PSOInstance;
     protected
       FReferings: array of PSOInstance;
       {if you need more/own refhandling}
@@ -284,27 +297,6 @@ type
       procedure RegisterAttribute( const name: String; attrh: TSSDAttributHandlerM );
       procedure RegisterMethod( const name: String; methh: TSSDMethodHandlerM );
 
-      {other handlers, return nil (or error for more informative messages) on misshandlings
-       keep Refs intact. Passing -> incref, creation -> nothing, Collecting/Adding -> incref + AddReference}
-      function SetIndex( soself, idx, value: PSOInstance ): PSOInstance; virtual;
-      function GetIndex( soself, idx: PSOInstance): PSOInstance; virtual;
-      function BinOpAdd( soself, rightop: PSOInstance ): PSOInstance; virtual;
-      function BinOpSub( soself, rightop: PSOInstance ): PSOInstance; virtual;
-      function BinOpMul( soself, rightop: PSOInstance ): PSOInstance; virtual;
-      function BinOpDiv( soself, rightop: PSOInstance ): PSOInstance; virtual;
-      function BinOpMod( soself, rightop: PSOInstance ): PSOInstance; virtual;
-      function BinOpShl( soself, rightop: PSOInstance ): PSOInstance; virtual;
-      function BinOpShr( soself, rightop: PSOInstance ): PSOInstance; virtual;
-      function BinOpRol( soself, rightop: PSOInstance ): PSOInstance; virtual;
-      function BinOpRor( soself, rightop: PSOInstance ): PSOInstance; virtual;
-      function BinOpAnd( soself, rightop: PSOInstance ): PSOInstance; virtual;
-      function BinOpOr( soself, rightop: PSOInstance ): PSOInstance; virtual;
-      function BinOpXor( soself, rightop: PSOInstance ): PSOInstance; virtual;
-      function UnOpNeg( soself: PSOInstance ): PSOInstance; virtual;
-      function UnOpAbs( soself: PSOInstance ): PSOInstance; virtual;
-      function UnOpNot( soself: PSOInstance ): PSOInstance; virtual;
-      function DirectCall( soself: PSOInstance; args: PSOMethodVarArgs; argnum: VMInt ): PSOInstance; virtual;
-
       //DOC>> for own error messages, typename is assigned by Wrapper AFTER CONSTRUCTION ^^
       function TypeName: String;
     public
@@ -312,15 +304,7 @@ type
       {DOC>> called before instancing}
       constructor Create; virtual;
 
-      {DOC>> called before destruction by the garbage collector.
-       This method is called before possibly referenced Objects are Free
-       (due to Ref 0 when this object is freed), so it is safe to access the
-       referenced objects (but not decref/incref/... only your internal stuff).}
-      procedure PreCollect; virtual;
-
-      {DOC>> called before destruction by the garbage collector, this one may be
-       called before/after references are killed, so dont assume they are alive.
-       it should _only_ free internal datastructures.}
+      {DOC>> called before destruction by the garbage collector.}
       destructor Destroy; override;
   end;
 
@@ -346,6 +330,7 @@ function so_internalobject_get( soios: PSOInstance ): TInternalObject;
  ******************************************************************************)
 
 procedure RegisterLevel0Types;
+function DefaultCompare(soself, rightop: PSOInstance): TSOCompareResult;
 
 const
   ClassDelimiter = '::';
@@ -362,13 +347,19 @@ var
        internal types}
 procedure internal_register_type( const name: String );
 begin
-  if not TypeRegister.Exists(Upcase(name)) then
-    TypeRegister.Add(Upcase(name),nil)
-  else
+  if TypeRegister.Add(Upcase(name),nil) <> nil then
     put_internalerror(2011122080); // dup type
 end;
 
 {$ENDIF}
+
+function DefaultCompare(soself, rightop: PSOInstance): TSOCompareResult;
+begin
+  if soself = rightop then
+    Result := socmp_isEqual
+  else
+    Result := socmp_NotComparable;
+end;
 
 (******************************************************************************
  Errors
@@ -377,61 +368,61 @@ end;
 function init_object_attr_error(soself: PSOInstance; const opername: String): PSOInstance;
 begin
   Result := so_error_init('Invalid/Unsupported/Wrong us of Object Attribute '+
-    soself^.GetTypeCls.TypeQuery(soself)+'.'+opername);
+    soself^.GetTypeCls^.TypeQuery(soself)+'.'+opername);
 end;
 
 function init_object_meth_error(soself: PSOInstance; const opername: String): PSOInstance;
 begin
   Result := so_error_init('Invalid/Unsupported/Wrong us of Object Method '+
-    soself^.GetTypeCls.TypeQuery(soself)+'.'+opername);
+    soself^.GetTypeCls^.TypeQuery(soself)+'.'+opername);
 end;
 
 function init_subsys_attr_error(soself: PSOInstance; const opername: String): PSOInstance;
 begin
   Result := so_error_init('Invalid/Unsupported/Wrong us of '+C_SOTYPE_SUBSYSTEM_NAME+' Attribute '+
-    soself^.GetTypeCls.TypeQuery(soself)+'.'+opername);
+    soself^.GetTypeCls^.TypeQuery(soself)+'.'+opername);
 end;
 
 function init_subsys_meth_error(soself: PSOInstance; const opername: String): PSOInstance;
 begin
   Result := so_error_init('Invalid/Unsupported/Wrong us of '+C_SOTYPE_SUBSYSTEM_NAME+' Method '+
-    soself^.GetTypeCls.TypeQuery(soself)+'.'+opername);
+    soself^.GetTypeCls^.TypeQuery(soself)+'.'+opername);
 end;
 
 function init_operation_error(soself: PSOInstance; const opername: String): PSOInstance;
 begin
   Result := so_error_init('Invalid/Unsupported Operation '+
-    soself^.GetTypeCls.TypeQuery(soself)+'.'+opername);
+    soself^.GetTypeCls^.TypeQuery(soself)+'.'+opername);
 end;
 
 function init_invargtype_error(soself, arg: PSOInstance; argnum: MachineInt; const opname: String): PSOInstance;
 begin
-  Result := so_error_init('Invalid Type ('+arg^.GetTypeCls.TypeQuery(arg)+') for Argument ('+
-    IntToStr(argnum)+') in '+soself^.GetTypeCls.TypeQuery(soself)+'.'+opname+'(...)');
+  Result := so_error_init('Invalid Type ('+arg^.GetTypeCls^.TypeQuery(arg)+') for Argument ('+
+    IntToStr(argnum)+') in '+soself^.GetTypeCls^.TypeQuery(soself)+'.'+opname+'(...)');
 end;
 
 function init_invargvalue_error(soself, arg: PSOInstance; argnum: MachineInt; const opname: String): PSOInstance;
 begin
-  Result := so_error_init('Invalid Value ('+arg^.GetTypeCls.TypeQuery(arg)+') for Argument ('+
-    IntToStr(argnum)+') in '+soself^.GetTypeCls.TypeQuery(soself)+'.'+opname+'(...)');
+  Result := so_error_init('Invalid Value ('+arg^.GetTypeCls^.TypeQuery(arg)+') for Argument ('+
+    IntToStr(argnum)+') in '+soself^.GetTypeCls^.TypeQuery(soself)+'.'+opname+'(...)');
 end;
 
 function init_range_error(soself, arg: PSOInstance; argnum: MachineInt; const opname: String): PSOInstance;
 begin
-  Result := so_error_init('Value Out of Range ('+arg^.GetTypeCls.TypeQuery(arg)+') for Argument ('+
-    IntToStr(argnum)+') in '+soself^.GetTypeCls.TypeQuery(soself)+'.'+opname+'(...)');
+  Result := so_error_init('Value Out of Range ('+arg^.GetTypeCls^.TypeQuery(arg)+') for Argument ('+
+    IntToStr(argnum)+') in '+soself^.GetTypeCls^.TypeQuery(soself)+'.'+opname+'(...)');
 end;
 
 function init_invargnum_error(soself: PSOInstance; argnum: MachineInt; const opname: String): PSOInstance;
 begin
   Result := so_error_init('Invalid Number of Arguments ('+IntToStr(argnum)+')  in '+
-    soself^.GetTypeCls.TypeQuery(soself)+'.'+opname+'(...)');
+    soself^.GetTypeCls^.TypeQuery(soself)+'.'+opname+'(...)');
 end;
 
 function init_lockmod(soself: PSOInstance; const opname: String): PSOInstance;
 begin
   Result  := so_error_init('Operation '+opname+' on '+
-    IntToStr(soself^.GetLocks)+'-Locked Object ('+soself^.GetTypeCls.TypeQuery(soself)+')');
+    IntToStr(soself^.GetLocks)+'-Locked Object ('+soself^.GetTypeCls^.TypeQuery(soself)+')');
 end;
 
 (******************************************************************************
@@ -474,84 +465,43 @@ end;
  Internal Method Register (for TSOTypeBase decending Types)
  ******************************************************************************)
 
-var
-  btmethod: THashTrie;
-  btattrb: THashTrie;
-
-procedure AddInternalMethod( h: TSOMethodHandler; const methname, clsname: String ); inline;
-begin
-  h := TSOMethodHandler(btmethod.Add(upcase(clsname)+ClassDelimiter+upcase(methname),Pointer(h)));
-  if Assigned(h) then
-    put_internalerror(2011121800); // duplicate entry
-end;
-
-function GetInternalMethod( const methname, clsname: String ): TSOMethodHandler;  inline;
-begin
-  Result := TSOMethodHandler(btmethod.Lookup(upcase(clsname)+ClassDelimiter+upcase(methname)));
-end;
-
-procedure AddInternalAttribute( ah: TSOAttributHandler; const aname, clsname: String ); inline;
-begin
-  ah := TSOAttributHandler(btmethod.Add(upcase(clsname)+ClassDelimiter+upcase(aname),Pointer(ah)));
-  if Assigned(ah) then
-    put_internalerror(2011121801); // duplicate entry
-end;
-
-function GetInternalAttribute( const aname, clsname: String ): TSOAttributHandler; inline;
-begin
-  Result := TSOAttributHandler(btmethod.Lookup(upcase(clsname)+ClassDelimiter+upcase(aname)));
-end;
-
-{Dummy Type, TSOType Dec., Immortal, 1 Instance (so_dummy_instance), only for
- testing. Propagated with System.DummyObject()
- Prints (debug/info) every operation on itself and returns itself for
- any operation. ^^}
+{Dummy Type, TSOType Dec., Immortal, 1 Instance (so_dummy_instance)}
 {$I nullinc/sodummyo.inc}
 
-{Operations Type [sotif_baseOperType Interface], TSOOperType Dec.
- Base which returns errors for any operation and calls Internal Method/
- Internal Attribute handler _for methods/attributes not implied by the OperType_
- f.e. "^Add" wont be handled since it is VM side directed to
- TSOTypeBase.BinOpAdd}
-{$I nullinc/sotypebase.inc}
-
-{Internal Object Wrapper Type, TSOTypeBase Dec.
+{Internal Object Wrapper Type,
  Forwards calls to Internal Object Instance}
 {$I nullinc/soiow.inc}
 
 {Error Type, TSOType Dec.
- special since it is VM (Stack) side checked. (checked wether an error
- was pushed onto stuck or not).
+ special since it is VM (Stack) side checked.
  dont use this type directly or write Error instances into
  any environment since only the Stack knows about errors..}
 {$I nullinc/soerror.inc}
 
-{"None" Type, TSOTypeBase Dec., Immortal, 1 Instance (so_nil)
+{"None" Type, Immortal, 1 Instance (so_nil)
  most basic of these types.}
 {$I nullinc/sonone.inc}
 
-{Boolean Type, TSOTypeBase Dec., Immortal, 2 Instances (so_true/so_false)}
+{Boolean Type, Immortal, 2 Instances (so_true/so_false)}
 {$I nullinc/soboolean.inc}
 
-{String Type, TSOTypeBase Dec.}
+{String Type}
 {$I nullinc/sostring.inc}
 
-{Integer Type, TSOTypeBase Dec.}
+{Integer Type}
 {$I nullinc/sointeger.inc}
 
-{List (duplicate linked) Type, TSOTypeBase Dec.}
+{List (duplicate linked) Type}
 {$I nullinc/solist.inc}
 
-{Dictionary (Hash Trie) Type, TSOTypeBase Dec.}
+{Dictionary (Hash Trie) Type}
 {$I nullinc/sodict.inc}
 
-{Function Type, TSOType Dec.
- Special since it knows only the Method "^Call" (DEFAULT_METHOD_DirectCall).
- MethodCallOverride("^Call") returns self,
- MethodCall("^Call" ...) sets up the stack using the Function Infos.}
+{Function Type,
+ Special since it knows only the <Method DEFAULT_METHOD_DirectCall>.}
 {$I nullinc/sofunc.inc}
 
-{Runtime Types (Runtime Environment/Runtime Stack), TSOType Dec., Immortal
+{Runtime Types (Runtime Environment/Runtime Stack), Immortal
  Used as Main Programstack/Global Environment.
  Base Anchor Types for the Garbage Collector. vmstate.pas wraps them in
  runtimestack_* and globalenv_*}
@@ -577,16 +527,24 @@ end;
  CLASS POINTER & CLASS REGISTER
  ******************************************************************************)
 
-function so_none_class: TSOClassType; begin Result := TSOTypeNone; end;
-function so_boolean_class: TSOClassType; begin Result := TSOTypeBoolean; end;
-function so_error_class: TSOClassType; begin Result := TSOTypeError; end;
-function so_string_class: TSOClassType; begin Result := TSOTypeString; end;
-function so_integer_class: TSOClassType; begin Result := TSOTypeInteger; end;
-function so_list_class: TSOClassType; begin Result := TSOTypeList; end;
-function so_function_class: TSOClassType; begin Result := TSOTypeFunction; end;
-function so_dict_class: TSOClassType; begin Result := TSOTypeDict; end;
-function so_rtenv_class: TSOClassType; begin Result := TSOTypeRTEnv; end;
-function so_rtstack_class: TSOClassType; begin Result := TSOTypeRTStack; end;
+ {$I nulltypes.inc}
+
+function so_none_class: PSOTypeCls; begin Result := @TSOClsNone; end;
+function so_boolean_class: PSOTypeCls; begin Result := @TSOClsBoolean; end;
+function so_error_class: PSOTypeCls; begin Result := @TSOClsError; end;
+function so_string_class: PSOTypeCls; begin Result := @TSOClsString; end;
+function so_integer_class: PSOTypeCls; begin Result := @TSOClsInteger; end;
+function so_list_class: PSOTypeCls; begin Result := @TSOClsList; end;
+function so_function_class: PSOTypeCls; begin Result := @TSOClsFunction; end;
+function so_dict_class: PSOTypeCls; begin Result := @TSOClsDict; end;
+function so_rtenv_class: PSOTypeCls; begin Result := @TSOClsRT_ENV; end;
+function so_rtstack_class: PSOTypeCls; begin Result := @TSOClsRT_STACK; end;
+function so_dummy_class: PSOTypeCls; begin Result := @TSOClsDummyObject; end;
+function so_system_class: PSOTypeCls; begin Result := @TSOClsSystem; end;
+function so_io_class: PSOTypeCls; begin Result := @TSOClsIO; end;
+function so_subsys_fw_class: PSOTypeCls; begin Result := @TSOClsSubSys_FW; end;
+function so_subsys_ow_class: PSOTypeCls; begin Result := @TSOClsSubSys_OW; end;
+
 
 procedure RegisterLevel0Types;
 begin
@@ -609,39 +567,69 @@ begin
   internal_register_type(C_SOTYPE_SUBSYS_BASENAME);
 {$ENDIF}
 
-  so_nil_instance := InitInstance(TSOTypeNone);
-  so_true_instance := InitInstance(TSOTypeBoolean);
-  so_false_instance := InitInstance(TSOTypeBoolean);
-  so_system_instance := InitInstance(TSOSystem);
-  so_dummy_instance := InitInstance(TSODummyObject);
+  so_nil_instance := InitInstance(so_none_class);
+  so_true_instance := InitInstance(so_boolean_class);
+  so_false_instance := InitInstance(so_boolean_class);
+  so_system_instance := InitInstance(so_system_class);
+  so_dummy_instance := InitInstance(so_dummy_class);
 
   {reg methods & attributes}
-  AddInternalMethod(@_Int_ToString_,'ToStr',TSOTypeInteger.BaseTypeName);
+  so_boolean_addmethod(DEFAULT_METHOD_BinOpAnd,@_Boolean_And_);
+  so_boolean_addmethod(DEFAULT_METHOD_BinOpOr,@_Boolean_Or_);
+  so_boolean_addmethod(DEFAULT_METHOD_BinOpXor,@_Boolean_Xor_);
+  so_boolean_addmethod(DEFAULT_METHOD_UnOpNot,@_Boolean_Not_);
 
-  AddInternalMethod(@_String_Length_,'Length',TSOTypeString.BaseTypeName);
-  AddInternalMethod(@_String_Trim_,'Trim',TSOTypeString.BaseTypeName);
-  AddInternalMethod(@_String_TrimLeft_,'TrimLeft',TSOTypeString.BaseTypeName);
-  AddInternalMethod(@_String_TrimRight_,'TrimRight',TSOTypeString.BaseTypeName);
-  AddInternalMethod(@_String_Split_,'Split',TSOTypeString.BaseTypeName);
-  AddInternalMethod(@_String_Join_,'Join',TSOTypeString.BaseTypeName);
-  AddInternalMethod(@_String_Upcase_,'Upcase',TSOTypeString.BaseTypeName);
-  AddInternalMethod(@_String_Lowercase_,'Lowercase',TSOTypeString.BaseTypeName);
+  so_string_addmethod(DEFAULT_METHOD_BinOpAdd,@_String_Add_);
+  so_string_addmethod(DEFAULT_METHOD_GetIndex,@_String_GetIndex_);
+  so_string_addmethod(DEFAULT_METHOD_SetIndex,@_String_SetIndex_);
+  so_string_addmethod(C_STDCALLM_LENGTH,@_String_Length_);
+  so_string_addmethod('TRIM',@_String_Trim_);
+  so_string_addmethod('TRIMLEFT',@_String_TrimLeft_);
+  so_string_addmethod('TRIMRIGTH',@_String_TrimRight_);
+  so_string_addmethod('SPLIT',@_String_Split_);
+  so_string_addmethod('JOIN',@_String_Join_);
+  so_string_addmethod('Upcase',@_String_Upcase_);
+  so_string_addmethod('Lowercase',@_String_Lowercase_);
 
-  AddInternalMethod(@_List_Length_,'Length',TSOTypeList.BaseTypeName);
-  AddInternalMethod(@_List_Append_,C_STDCALLM_LIST__APPEND,TSOTypeList.BaseTypeName);
-  AddInternalMethod(@_List_Iterator_,C_STDCALLM_SEQ_ITERATOR,TSOTypeList.BaseTypeName);
+  so_integer_addmethod(DEFAULT_METHOD_BinOpAdd,@_Integer_Add_);
+  so_integer_addmethod(DEFAULT_METHOD_BinOpAnd,@_Integer_And_);
+  so_integer_addmethod(DEFAULT_METHOD_BinOpSub,@_Integer_Sub_);
+  so_integer_addmethod(DEFAULT_METHOD_BinOpOr,@_Integer_Or_);
+  so_integer_addmethod(DEFAULT_METHOD_BinOpXor,@_Integer_Xor_);
+  so_integer_addmethod(DEFAULT_METHOD_BinOpMul,@_Integer_Mul_);
+  so_integer_addmethod(DEFAULT_METHOD_BinOpDiv,@_Integer_Div_);
+  so_integer_addmethod(DEFAULT_METHOD_BinOpMod,@_Integer_Mod_);
+  so_integer_addmethod(DEFAULT_METHOD_BinOpRol,@_Integer_Rol_);
+  so_integer_addmethod(DEFAULT_METHOD_BinOpRor,@_Integer_Ror_);
+  so_integer_addmethod(DEFAULT_METHOD_BinOpShl,@_Integer_Shl_);
+  so_integer_addmethod(DEFAULT_METHOD_BinOpShr,@_Integer_Sar_);
+  so_integer_addmethod(DEFAULT_METHOD_UnOpAbs,@_Integer_Abs_);
+  so_integer_addmethod(DEFAULT_METHOD_UnOpNot,@_Integer_Not_);
+  so_integer_addmethod(DEFAULT_METHOD_UnOpNeg,@_Integer_Neg_);
+  so_integer_addmethod('_SHR',@_Integer_Shr_);
+  so_integer_addmethod('TOSTR',@_Integer_ToStr_);
 
-  AddInternalMethod(@_Dict_Count_,'Count',TSOTypeDict.BaseTypeName);
-  AddInternalMethod(@_Dict_Delete_,'Delete',TSOTypeDict.BaseTypeName);
-  AddInternalMethod(@_Dict_Iterator_,C_STDCALLM_SEQ_ITERATOR,TSOTypeDict.BaseTypeName);
+  so_list_addmethod(C_STDCALLM_LENGTH,@_List_Length_);
+  so_list_addmethod(C_STDCALLM_LIST__APPEND,@_List_Append_);
+  so_list_addmethod(C_STDCALLM_SEQ_ITERATOR,@_List_Iterator_);
 
-  AddInternalMethod(@_System_GC_,'GCollect',TSOSystem.BaseTypeName);
-  AddInternalMethod(@_System_GCInstances_,'Instances',TSOSystem.BaseTypeName);
-  AddInternalMethod(@_System_DummyObject_,C_SOTYPE_DUMMY_NAME,TSOSystem.BaseTypeName);
-  AddInternalMethod(@_System_TypeOf_,'TypeOf',TSOSystem.BaseTypeName);
-  AddInternalMethod(@_System_Marker_,'Marker',TSOSystem.BaseTypeName);
-  AddInternalMethod(@_System_ECCMarker_,'ECCMarker',TSOSystem.BaseTypeName);
-  AddInternalMethod(@_System_LNMarker_,'LNMarker',TSOSystem.BaseTypeName);
+  so_dict_addmethod(DEFAULT_METHOD_GetMember,@_Dict_GetMember_);
+  so_dict_addmethod(DEFAULT_METHOD_GetIndex,@_Dict_GetMember_);
+  so_dict_addmethod(DEFAULT_METHOD_SetMember,@_Dict_SetMember_);
+  so_dict_addmethod(DEFAULT_METHOD_SetIndex,@_Dict_SetMember_);
+  so_dict_addmethod(C_STDCALLM_COUNT,@_Dict_Count_);
+  so_dict_addmethod('DELETE',@_Dict_Delete_);
+  so_dict_addmethod(C_STDCALLM_SEQ_ITERATOR,@_Dict_Iterator_);
+
+  so_system_addmethod(DEFAULT_METHOD_GetMember,@_System_GetMember_);
+  so_system_addmethod(DEFAULT_METHOD_SetMember,@_System_SetMember_);
+  so_system_addmethod('GCOLLECT',@_System_GC_);
+  so_system_addmethod('INSTANCES',@_System_GCInstances_);
+  so_system_addmethod(C_SOTYPE_DUMMY_NAME,@_System_DummyObject_);
+  so_system_addmethod('TYPEOF',@_System_TypeOf_);
+  so_system_addmethod('MARKER',@_System_Marker_);
+  so_system_addmethod('ECCMARKER',@_System_ECCMarker_);
+  so_system_addmethod('LNMARKER',@_System_LNMarker_);
 end;
 
 (******************************************************************************
@@ -677,29 +665,37 @@ begin
   else
     begin
       {deep or non representable type}
-      Result := '<Object '+soinstance^.GetTypeCls.TypeQuery(soinstance)+' $'+
+      Result := '<Object '+soinstance^.GetTypeCls^.TypeQuery(soinstance)+' $'+
         IntToHex(MachineWord(soinstance^.GetCollectorEntry),SizeOf(MachineWord)*2)+'>';
     end;
 end;
 
 function so_type_name(soinstance: PSOInstance): String;
 begin
-  Result := soinstance^.GetTypeCls.TypeQuery(soinstance);
+  Result := soinstance^.GetTypeCls^.TypeQuery(soinstance);
 end;
 
 initialization
-  btmethod.Init(16,16);
-  btattrb.Init(16,16);
+  TMethodTrie_Boolean.Init(16);
+  TMethodTrie_Integer.Init(16);
+  TMethodTrie_String.Init(16);
+  TMethodTrie_List.Init(16);
+  TMethodTrie_Dict.Init(16);
+  TMethodTrie_System.Init(16);
 {$IFDEF DEBUG}
   TypeRegister.Init(16,32);
 {$ENDIF}
 
 finalization
-  btmethod.Done;
-  btattrb.Done;
 {$IFDEF DEBUG}
   TypeRegister.Done;
 {$ENDIF}
+  TMethodTrie_Boolean.Done;
+  TMethodTrie_Integer.Done;
+  TMethodTrie_String.Done;
+  TMethodTrie_List.Done;
+  TMethodTrie_Dict.Done;
+  TMethodTrie_System.Done;
 
 end.
 

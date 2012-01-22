@@ -23,6 +23,15 @@
   DICT Methods/Attr/Helpers
  ******************************************************************************)
 
+var
+  TMethodTrie_Dict: THashTrie;
+
+procedure so_dict_addmethod( const mname: String; methh: TSOMethodHandler );
+begin
+  if TMethodTrie_Dict.Add(UpCase(mname),methh) <> nil then
+    put_internalerror(12012205);
+end;
+
 type
   {dict instance}
   PSO_Dict = ^TSO_Dict;
@@ -30,26 +39,9 @@ type
     dict: THashTrie;
   end;
 
-  {Class for <Dict> Type}
-  TSOTypeDict = class(TSOTypeBase)
-    protected
-      class function InstanceSize: MachineInt; override;
-      class procedure GCEnumerator(instance: PSOInstance; tracer: TGarbageCollectorTracer); override;
-      class procedure PostConstructor(instance: PSOInstance); override;
-      class procedure PreDestructor(instance: PSOInstance); override;
-    public
-      class function BaseTypeName: String; override;
-      class function Compare(soself, rightop: PSOInstance): TSOCompareResult; override;
-      class function SetMember(soself, value: PSOInstance; const name: String ): PSOInstance; override;
-      class function GetMember(soself: PSOInstance; const name: String): PSOInstance; override;
-      class function SetIndex(soself, idx, value: PSOInstance): PSOInstance; override;
-      class function GetIndex(soself, idx: PSOInstance): PSOInstance; override;
-  end;
-
-{ TSOTypeDict }
-
-class function TSOTypeDict.BaseTypeName: String;
+function socls_Dict_TypeQuery( soself: PSOInstance ): String;
 begin
+  SelfCheck(soself,so_dict_class);
   Result := C_SOTYPE_DICTIONARY_NAME;
 end;
 
@@ -58,16 +50,15 @@ var rval: PSOInstance;
 begin
   rval := PSOInstance(PSO_Dict(xdata)^.dict.Lookup(s));
   if Assigned(rval) then
-    Result := PSOInstance(data)^.GetTypeCls.Compare(PSOInstance(data),PSOInstance(rval)) = socmp_isEqual
+    Result := PSOInstance(data)^.GetTypeCls^.Compare(PSOInstance(data),PSOInstance(rval)) = socmp_isEqual
   else
     Result := false;
 end;
 
-class function TSOTypeDict.Compare(soself, rightop: PSOInstance
-  ): TSOCompareResult;
+function socls_Dict_Compare(soself, rightop: PSOInstance): TSOCompareResult;
 begin
-  SelfCheck(soself,self);
-  if rightop^.IsType(self) then
+  SelfCheck(soself,so_dict_class);
+  if rightop^.IsType(so_dict_class) then
     begin
       if soself = rightop then
         Result := socmp_isEqual
@@ -85,104 +76,88 @@ begin
     Result := socmp_NotComparable;
 end;
 
-class function TSOTypeDict.InstanceSize: MachineInt;
-begin
-  Result := SizeOf(TSO_Dict);
-end;
-
 function dict_collenum( const unused: String; data, xdata: Pointer ): Boolean;
 begin
   TGarbageCollectorTracer(xdata)(PSOInstance(data));
   Result := true;
 end;
 
-class procedure TSOTypeDict.GCEnumerator(instance: PSOInstance;
-  tracer: TGarbageCollectorTracer);
+procedure socls_Dict_GCEnumerator(instance: PSOInstance; tracer: TGarbageCollectorTracer);
 begin
   PSO_Dict(instance)^.dict.ForEach(@dict_collenum,tracer);
 end;
 
-class procedure TSOTypeDict.PostConstructor(instance: PSOInstance);
+procedure socls_Dict_PostConstructor(instance: PSOInstance);
 begin
-  //FillByte(PSO_Dict(soinstance)^.dict,SizeOf(THashTrie),0); done by Instancer
   PSO_Dict(instance)^.dict.Init(0,4);
 end;
 
-class procedure TSOTypeDict.PreDestructor(instance: PSOInstance);
+procedure socls_Dict_PreDestructor(instance: PSOInstance);
 begin
   PSO_Dict(instance)^.dict.Done;
 end;
 
-class function TSOTypeDict.SetMember(soself, value: PSOInstance; const name: String
-  ): PSOInstance;
+function socls_Dict_MethodCall( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+{generic, lookup method and call}
+var m: TSOMethodHandler;
+begin
+  m := TSOMethodHandler( TMethodTrie_Dict.Lookup(mname) );
+  if Assigned(m) then
+    Result := m( mname, soself, soargs, argnum )
+  else
+    Result := nil;
+end;
+
+{Dict::SetMember(string,value) / Dict::SetIndex(string,value) -> value}
+function _Dict_SetMember_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
 {lookupadd, incref, return}
 var oldval: PSOInstance;
 begin
-  SelfCheck(soself,self);
-  if not soself^.GetLocked then
+  SelfCheck(soself,so_dict_class);
+  if argnum = 2 then
     begin
-      check_so_maxcollection(PSO_Dict(soself)^.dict.GetCount+1);
-      value^.IncRef; // << entry in table
-      value^.IncRef; // << incref again for result
-      oldval := PSOInstance(PSO_Dict(soself)^.dict.Add(name,value));
-      if Assigned(oldval) then
-        oldval^.DecRef;
-      Result := value;
-    end
-  else
-    Result := init_lockmod(soself,DEFAULT_METHOD_SetMember);
-end;
-
-class function TSOTypeDict.GetMember(soself: PSOInstance; const name: String
-  ): PSOInstance;
-{lookup, incref, return}
-begin
-  SelfCheck(soself,self);
-  Result := PSO_Dict(soself)^.dict.Lookup(name);
-  if Assigned(Result) then
-    Result^.IncRef
-  else
-    Result := so_nil;
-end;
-
-class function TSOTypeDict.SetIndex(soself, idx, value: PSOInstance): PSOInstance;
-{same as setmember, with additional stringcheck}
-var oldval: PSOInstance;
-begin
-  SelfCheck(soself,self);
-  if idx^.IsType(so_string_class) then
-    begin
-      if not soself^.GetLocked then
+      if soargs^[0]^.IsType(so_string_class) then
         begin
-          check_so_maxcollection(PSO_Dict(soself)^.dict.GetCount+1);
-          value^.IncRef; // << entry in table
-          value^.IncRef; // << incref again for result
-          oldval := PSOInstance(PSO_Dict(soself)^.dict.Add(so_string_get(idx),value));
-          if Assigned(oldval) then
-            oldval^.DecRef;
-          Result := value;
+          if not soself^.GetLocked then
+            begin
+              check_so_maxcollection(PSO_Dict(soself)^.dict.GetCount+1);
+              soargs^[1]^.IncRef; // << entry in table
+              soargs^[1]^.IncRef; // << incref again for result
+              oldval := PSOInstance(PSO_Dict(soself)^.dict.Add(so_string_get(soargs^[0]),soargs^[1]));
+              if Assigned(oldval) then
+                oldval^.DecRef;
+              Result := soargs^[1];
+            end
+          else
+            Result := init_lockmod(soself,mname);
         end
       else
-        Result := init_lockmod(soself,DEFAULT_METHOD_SetIndex);
+        Result := init_invargtype_error(soself,soargs^[0],1,mname);
     end
   else
-    Result := init_invargtype_error(soself,idx,1,DEFAULT_METHOD_SetIndex);
+    Result := init_invargnum_error(soself,argnum,mname);
 end;
 
-class function TSOTypeDict.GetIndex(soself, idx: PSOInstance): PSOInstance;
-{same as getmember, with additional stringcheck}
+{Dict::GetMember(string) / Dict::GetIndex(string) -> value}
+function _Dict_GetMember_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+{lookup, incref, return}
 begin
-  SelfCheck(soself,self);
-  if idx^.IsType(so_string_class) then
+  SelfCheck(soself,so_dict_class);
+  if argnum = 1 then
     begin
-      Result := PSO_Dict(soself)^.dict.Lookup(so_string_get(idx));
-      if Assigned(Result) then
-        Result^.IncRef
+      if soargs^[0]^.IsType(so_string_class) then
+        begin
+          Result := PSO_Dict(soself)^.dict.Lookup(so_string_get(soargs^[0]));
+          if Assigned(Result) then
+            Result^.IncRef
+          else
+            Result := so_nil;
+        end
       else
-        Result := so_nil;
+        Result := init_invargtype_error(soself,soargs^[0],1,mname);
     end
   else
-    Result := init_invargtype_error(soself,idx,1,DEFAULT_METHOD_GetIndex);
+    Result := init_invargnum_error(soself,argnum,mname);
 end;
 
 (*******************************************************************************
@@ -198,7 +173,7 @@ type
       function CurrentKey( const aname: String; soself: PSOInstance; setter: PSOInstance ): PSOInstance;
       function CurrentValue( const aname: String; soself: PSOInstance; setter: PSOInstance ): PSOInstance;
       constructor Create; override;
-      procedure PreCollect; override;
+      destructor Destroy; override;
   end;
 
 { TSOList_IOListIterator }
@@ -289,13 +264,13 @@ begin
   hashtrie_iterator_reset(FHTIter);
 end;
 
-procedure TSODict_IODictIterator.PreCollect;
+destructor TSODict_IODictIterator.Destroy;
 {iterator is collected, check if its still in iteration and those holds a lock
  on the dict -> remove it}
 begin
   if not hashtrie_iterator_done(FHTIter) then
     PSO_Dict(FReferings[0])^.DecLocks;
-  inherited PreCollect;
+  inherited Destroy;
 end;
 
 (*******************************************************************************
@@ -304,24 +279,31 @@ end;
 
 function so_dict_init: PSOInstance;
 begin
-  Result := InitInstance(TSOTypeDict);
+  Result := InitInstance(so_dict_class);
 end;
 
-function so_dict_get_member(d: PSOInstance; const s: String; noincref: Boolean
-  ): PSOInstance;
+function so_dict_get_member(d: PSOInstance; const s: String; noincref: Boolean): PSOInstance;
 begin
-  Result := TSOTypeDict.GetMember(d,s);
-  if noincref then
-    Result^.DecRef;
+  SelfCheck(d,so_dict_class);
+  Result := PSO_Dict(d)^.dict.Lookup(s);
+  if Assigned(Result) then
+    begin
+      if not noincref then
+        Result^.IncRef;
+    end
+  else
+    Result := so_nil;
 end;
 
-procedure so_dict_set_member(d, value: PSOInstance; const s: String;
-  noincref: Boolean);
+procedure so_dict_set_member(d, value: PSOInstance; const s: String; noincref: Boolean);
 var tmp: PSOInstance;
 begin
-  tmp := TSOTypeDict.SetMember(d,value,s);
-  if noincref then
+  SelfCheck(d,so_dict_class);
+  tmp := PSO_Dict(d)^.dict.Add(s,value);
+  if Assigned(tmp) then
     tmp^.DecRef;
+  if not noincref then
+    tmp^.IncRef;
 end;
 
 {DICT::Count()}
