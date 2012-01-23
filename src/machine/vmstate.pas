@@ -25,7 +25,7 @@ unit vmstate;
 
 interface
 
-uses SysUtils, commontl, eomsg, ccache, opcode, socore, solnull;
+uses SysUtils, commontl, eomsg, ccache, opcode, socore, solnull, fpath;
 
 (**
    NOTE.
@@ -239,11 +239,12 @@ var i: PtrInt;
 begin
   ASSERT(n>0);
   ASSERT((rtstack_ptr-n) >= -1);
-  {release objects by assigning so_nil (derefs objects on stack)}
+
+  {release objects by assigning nil (derefs objects on stack)}
   for i := 0 to n-1 do
     begin
       //WriteLn(StdErr,'rtstackpop ',rtstack_ptr-i);
-      so_rtstack_set(rtstack,so_nil,rtstack_ptr-i);
+      so_rtstack_set(rtstack,nil,rtstack_ptr-i);
     end;
   {dec stack ptr and check for stack shrinking}
   Dec(rtstack_ptr,n);
@@ -269,6 +270,7 @@ end;
 function runtimestack_get(oi: PtrInt): PSOInstance;
 begin
   ASSERT((oi >= 0) and ((rtstack_ptr-oi) >= 0));
+  ASSERT( so_rtstack_get(rtstack,rtstack_ptr-oi)^.GetRefs > 0  );
   Result := so_rtstack_get(rtstack,rtstack_ptr-oi);
 end;
 
@@ -455,6 +457,7 @@ begin
   tpl_stack[tpl_stackptr].fp := rtstack_ptr;
   check_vm_maxtplstack(tpl_stackptr);
   eomsg.set_currentfile(code^.shortname);
+  fpath_rel_replace(tpl_tos^.statfpath);
   if isjmp then
     begin
       template_ip_set(0);
@@ -478,6 +481,7 @@ begin
         begin
           tpl_tos := tpl_stack[tpl_stackptr].code;
           eomsg.set_currentfile(tpl_tos^.shortname);
+          fpath_rel_replace(tpl_tos^.statfpath);
           template_ip_set(tpl_stack[tpl_stackptr].ip);
           if tpl_stackptr <= (Length(tpl_stack)-(CL_LinearRegrow_Medium*2)) then
             SetLength(tpl_stack,Length(tpl_stack)-CL_LinearRegrow_Medium);
@@ -702,6 +706,9 @@ begin
   fini_template_stack;
   socore_done;
 end;
+
+initialization
+  tpl_tos := nil;
 
 end.
 

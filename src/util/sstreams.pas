@@ -313,6 +313,7 @@ begin
     begin
       FChar := FMemBlock.Read(FSRead);
       Inc(FSRead,1);
+      Result := true;
     end
   else
     Result := false;

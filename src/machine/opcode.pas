@@ -206,6 +206,13 @@ type
     {compare call (builtin)}
     isc_o_compare,
 
+    {create new class on TOS}
+    isc_m_class_stab,
+
+    {method decl in class, TOS-1 = Class, TOS = function obj,
+      stab entry is the new methodname}
+    isc_m_decl_method_stab,
+
     isc_invalid
   );
 
@@ -319,6 +326,8 @@ begin
                           (operand > 16) then Invalidate; {actually, 1 should be enough}
 
     isc_o_listappend_nr,
+    isc_m_class_stab,
+    isc_m_decl_method_stab,
     isc_o_typecheck_stab,
     isc_m_puts_stab,
     isc_m_setenv_stab,
@@ -475,6 +484,11 @@ begin
           mincl_use: Result := 'CODE := LOAD(TOS) as Code Unit, pop 1, EXEC CODE';
         end;
       end;
+
+    isc_m_class_stab:
+      Result := 'TOS := NEW CLASS stab['+IntToStr(operand)+']';
+    isc_m_decl_method_stab:
+      Result := 'DECL METHOD stab['+IntToStr(operand)+'] in CLASS(TOS), pop 1';
 
     isc_m_fprel_set_slot:
       Result := 'FRAME_SLOT['+IntToStr(operand)+'] := TOS';

@@ -389,6 +389,7 @@ begin
   if (argnum >= 1) and
      (argnum <= 2) then
     begin
+      LAChars := 1;
       {check params n stuff}
       if soargs^[0]^.IsType(so_string_class) then
         begin
@@ -396,7 +397,7 @@ begin
              (soargs^[1]^.IsType(so_integer_class)) then
             begin
               LAChars := so_integer_get(soargs^[1],true);
-              if (LAChars <= 0) and
+              if (LAChars <= 0) or
                  (LAChars > 1024) then
                 begin
                   Result := init_invargvalue_error(soself,soargs^[1],2,mname);
@@ -407,13 +408,12 @@ begin
             begin
               Result := init_invargtype_error(soself,soargs^[1],2,mname);
               Exit(Result);
-            end
-          else
-            LAChars := 1;
+            end;
         end
       else
         Result := init_invargtype_error(soself,soargs^[0],1,mname);
 
+      readerstream := nil;
       {checked, create the reader stream}
       if (Upcase(mname) = 'FILESCANSTREAM') or
          (Upcase(mname) = 'MEMORYSCANSTREAM') then

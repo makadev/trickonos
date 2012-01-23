@@ -69,6 +69,8 @@ const
   C_SOTYPE_RTSTACK               = '@RuntimeStack';
   C_SOTYPE_IO_BASENAME           = 'IO_';
   C_SOTYPE_SUBSYS_BASENAME       = 'SubSys_';
+  C_SOTYPE_CLASS_BASENAME        = 'ClassType_';
+  C_SOTYPE_INSTANCE_BASENAME     = 'Class_';
 
 {generic}
 function so_any_flatstring( soinstance: PSOInstance ): String; inline;
@@ -144,6 +146,19 @@ function so_rtstack_getargf( s: PSOInstance; idx: PtrInt ): PSOMethodVarArgs; in
 procedure so_rtstack_move( s: PSOInstance; sidx, didx: PtrInt ); inline;
 procedure so_rtstack_switch( s: PSOInstance; sidx, didx: PtrInt ); inline;
 
+{instance}
+{DOC>> creates an instance of a class cls. DOES NOT CALL THE CONSTRUCTOR,
+       constructor call is handled by the VM
+       (when methodcall override returnes an object).}
+function so_instance_create( cls: PSOInstance ): PSOInstance; inline;
+{DOC>> Does NOT incref!}
+function so_instance_getclass( instance: PSOInstance ): PSOInstance; inline;
+
+{class}
+function so_class_create( const name: String; coderef: PCodeReference; ip: VMInt ): PSOInstance;
+procedure so_class_methodreg( cls, funobj: PSOInstance; const mname: String ); inline;
+{DOC>> increfs if constructor object exists}
+function so_class_getconstructor( cls: PSOInstance ): PSOInstance; inline;
 
 (******************************************************************************
  CLASS POINTER (Mortal Base Types)
@@ -158,6 +173,8 @@ function so_error_class: PSOTypeCls; inline;
 function so_io_class: PSOTypeCls; inline;
 function so_subsys_fw_class: PSOTypeCls; inline;
 function so_subsys_ow_class: PSOTypeCls; inline;
+function so_class_class: PSOTypeCls; inline;
+function so_instance_class: PSOTypeCls; inline;
 
 (******************************************************************************
  CLASS POINTER (Immortal Base Types)
@@ -361,6 +378,13 @@ begin
     Result := socmp_NotComparable;
 end;
 
+function hashtrie_gcenum( const unused: String; data, xdata: Pointer ): Boolean;
+{default enumerator for hastrie holding PSOInstances}
+begin
+  TGarbageCollectorTracer(xdata)(PSOInstance(data));
+  Result := true;
+end;
+
 (******************************************************************************
  Errors
  ******************************************************************************)
@@ -523,6 +547,10 @@ end;
   of bloating everything from the very start.}
 {$I nullinc/sosystem.inc}
 
+{Class Type,
+ Create/Call method overrides are for instancing}
+{$I nullinc/soclass.inc}
+
 (******************************************************************************
  CLASS POINTER & CLASS REGISTER
  ******************************************************************************)
@@ -544,6 +572,8 @@ function so_system_class: PSOTypeCls; begin Result := @TSOClsSystem; end;
 function so_io_class: PSOTypeCls; begin Result := @TSOClsIO; end;
 function so_subsys_fw_class: PSOTypeCls; begin Result := @TSOClsSubSys_FW; end;
 function so_subsys_ow_class: PSOTypeCls; begin Result := @TSOClsSubSys_OW; end;
+function so_class_class: PSOTypeCls; begin Result := @TSOClsClass; end;
+function so_instance_class: PSOTypeCls; begin Result := @TSOClsClsInstance; end;
 
 
 procedure RegisterLevel0Types;
@@ -565,6 +595,8 @@ begin
   internal_register_type(C_SOTYPE_SUBSYSTEM_NAME);
   internal_register_type(C_SOTYPE_IO_BASENAME);
   internal_register_type(C_SOTYPE_SUBSYS_BASENAME);
+  internal_register_type(C_SOTYPE_CLASS_BASENAME);
+  internal_register_type(C_SOTYPE_INSTANCE_BASENAME);
 {$ENDIF}
 
   so_nil_instance := InitInstance(so_none_class);
@@ -585,7 +617,7 @@ begin
   so_string_addmethod(C_STDCALLM_LENGTH,@_String_Length_);
   so_string_addmethod('TRIM',@_String_Trim_);
   so_string_addmethod('TRIMLEFT',@_String_TrimLeft_);
-  so_string_addmethod('TRIMRIGTH',@_String_TrimRight_);
+  so_string_addmethod('TRIMRIGHT',@_String_TrimRight_);
   so_string_addmethod('SPLIT',@_String_Split_);
   so_string_addmethod('JOIN',@_String_Join_);
   so_string_addmethod('Upcase',@_String_Upcase_);
@@ -630,6 +662,9 @@ begin
   so_system_addmethod('MARKER',@_System_Marker_);
   so_system_addmethod('ECCMARKER',@_System_ECCMarker_);
   so_system_addmethod('LNMARKER',@_System_LNMarker_);
+
+  so_instance_addmethod(DEFAULT_METHOD_GetMember,@_ClsInstance_GetMember_);
+  so_instance_addmethod(DEFAULT_METHOD_SetMember,@_ClsInstance_SetMember_);
 end;
 
 (******************************************************************************
@@ -682,6 +717,8 @@ initialization
   TMethodTrie_List.Init(16);
   TMethodTrie_Dict.Init(16);
   TMethodTrie_System.Init(16);
+  TMethodTrie_Class.Init(16);
+  TMethodTrie_InstanceDefaults.Init(16);
 {$IFDEF DEBUG}
   TypeRegister.Init(16,32);
 {$ENDIF}
@@ -696,6 +733,8 @@ finalization
   TMethodTrie_List.Done;
   TMethodTrie_Dict.Done;
   TMethodTrie_System.Done;
+  TMethodTrie_Class.Done;
+  TMethodTrie_InstanceDefaults.Done;
 
 end.
 

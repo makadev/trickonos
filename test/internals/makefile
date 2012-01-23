@@ -1,4 +1,4 @@
-TESTDIR = func subfun feiter
+TESTDIR = func subfun feiter class
 
 ##
 

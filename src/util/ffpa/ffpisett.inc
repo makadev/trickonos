@@ -24,6 +24,7 @@ begin
   ASSERT(bits >= 1);
   mbits := bits;
   mwords := VMWord(VMWord(mbits-1) div VMWord(C_TTFM_WORD_BITS)) + 1;
+  flags := [];
   reset_cf;
   reset_of_flags;
 end; 

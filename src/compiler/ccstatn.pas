@@ -32,8 +32,10 @@ uses
 const
   SymSetStatFirst = [SMES_PUT, SMES_IF, SMES_FUNCTION,
                      SMES_REPEAT, SMES_WHILE,
-                     SMES_FOREACH]+EXPR_FIRST;
+                     SMES_FOREACH, SMES_CLASS]+EXPR_FIRST;
 
+  C_Name_Constructor = 'CREATE';
+  C_Name_Self = 'SELF';
   C_Name_Result = 'RESULT';
   C_Name_Vararg = 'VARARGS';
 
@@ -81,6 +83,13 @@ type
   {ID,EXPR,STATS (for list iterator)
    ID,ID,EXPR,STATS (for dict iterator)}
   TPLForeach = class(TPLStat)
+    public
+      class function Parse: TParserNode; override;
+      function Compile: Boolean; override;
+  end;
+
+  {ID,FunctionDecl*}
+  TPLClass = class(TPLStat)
     public
       class function Parse: TParserNode; override;
       function Compile: Boolean; override;
@@ -201,6 +210,62 @@ begin
     end;
   ExpectSym(sterminator);
   NextToken;
+end;
+
+{ TPLClass }
+
+class function TPLClass.Parse: TParserNode;
+begin
+  IncRec;
+  ExpectSym(SMES_CLASS);
+  Result := self.Create;
+  Result.SetLineInfoFrom(CurrentToken);
+  NextToken;
+  {clsname}
+  ExpectSym(SMES_ID);
+  Result.SetLineInfoFrom(CurrentToken);
+  Result.AddOcc(CurrentToken);
+  NextToken;
+  {methods}
+  repeat
+    ExpectSymSet([SMES_FUNCTION,SMES_END]);
+    if CurrentToken.TokenType = SMES_FUNCTION then
+      begin
+        Result.AddOcc( TPLFunction.Parse );
+        Continue;
+      end;
+  until CurrentToken.TokenType = SMES_END;
+  NextToken;
+  ExpectSym(SMES_SColon);
+  NextToken;
+  DecRec;
+end;
+
+function TPLClass.Compile: Boolean;
+var i: Integer;
+begin
+  CreateAssembly;
+  IncRec;
+  ASSERT( Count >= 1 );
+  ASSERT( Occ[0].ClassType = TScanRecord );
+  Result := true;
+  {create a new class}
+  Assembly.InsStabLoad(Line,Column,isc_m_class_stab,Upcase(TScanRecord(Occ[0]).Pattern));
+  {push class frame, so functions now they are methods and a class is on stack}
+  FrameStackPush(ccft_class);
+  for i := 1 to Count-1 do
+    begin
+      {compile methods, create method decls}
+      Assert(Occ[i] is TParserNode);
+      Result :=  TParserNode(Occ[i]).Compile and Result;
+      Assembly.AppendAssembly(TParserNode(Occ[i]).Assembly);
+    end;
+  {write back Name, pop TOS}
+  ExprAssembleTOSSetter(Line,Column,Assembly,Upcase(TScanRecord(Occ[0]).Pattern));
+  Assembly.InsOperand(Line,Column,isc_m_pop_nr,1);
+  {pop cls frame}
+  FrameStackPop;
+  DecRec;
 end;
 
 { TPLForeach }
@@ -506,13 +571,17 @@ end;
 
 function TPLFunction.Compile: Boolean;
 var idxtab: PHashTrie;
-    dexpr,varg,varargexpr: Boolean;
     i,argsn,argsf,slotn: MachineInt;
     varglab, bodylab: TLabelNode;
+    dexpr,varg,varargexpr,ismethod: Boolean;
 begin
   CreateAssembly;
   IncRec;
   Result := true;
+
+  {check if this is a method decl}
+  ismethod := (not FrameStackEmpty) and
+              (FrameStackTop^.ftype = ccft_class);
 
   {push a frame for nodes below}
   FrameStackPush(ccft_function);
@@ -571,6 +640,11 @@ begin
       -> jmptable not needed with fixed args only (or fixed args + vararg without
          def. expr..)
   *)
+
+  (*
+   * ARGUMENT CHECKS AND COMPILATION
+   *
+   *)
 
   {assemble the "argument loader" code. for params with Default Expr, we need
    to assemble an additional test}
@@ -637,6 +711,12 @@ begin
     end;
 
   slotn := argsn+1; // up til here, argsn slots for arguments, 1 additional for function obj
+
+  (*
+   * ARGUMENT CODE GENERATION (Jump Table/Function Entrycode,
+   *                           Default Arg Creation)
+   *
+   *)
 
   if Result then
     begin
@@ -707,21 +787,54 @@ begin
         Assembly.AppendLabel(bodylab);
     end;
 
-   {so.. that was the function header.. neat eh? XD
-    now lets do the rest, its not that complicated
-    first register the Function Name itself (as slotnr 1!) if its not overriden
-    second register RESULT, if its not already registered (argument)}
+  (*
+   * FUNCTION STATS CODE
+   *
+   *)
 
-    if idxtab^.Lookup(Upcase(TScanRecord(Occ[0]).Pattern)) = nil then
-      begin
-        i := 1;
-        idxtab^.Add(Upcase(TScanRecord(Occ[0]).Pattern),PtrInt(i)+nil);
-      end;
-
-   if idxtab^.Lookup(C_Name_Result) = nil then
+   if ismethod then
      begin
-       Inc(slotn,1);
-       idxtab^.Add(C_Name_Result,PtrInt(slotn)+nil);
+       {this is a method, the function object is not accessible (stack layout
+        is different, object is at slot 1, function is "out of frame").
+        since method can i.g. be accessed by self, we register self for
+        object access, if its not overriden}
+       if idxtab^.Lookup(C_Name_Self) = nil then
+         begin
+           i := 1;
+           idxtab^.Add(C_Name_Self,PtrInt(i)+nil);
+         end;
+     end
+   else
+     begin
+       {Register Function Name as Variable which contains itself
+        (the function object @ slot 1) if it wasnt overridden by arguments}
+       if idxtab^.Lookup(Upcase(TScanRecord(Occ[0]).Pattern)) = nil then
+         begin
+           i := 1;
+           idxtab^.Add(Upcase(TScanRecord(Occ[0]).Pattern),PtrInt(i)+nil);
+         end;
+     end;
+
+   if ismethod and
+      (Upcase(TScanRecord(Occ[0]).Pattern) = C_Name_Constructor) then
+     begin
+       {special method create, map Result to slot 1, since this is the
+        instance that must be returned}
+       if idxtab^.Lookup(C_Name_Result) = nil then
+         begin
+           i := 1;
+           idxtab^.Add(C_Name_Result,PtrInt(i)+nil);
+         end;
+     end
+   else
+     begin
+       {register Result for return arguments (and slot number so ret nows which
+        slot is passed back)}
+       if idxtab^.Lookup(C_Name_Result) = nil then
+         begin
+           Inc(slotn,1);
+           idxtab^.Add(C_Name_Result,PtrInt(slotn)+nil);
+         end;
      end;
 
    {now, register all vars.. VAR node is @ Occ[argsn*2], so no need for search,
@@ -765,10 +878,19 @@ begin
 
    FrameStackPop;
 
-   // compile TOS setting after FrameStackPop since it will set it in the frame below
-   // which may be again a function
-   ExprAssembleTOSSetter(Line,Column,Assembly,Upcase(TScanRecord(Occ[0]).Pattern)); // function @ TOS -> set by name
-   Assembly.InsOperand(Line,Column,isc_m_pop_nr,1); // pop after setting
+   if ismethod then
+     begin
+       // declare method in current class
+       // this will enter the function into the class
+       Assembly.InsStabLoad(Line,Column,isc_m_decl_method_stab,Upcase(TScanRecord(Occ[0]).Pattern));
+     end
+   else
+     begin
+       // compile TOS setting after FrameStackPop since it will set it in the frame below
+       // which may be again a function
+       ExprAssembleTOSSetter(Line,Column,Assembly,Upcase(TScanRecord(Occ[0]).Pattern)); // function @ TOS -> set by name
+       Assembly.InsOperand(Line,Column,isc_m_pop_nr,1); // pop after setting
+     end;
 
    if not check_cc_maxframe(slotn) then
      begin
@@ -979,6 +1101,7 @@ begin
     SMES_REPEAT: Result := TPLRepeat.Parse;
     SMES_WHILE: Result := TPLWhile.Parse;
     SMES_FOREACH: Result := TPLForeach.Parse;
+    SMES_CLASS: Result := TPLClass.Parse;
     SMES_ID:
       begin
         {need to check for MCall or MBlock, otherwise EXPR}

@@ -99,16 +99,21 @@ procedure fpath_rel_set( const suri: String );
 function fpath_out_enter( const suri: String; onfile: Boolean; createpath: Boolean = False ): String;
 
 {DOC>> Convert filename/path/suri into absolute, using default servtype and current tos path}
-function fpath_rel_to_abs( const suri: String; onfile: Boolean = true;
-  const frel: String = ''; defserv: TRIServicePath = sspFileRelative ): String;
+function fpath_rel_to_abs( const suri: String; onfile: Boolean = true; defserv: TRIServicePath = sspFileRelative ): String;
 
+{DOC>> Counterpart to fpath_prel_set}
 procedure fpath_rel_leave;
 procedure fpath_out_leave;
 
+{DOC>> Current rel Path}
 function fpath_current_rel: String;
 
 procedure fpath_init;
 procedure fpath_fini;
+
+{DOC>> Replace current rel Path, this should only be used by vmstate to set
+       the path for the current template on Include/Use}
+procedure fpath_rel_replace( const absname: String );
 
 implementation
 
@@ -722,7 +727,7 @@ begin
 end;
 
 function fpath_rel_to_abs(const suri: String; onfile: Boolean;
-  const frel: String; defserv: TRIServicePath): String;
+  defserv: TRIServicePath): String;
 var surip: TSURIPath;
     p,f: String;
 begin
@@ -747,17 +752,9 @@ begin
   if surip.servtype = sspUnknown then
     surip.servtype := defserv;
 
-  {check/set relative start for rebuilding}
-  if Length(frel) > 0 then
-    fpath_rel_set(frel);
-
   {rewrite using current path settings}
   p := SURIRewrite(surip);
   SetLength(surip.comps,0);
-
-  {unset relative start}
-  if Length(frel) > 0 then
-    fpath_rel_leave;
 
   {rebuild filename if onfile}
   if onfile then
@@ -814,6 +811,12 @@ begin
   SetLength(PkgPathes,0);
   SetLength(FilePathStack,0);
   SetLength(OutPathStack,0);
+end;
+
+procedure fpath_rel_replace(const absname: String);
+begin
+  ASSERT(Length(FilePathStack) = 1); // only the last files path is on stack
+  FilePathStack[0] := absname;
 end;
 
 end.

@@ -303,17 +303,15 @@ function tfm_alloc( m: VMInt; wipe: Boolean ): PTFM_Integer;
 { allocate number,
     * if wipe, flags and number buffer is zeroed and creation flags set
     * if no wipe, buffer is not zeroed }
-var props: TTFM_Integer_Properties;
 begin
   Result := nil;
   if m <= 1 then
     m := 2;
   if m > C_TTFM_MAX then
     m := C_TTFM_MAX;
-  props.Init(m);
-  Result := GetMem((props.sizebytes + SizeOf(TTFM_Integer)) - SizeOf(TTFMWords));
-  Move( props, Result^.props, SizeOf(TTFM_Integer_Properties) );
-  if wipe then
+  Result := GetMem(((((m-1) div C_TTFM_WORD_BITS) + 1)*C_TTFM_WORD_BYTES + SizeOf(TTFM_Integer)) - SizeOf(TTFMWords));
+  Result^.props.init(m);
+  //if wipe then
     Result^.reinit;
 end;
 

@@ -230,3 +230,33 @@ const
   );
 
 
+const
+  TSOClsClass: TSOTypeCls = (
+    IsMortal: true;
+    Wipe: true;
+    InstanceSize: SizeOf( TSO_Class );
+    PostConstructor: @socls_Class_PostConstructor;
+    PreDestructor: @socls_Class_PreDestructor;
+    GCEnumerator: @socls_Class_GCEnumerator;
+    MethodCall: @socls_Class_MethodCall;
+    MethodCallOverride: @socls_Class_MethodCallOverride;
+    Compare: @socls_Class_Compare;
+    TypeQuery: @socls_Class_TypeQuery
+  );
+
+
+const
+  TSOClsClsInstance: TSOTypeCls = (
+    IsMortal: true;
+    Wipe: true;
+    InstanceSize: SizeOf( TSO_ClsInstance );
+    PostConstructor: @socls_ClsInstance_PostConstructor;
+    PreDestructor: @socls_ClsInstance_PreDestructor;
+    GCEnumerator: @socls_ClsInstance_GCEnumerator;
+    MethodCall: @socls_ClsInstance_MethodCall;
+    MethodCallOverride: @socls_ClsInstance_MethodCallOverride;
+    Compare: @DefaultCompare;
+    TypeQuery: @socls_ClsInstance_TypeQuery
+  );
+
+

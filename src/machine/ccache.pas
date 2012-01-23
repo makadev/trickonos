@@ -47,12 +47,11 @@ type
        loader.statfpath as absolute predecessor (for relative lookup) or
        current relpath (i.g. pdw) if loader=nil.
        if lookup failed, a new entry is created with pbyte=nil}
-function fcache_cache(loader: PCodeReference; const name: String): PCodeReference;
+function fcache_cache(const name: String): PCodeReference;
 
 {DOC>> add a stray codeblock (bootstrab/hardcoded/dynamic), using loaders
        statfpath or current relpath if loader=nil}
 function fcache_addstray(const shortname: String;
-                         loader: PCodeReference;
                          pcode: PByteCodeBlock;
                          freeonleave: Boolean): PCodeReference;
 
@@ -68,36 +67,28 @@ var
   NodeCache: THashTrie;
   CodeTable: TCodeRefList;
 
-function fcache_cache(loader: PCodeReference; const name: String
-  ): PCodeReference;
+function fcache_cache(const name: String): PCodeReference;
 var fullname: String;
 begin
-  if Assigned(loader) then
-    fpath_rel_set(loader^.statfpath);
   fullname := fpath_rel_enter(name,true);
   Result := NodeCache.Lookup(fullname);
   if not Assigned(Result) then
     begin
-      Result := fcache_addstray(ExtractFileName(name),nil,nil,true);
+      Result := fcache_addstray(ExtractFileName(name),nil,true);
       Result^.fullname := fullname;
       NodeCache.Add(fullname,Result);
     end;
   fpath_rel_leave;
-  if Assigned(loader) then
-    fpath_rel_leave;
 end;
 
-function fcache_addstray(const shortname: String; loader: PCodeReference;
-  pcode: PByteCodeBlock; freeonleave: Boolean): PCodeReference;
+function fcache_addstray(const shortname: String; pcode: PByteCodeBlock;
+  freeonleave: Boolean): PCodeReference;
 begin
   Result := New(PCodeReference);
   Result^.pbcode := pcode;
   Result^.shortname := shortname;
   Result^.fullname := '^'+Result^.shortname;
-  if Assigned(loader) then
-    Result^.statfpath := loader^.statfpath
-  else
-    Result^.statfpath := fpath_current_rel;
+  Result^.statfpath := fpath_current_rel;
   Result^.freeonleave := freeonleave;
   CodeTable.Push(Result);
 end;

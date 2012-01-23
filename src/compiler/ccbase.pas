@@ -92,7 +92,8 @@ type
 type
   TCCFrameType = (
     ccft_function,
-    ccft_loop
+    ccft_loop,
+    ccft_class
   );
 
   PCCFrameInfo = ^TCCFrameInfo;
@@ -107,6 +108,8 @@ type
       ccft_loop: (
         reentry_lab: TLabelNode;    // continue
         stackuse: VMInt;
+      );
+      ccft_class: (
       );
   end;
 
@@ -145,6 +148,7 @@ procedure FrameStackPush(ftype: TCCFrameType);
 begin
   SetLength(FrameStack,Length(FrameStack)+1);
   FrameStack[High(FrameStack)].ftype := ftype;
+  FrameStackTop^.exit_lab := nil;
   case FrameStackTop^.ftype of
     ccft_function:
       begin
@@ -155,6 +159,7 @@ begin
       end;
     ccft_loop:
       FrameStackTop^.stackuse := 0;
+    ccft_class: {ignore};
     else
       put_internalerror(2011121002);
   end;

@@ -533,7 +533,7 @@ begin
   SetLength(FStartBootCoder,0);
   if OnlyCompile then
     begin
-      LoadTemplate(mincl_include,nil,fname);
+      LoadTemplate(mincl_include,fname);
       ExitCode := 0;
     end
   else
@@ -570,7 +570,7 @@ begin
     if OnlyCompile then
       Exit;
     {boot&run machine}
-    bref := fcache_addstray('post',nil,@bootblock,false);
+    bref := fcache_addstray('post',@bootblock,false);
     templatestack_push(bref,0,false);
     repeat
       //WriteLn(StdErr,templatestack_tos^.shortname,' Decoding ',template_ip_opcode,',',template_ip_operandI);

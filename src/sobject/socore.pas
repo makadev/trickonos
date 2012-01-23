@@ -169,6 +169,8 @@ const
     DEFAULT_METHOD_UnOpNot = 'OP_NOT';
     DEFAULT_METHOD_DirectCall = 'CALL';
 
+    SPECIAL_METHOD_Create = 'CREATE';
+
 var
     DEFAULT_METHOD_SetMember_Hash: MachineWord;
     DEFAULT_METHOD_GetMember_Hash: MachineWord;
@@ -190,6 +192,8 @@ var
     DEFAULT_METHOD_UnOpAbs_Hash: MachineWord;
     DEFAULT_METHOD_UnOpNot_Hash: MachineWord;
     DEFAULT_METHOD_DirectCall_Hash: MachineWord;
+
+    SPECIAL_METHOD_Create_Hash: MachineWord;
 
 (******************************************************************************
  GC/Create/Destroy Interface
@@ -470,9 +474,9 @@ end;
 
 procedure SelfCheck(instance: PSOInstance; fromtype: PSOTypeCls);
 begin
-  if (not Assigned(instance)) or
-     (not instance^.IsType(fromtype)) then
-    put_internalerror(2011121777);
+  ASSERT( Assigned(instance) );
+  ASSERT( instance^.refcnt > 0 );
+  ASSERT( instance^.IsType(fromtype) );
 end;
 
 initialization
@@ -496,6 +500,7 @@ initialization
   DEFAULT_METHOD_UnOpAbs_Hash := mas3hash(DEFAULT_METHOD_UnOpAbs[1],Length(DEFAULT_METHOD_UnOpAbs));
   DEFAULT_METHOD_UnOpNot_Hash := mas3hash(DEFAULT_METHOD_UnOpNot[1],Length(DEFAULT_METHOD_UnOpNot));
   DEFAULT_METHOD_DirectCall_Hash := mas3hash(DEFAULT_METHOD_DirectCall[1],Length(DEFAULT_METHOD_DirectCall));
+  SPECIAL_METHOD_Create_Hash := mas3hash(SPECIAL_METHOD_Create[1],Length(SPECIAL_METHOD_Create));
 
 end.
 

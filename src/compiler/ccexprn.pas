@@ -107,6 +107,7 @@ type
   end;
 
 procedure ExprAssembleTOSSetter( Line, Column: Integer; Assembly: TAssembly; const name: String );
+procedure ExprAssembleTOSGetter( Line, Column: Integer; Assembly: TAssembly; const name: String );
 
 implementation
 
@@ -332,6 +333,20 @@ begin
   DecRec;
 end;
 
+procedure ExprAssembleTOSGetter( Line, Column: Integer; Assembly: TAssembly; const name: String );
+begin
+  if FrameStackNoFun or
+     (not FrameStackTopFun^.local_index^.Exists(name)) then
+    {default global load}
+    Assembly.InsStabLoad(Line,Column,isc_m_getenv_stab,Upcase(name))
+  else
+    begin
+      {local load slot in function frame}
+      Assembly.InsOperand(Line,Column,isc_m_fprel_load_slot,
+        PtrInt(FrameStackTopFun^.local_index^.Lookup(name)-nil));
+    end;
+end;
+
 { TExprId }
 
 class function TExprId.Parse: TParserNode;
@@ -351,16 +366,7 @@ begin
   ASSERT(Count=1);
   ASSERT(Occ[0].ClassType = TScanRecord);
   IncRec;
-  if FrameStackNoFun or
-     (not FrameStackTopFun^.local_index^.Exists(Upcase(TScanRecord(Occ[0]).Pattern))) then
-    {default global load}
-    Assembly.InsStabLoad(Line,Column,isc_m_getenv_stab,Upcase(TScanRecord(Occ[0]).Pattern))
-  else
-    begin
-      {local load slot in function frame}
-      Assembly.InsOperand(Line,Column,isc_m_fprel_load_slot,
-        PtrInt(FrameStackTopFun^.local_index^.Lookup(Upcase(TScanRecord(Occ[0]).Pattern))-nil));
-    end;
+  ExprAssembleTOSGetter(Line,Column,Assembly,Upcase(TScanRecord(Occ[0]).Pattern));
   Result := true;
   DecRec;
 end;

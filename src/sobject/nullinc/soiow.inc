@@ -38,7 +38,6 @@ end;
 procedure socls_IO_GCEnumerator(instance: PSOInstance;
   tracer: TGarbageCollectorTracer);
 begin
-  SelfCheck(instance,so_io_class);
   PSO_IO(instance)^.ioo.GCTrace(tracer);
 end;
 

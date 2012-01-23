@@ -28,12 +28,10 @@ interface
 uses SysUtils, Classes, commontl, eomsg, ccbase, cscan, csyms, ccstatn,
      assembl, fpath, ccache, bytecode, opcode;
 
-{ use fpath_rel_enter before calling load,
-    this results in an absolute path, so cache works more reliable.
-  code writing may fail and emits a warning, but doesnt terminate as
-    its not interesting for the actual template processing}
-function LoadTemplate( incmode: TInsMIncludeMode; loader: PCodeReference;
-                       const fname: String ): PCodeReference;
+
+{file path relative load}
+function LoadTemplate( incmode: TInsMIncludeMode;
+  const fname: String ): PCodeReference;
 
 procedure SetByteCodeMode( WriteBC: Boolean );
 
@@ -140,12 +138,12 @@ begin
     end;
 end;
 
-function LoadTemplate( incmode: TInsMIncludeMode; loader: PCodeReference;
+function LoadTemplate( incmode: TInsMIncludeMode;
   const fname: String ): PCodeReference;
 var pnode: TParserNode;
     fstream: TFileStream;
 begin
-  Result := fcache_cache(loader,fname);
+  Result := fcache_cache(fname);
   if not Assigned(Result^.pbcode) then
     begin
       TryLoadPreCompiledTemplate(incmode,Result);

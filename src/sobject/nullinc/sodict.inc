@@ -76,15 +76,9 @@ begin
     Result := socmp_NotComparable;
 end;
 
-function dict_collenum( const unused: String; data, xdata: Pointer ): Boolean;
-begin
-  TGarbageCollectorTracer(xdata)(PSOInstance(data));
-  Result := true;
-end;
-
 procedure socls_Dict_GCEnumerator(instance: PSOInstance; tracer: TGarbageCollectorTracer);
 begin
-  PSO_Dict(instance)^.dict.ForEach(@dict_collenum,tracer);
+  PSO_Dict(instance)^.dict.ForEach(@hashtrie_gcenum,tracer);
 end;
 
 procedure socls_Dict_PostConstructor(instance: PSOInstance);

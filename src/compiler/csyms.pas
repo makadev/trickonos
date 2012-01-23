@@ -69,6 +69,7 @@ type
     SMES_ROLK,      // rol
     SMES_RORK,      // ror
 
+    SMES_CLASS,     // class
     SMES_FUNCTION,  // function
     SMES_BEGIN,     // begin
     SMES_VAR,       // var
@@ -133,6 +134,7 @@ const
       'SHR',
       'ROL',
       'ROR',
+      'CLASS',
       'FUNCTION',
       'BEGIN',
       'VAR',

@@ -56,6 +56,8 @@ procedure vmop_m_fprel;
 procedure vmop_m_returnclean;
 procedure vmop_m_stackdup;
 procedure vmop_compare;
+procedure vmop_class_create;
+procedure vmop_method_decl;
 
 const
   VMOpcodeHandler: array[TInsOpcodeCode] of TVMOpcodeHandler =
@@ -144,6 +146,12 @@ const
      // isc_o_compare,
      @vmop_compare,
 
+     // isc_m_class_stab,
+     @vmop_class_create,
+
+     // isc_m_decl_method_stab,
+     @vmop_method_decl,
+
      // isc_invalid
      @vmop_invalid
   );
@@ -222,13 +230,12 @@ begin
       begin
         if not runtimestack_get(0)^.IsType(so_string_class) then
           put_critical('Include expected String, got '+ so_type_name(runtimestack_get(0)));
-        cref := LoadTemplate(TInsMIncludeMode(template_ip_operand),
-                  templatestack_tos,so_string_get(runtimestack_get(0)));
+        cref := LoadTemplate(TInsMIncludeMode(template_ip_operand),so_string_get(runtimestack_get(0)));
         runtimestack_pop(1);
       end;
     isc_m_include_stab:
       begin
-        cref := LoadTemplate(mincl_include,templatestack_tos,template_stabentry(template_ip_operand));
+        cref := LoadTemplate(mincl_include,template_stabentry(template_ip_operand));
       end;
     else
       put_internalerror(2011120703);
@@ -613,6 +620,32 @@ begin
   runtimestack_pop(2);
 end;
 
+procedure vmop_class_create;
+{create class and push on tos}
+begin
+  runtimestack_push(
+    so_class_create(template_stabentry(template_ip_operand),
+                    templatestack_tos,
+                    template_ip));
+end;
+
+procedure vmop_method_decl;
+{TOS-1 = Class, TOS = function obj
+  -> pop function and register with stab name
+  -> leave class}
+begin
+  if runtimestack_get(0)^.IsType(so_function_class) and
+     runtimestack_get(1)^.IsType(so_class_class) then
+    begin
+      so_class_methodreg(runtimestack_get(1),
+                         runtimestack_get(0),
+                         template_stabentry(template_ip_operand));
+      runtimestack_pop(1);
+    end
+  else
+    put_internalerror(12012310);
+end;
+
 (*******************************************************************************
  SO Opcode Part.
    The following Opcodes involve built-in/script object calling.
@@ -682,6 +715,11 @@ begin
                 begin
                   runtimestack_push(mres);
                 end;
+            end
+          else
+            begin
+              {obj returned nil -> default error}
+              runtimestack_push(init_operation_error(runtimestack_get(args),name));
             end;
         end
       else
@@ -692,8 +730,46 @@ begin
     end
   else
     begin
-      {methodcalloverride returned something, check if its an function object}
-      ASSERT( res^.GetTypeCls = so_function_class ); // override must return function object..
+      {methodcalloverride returned something, check if its an
+        -> function object for call
+        -> instance object on creation}
+      ASSERT( (res^.GetTypeCls = so_function_class) or
+              (res^.GetTypeCls = so_instance_class) );
+      if res^.IsType(so_instance_class) then
+        begin
+          {check for constructor call}
+          fres := so_class_getconstructor(so_instance_getclass(res));
+          if Assigned(fres) then
+            begin
+              {trick: replace class with instance, since class is not used
+                      on stack after creation and bound in the instance itself}
+              runtimestack_push(res);
+              runtimestack_moved(0,args+1);
+              runtimestack_pop(1);
+              res := fres;
+              {from here, everything like function object
+                res=constructor will be setup as method call on instance instead
+                of method call on class}
+            end
+          else
+            begin
+              {no constructor, check args=0, replace class with instance
+               and thats all (no actual call)}
+              if args = 0 then
+                begin
+                  runtimestack_push(res);
+                  runtimestack_moved(0,1);
+                  runtimestack_pop(1);
+                end
+              else
+                begin
+                  {args given, but no constructor -> fail}
+                  runtimestack_push(init_invargnum_error(res,args,SPECIAL_METHOD_Create));
+                end;
+              exit;
+            end;
+        end;
+      ASSERT( res^.IsType(so_function_class) );
       ASSERT( Assigned(res^.GetTypeCls^.MethodCall) ); // function type needs methodcall
       {setup the call}
       fres := res^.GetTypeCls^.MethodCall(DEFAULT_METHOD_DirectCall_Hash,

@@ -30,7 +30,7 @@ type
 
 procedure socls_RT_ENV_GCEnumerator(instance: PSOInstance; tracer: TGarbageCollectorTracer);
 begin
-  PSO_RuntimeEnv(instance)^.dict.ForEach(@dict_collenum,tracer);
+  PSO_RuntimeEnv(instance)^.dict.ForEach(@hashtrie_gcenum,tracer);
 end;
 
 procedure socls_RT_ENV_PostConstructor(instance: PSOInstance);
