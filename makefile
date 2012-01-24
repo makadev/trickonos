@@ -74,6 +74,9 @@ export
 
 build: debug
 
+wporelease: clean makepathes
+	$(MAKE) -C $(SRC_PATH) wporelease
+
 release: makepathes
 	$(MAKE) -C $(SRC_PATH) release
 
