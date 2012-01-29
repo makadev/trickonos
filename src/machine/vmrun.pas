@@ -192,7 +192,7 @@ begin
     end
   else if runtimestack_get(0)^.IsType(so_string_class) then
     begin
-      put_error('ABORT with Message: '+so_string_get(runtimestack_get(0)));
+      put_error('ABORT with Message: '+so_string_get_utf8(runtimestack_get(0)));
       machine_halt(1);
     end
   else if runtimestack_get(0)^.IsType(so_integer_class) then
@@ -230,7 +230,7 @@ begin
       begin
         if not runtimestack_get(0)^.IsType(so_string_class) then
           put_critical('Include expected String, got '+ so_type_name(runtimestack_get(0)));
-        cref := LoadTemplate(TInsMIncludeMode(template_ip_operand),so_string_get(runtimestack_get(0)));
+        cref := LoadTemplate(TInsMIncludeMode(template_ip_operand),so_string_get_utf8(runtimestack_get(0)));
         runtimestack_pop(1);
       end;
     isc_m_include_stab:
@@ -279,7 +279,7 @@ begin
     isc_m_load_string_stab:
       begin
         runtimestack_push(
-          so_string_init(
+          so_string_init_utf8(
               template_stabentry(template_ip_operand)));
       end;
     isc_m_load_int_oper:
@@ -434,7 +434,7 @@ begin
           if (runtimestack_get(1)^.GetTypeCls = so_string_class) and
              (runtimestack_get(0)^.GetTypeCls = so_dict_class) then
             begin
-              substr := so_string_get(runtimestack_get(1));
+              substr := so_string_get_utf8(runtimestack_get(1));
               if Length(substr) > 0 then
                 begin
                   {$NOTE outsource}
@@ -825,14 +825,14 @@ begin
       begin
         {need fix, currently its: <caller,value>, we need <caller,name,value> -> push stab entry
          and switch}
-        runtimestack_push(so_string_init(template_stabentry(template_ip_operand)));
+        runtimestack_push(so_string_init_a7(template_stabentry(template_ip_operand)));
         runtimestack_switch(0,1);
         do_so_method_call(DEFAULT_METHOD_SetMember_Hash,DEFAULT_METHOD_SetMember,2);
       end;
     isc_o_getm_stab:
       begin
         {push stab entry}
-        runtimestack_push(so_string_init(template_stabentry(template_ip_operand)));
+        runtimestack_push(so_string_init_a7(template_stabentry(template_ip_operand)));
         do_so_method_call(DEFAULT_METHOD_GetMember_Hash,DEFAULT_METHOD_GetMember,1);
       end;
     isc_o_seti_ign: do_so_method_call(DEFAULT_METHOD_SetIndex_Hash,DEFAULT_METHOD_SetIndex,2);
@@ -853,12 +853,12 @@ begin
          interface}
         ASSERT( runtimestack_get(0)^.GetTypeCls = so_string_class ); // invalid stack layout
         check_so_maxargs(template_ip_operand);
-        name := so_string_get(runtimestack_get(0));
+        name := so_string_get_a7(runtimestack_get(0));
         runtimestack_pop(1);
         ASSERT(Length(name) > 0);
         ASSERT(Upcase(name)=name);
         {$WARNING hold hash in stab/additional table, load and hash ondemand}
-        do_so_method_call(mas3hash(name[1],Length(name)),name,template_ip_operand);
+        do_so_method_call(mas3hash_sigma_s(name),name,template_ip_operand);
       end;
     isc_o_callcall_nrops:
       begin

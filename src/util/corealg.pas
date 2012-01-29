@@ -27,7 +27,7 @@ unit corealg;
 
 interface
 
-uses SysUtils, commontl;
+uses SysUtils, commontl, ucfs;
 
 {DOC>> permutation using the gf(2^16) polynom 0x10001111010011001, 
        called MAS3, adding Length and padded 16bit chunks of buffer, 
@@ -51,6 +51,13 @@ uses SysUtils, commontl;
        2^16) and was not taken from any Documentation, 
        Code and/or other Source.}
 function mas3hash( const buf; len: MachineInt ): MachineWord; inline;
+
+{DOC>> specialized mas3 for PUCFS32String, hashes string as sequence
+       of 16 bit blocks (each character expanded to 2*16bit).
+       length0 is conform and yields the same value hash mas3hash on
+       len 0 (see mas3hash_len0 value)}
+function mas3hash_sigma( pstr: PUCFS32String ): MachineWord; inline;
+function mas3hash_sigma_s( const s: String ): MachineWord; inline; deprecated;
 function mas3hash_len0: MachineWord; inline;
 
 implementation
@@ -79,31 +86,51 @@ begin
 end;
 {$ENDIF}
 
-function mas3hash( const buf; len: MachineInt ): MachineWord;
-{possibly worst hash... simple permutation using a gf(2^16) poly and
- multiplication with 3 (x^1+1) and 2 byte from the string
- in said polynom bound ring}
 const
   msb16 = 1 shl 15;
   rpoly = { (reduced poly) $1E99 = x^12+x^11+x^10+x^9+x^7+x^4+x^3+1}
           1 or (1 shl 3) or (1 shl 4) or (1 shl 7) or
           (1 shl 9) or (1 shl 10) or (1 shl 11) or (1 shl 12);
 
-var
-  bufp: PByte;
-  gf: MachineWord;
-  i: MachineInt;
-
-  procedure gf16_mul03; inline;
-  begin
+function gf16_mul03( gf: MachineWord ): MachineWord; inline;
+{multiply-2,add}
+begin
 {$PUSH}
 {$R-}
-    if ( gf and msb16 ) > 0 then
-      gf := ( gf shl 1 ) xor rpoly xor gf
-    else
-      gf := ( gf shl 1 ) xor gf;
+  if ( gf and msb16 ) > 0 then
+    begin
+      gf := (gf xor msb16);
+      Result := ( gf shl 1 ) xor rpoly xor gf;
+    end
+  else
+    Result := ( gf shl 1 ) xor gf;
 {$POP}
-  end;
+end;
+
+function mas3_lastpermute( h: MachineWord ): MachineWord; inline;
+{last permutation round (permute for short string shuffling)}
+var i: MachineInt;
+begin
+  for i := 0 to 7 do
+    h := rotate_right(h xor gf16_mul03(h),16);
+  Result := h;
+end;
+
+
+function mas3_step16( h, cnt, block16: MachineWord ): MachineWord; inline;
+{one hash step, takes previous hash h, position cnt and a 16bit block block16
+ adding hash/position and block16*3, roling for next input}
+begin
+  Result := rotate_right((h xor cnt) xor gf16_mul03(block16),16);
+end;
+
+function mas3hash( const buf; len: MachineInt ): MachineWord;
+{possibly worst hash... simple permutation using a gf(2^16) poly and
+ multiplication with 3 (x^1+1) and 2 byte from the string
+ in said polynom bound ring}
+var
+  bufp: PByte;
+  i: MachineInt;
 
 begin
   bufp := PByte(@Buf);
@@ -114,50 +141,66 @@ begin
     begin
       {permute and add 1..Length-(Length mod 2) with position}
       repeat
-        gf := MachineWord(PWord(bufp)^);
-{$PUSH}
-{$R-}
-        gf16_mul03;
-        Result := rotate_right((Result xor MachineWord(i)) xor MachineWord(gf),16);
-{$POP}
+        Result := mas3_step16(Result,i,PWord(bufp)^);
         Inc(i,2);
         Inc(bufp,2);
       until i >= len;
     end;
   {add last char if (Length mod 2)>0}
   if i = len then
-    begin
-      gf := MachineWord(Ord(bufp^));
-{$PUSH}
-{$R-}
-      gf16_mul03;
-      Result := rotate_right((Result xor MachineWord(i)) xor MachineWord(gf),16);
-{$POP}
-    end;
+    Result := mas3_step16(Result,i,bufp^);
   {permute again, makes it look more hashy}
-  for i := 0 to 7 do
+  Result := mas3_lastpermute(Result);
+end;
+
+function mas3hash_sigma( pstr: PUCFS32String ): MachineWord;
+{PUCFS32String variant for hashing,
+  -> does same lastpermute round, so length0 hash is the same
+  -> hashes each character of pstr as 2*16 bit blocks
+  -> effectively hashes string as 16bit sequence}
+var
+  i,j: MachineInt;
+  uc: TUCFS32Char;
+begin
+  Result := 0;
+  if ucfs_length(pstr) > 0 then
     begin
-      gf := Result;
-{$PUSH}
-{$R-}
-      gf16_mul03;
-      Result := rotate_right(Result xor MachineWord(gf),16);
-{$POP}
+      i := 1;
+      j := 1;
+      repeat
+        uc := ucfs_getc(pstr,i);
+        // mask lower 16bit block -> hash
+        Result := mas3_step16(Result,j,((uc shr 16) shl 16) xor uc);
+        Inc(j,1);
+        // hash upper 16bit block
+        Result := mas3_step16(Result,j,uc shr 16);
+        Inc(i,1);
+        Inc(j,1);
+      until i > ucfs_length(pstr);
     end;
+  {permute again -> same as byte hash, so 0 will yield same hash}
+  Result := mas3_lastpermute(Result);
 end;
 
 var
   mas3hash_len0_val: MachineWord;
+
+function mas3hash_sigma_s(const s: String): MachineWord;
+var tmps: PUCFS32String;
+begin
+  tmps := ucfs_utf8us(s);
+  Result := mas3hash_sigma(tmps);
+  ucfs_release(tmps);
+end;
 
 function mas3hash_len0: MachineWord;
 begin
   Result := mas3hash_len0_val;
 end;
 
-
 initialization
   mas3hash_len0_val := 0;
-  mas3hash_len0_val := mas3hash(mas3hash_len0_val,0); // dummy var, not accessed in algorithm
+  mas3hash_len0_val := mas3hash_sigma(nil);
 
 end.
 

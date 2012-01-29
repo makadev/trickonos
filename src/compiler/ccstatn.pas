@@ -26,8 +26,8 @@ unit ccstatn;
 interface
 
 uses
-  SysUtils, commontl, eomsg, ccbase, ccexprp, cscan, csyms, coreobj, opcode,
-  assembl;
+  SysUtils, commontl, eomsg, ucfs, ccbase, ccexprp, cscan, csyms, coreobj,
+  opcode, assembl;
 
 const
   SymSetStatFirst = [SMES_PUT, SMES_IF, SMES_FUNCTION,
@@ -250,7 +250,7 @@ begin
   ASSERT( Occ[0].ClassType = TScanRecord );
   Result := true;
   {create a new class}
-  Assembly.InsStabLoad(Line,Column,isc_m_class_stab,Upcase(TScanRecord(Occ[0]).Pattern));
+  Assembly.InsStabLoad(Line,Column,isc_m_class_stab,TScanRecord(Occ[0]).Pattern);
   {push class frame, so functions now they are methods and a class is on stack}
   FrameStackPush(ccft_class);
   for i := 1 to Count-1 do
@@ -261,7 +261,7 @@ begin
       Assembly.AppendAssembly(TParserNode(Occ[i]).Assembly);
     end;
   {write back Name, pop TOS}
-  ExprAssembleTOSSetter(Line,Column,Assembly,Upcase(TScanRecord(Occ[0]).Pattern));
+  ExprAssembleTOSSetter(Line,Column,Assembly,TScanRecord(Occ[0]).Pattern);
   Assembly.InsOperand(Line,Column,isc_m_pop_nr,1);
   {pop cls frame}
   FrameStackPop;
@@ -303,6 +303,7 @@ begin
 end;
 
 function TPLForeach.Compile: Boolean;
+var us: PUCFS32String;
 begin
   CreateAssembly;
   IncRec;
@@ -328,14 +329,19 @@ begin
       Result := TParserNode(Occ[2]).Compile and Result;
       Assembly.AppendAssembly(TParserNode(Occ[1]).Assembly);
       {emit iterator creation}
-      Assembly.InsStabLoad(Line,Column,isc_m_load_string_stab,Upcase('Iterator'));
+      {$WARNING doh.. obvious hack}
+      us := ucfs_a7us('ITERATOR');
+      Assembly.InsStabLoad(Line,Column,isc_m_load_string_stab,us);
+      ucfs_release(us);
       Assembly.InsCall(Line,Column,isc_o_callm_nrops,0);
       {introlabel}
       Assembly.AppendLabel(FrameStackTop^.reentry_lab);
       {dup iterator, otherwise it is gone after next call}
       Assembly.InsOperand(Line,Column,isc_m_stackdup_nr,1);
       {iter fails or pushes Iterator Object, call Next which pushes bool}
-      Assembly.InsStabLoad(Line,Column,isc_m_load_string_stab,Upcase('Next'));
+      us := ucfs_a7us('NEXT');
+      Assembly.InsStabLoad(Line,Column,isc_m_load_string_stab,us);
+      ucfs_release(us);
       Assembly.InsCall(Line,Column,isc_o_callm_nrops,0);
       {check if iterator returned false -> exit on false, proceed on true}
       Assembly.InsLRefOp(Line,Column,isc_m_jmppop_false_nil_addr,FrameStackTop^.exit_lab);
@@ -344,8 +350,10 @@ begin
       {dup Iterator again, for member access call}
       Assembly.InsOperand(Line,Column,isc_m_stackdup_nr,1);
       {get the current listelement and set ID}
-      Assembly.InsStabLoad(Line,Column,isc_o_getm_stab,Upcase('Current'));
-      ExprAssembleTOSSetter(Column,Line,Assembly,Upcase(TScanRecord(Occ[0]).Pattern));
+      us := ucfs_a7us('CURRENT');
+      Assembly.InsStabLoad(Line,Column,isc_o_getm_stab,us);
+      ucfs_release(us);
+      ExprAssembleTOSSetter(Column,Line,Assembly,TScanRecord(Occ[0]).Pattern);
       Assembly.InsOperand(Line,Column,isc_m_pop_nr,1);
       {stats code}
       Assembly.AppendAssembly(TParserNode(Occ[2]).Assembly);
@@ -358,14 +366,18 @@ begin
       Result := TParserNode(Occ[3]).Compile and Result;
       Assembly.AppendAssembly(TParserNode(Occ[2]).Assembly);
       {emit iterator start/next}
-      Assembly.InsStabLoad(Line,Column,isc_m_load_string_stab,Upcase('Iterator'));
+      us := ucfs_a7us('ITERATOR');
+      Assembly.InsStabLoad(Line,Column,isc_m_load_string_stab,us);
+      ucfs_release(us);
       Assembly.InsCall(Line,Column,isc_o_callm_nrops,0);
       {introlabel}
       Assembly.AppendLabel(FrameStackTop^.reentry_lab);
       {dup iterator for next call}
       Assembly.InsOperand(Line,Column,isc_m_stackdup_nr,1);
       {iter fails or pushes Iterator Object -> set ID:ID from key, value}
-      Assembly.InsStabLoad(Line,Column,isc_m_load_string_stab,Upcase('Next'));
+      us := ucfs_a7us('NEXT');
+      Assembly.InsStabLoad(Line,Column,isc_m_load_string_stab,us);
+      ucfs_release(us);
       Assembly.InsCall(Line,Column,isc_o_callm_nrops,0);
       {check if iterator returned true/false -> exit on false, proceed on true}
       Assembly.InsLRefOp(Line,Column,isc_m_jmppop_false_nil_addr,FrameStackTop^.exit_lab);
@@ -373,11 +385,15 @@ begin
       Assembly.InsOperand(Line,Column,isc_m_pop_nr,1);
       {dup iterator 2 member access calls}
       Assembly.InsOperand(Line,Column,isc_m_stackdup_nr,2);
-      Assembly.InsStabLoad(Line,Column,isc_o_getm_stab,Upcase('CurrentKey'));
-      ExprAssembleTOSSetter(Column,Line,Assembly,Upcase(TScanRecord(Occ[0]).Pattern));
+      us := ucfs_a7us('CURRENTKEY');
+      Assembly.InsStabLoad(Line,Column,isc_o_getm_stab,us);
+      ucfs_release(us);
+      ExprAssembleTOSSetter(Column,Line,Assembly,TScanRecord(Occ[0]).Pattern);
       Assembly.InsOperand(Line,Column,isc_m_pop_nr,1);
-      Assembly.InsStabLoad(Line,Column,isc_o_getm_stab,Upcase('CurrentValue'));
-      ExprAssembleTOSSetter(Column,Line,Assembly,Upcase(TScanRecord(Occ[1]).Pattern));
+      us := ucfs_a7us('CURRENTVALUE');
+      Assembly.InsStabLoad(Line,Column,isc_o_getm_stab,us);
+      ucfs_release(us);
+      ExprAssembleTOSSetter(Column,Line,Assembly,TScanRecord(Occ[1]).Pattern);
       Assembly.InsOperand(Line,Column,isc_m_pop_nr,1);
       {stats code}
       Assembly.AppendAssembly(TParserNode(Occ[3]).Assembly);
@@ -671,18 +687,18 @@ begin
       else
         begin
           if dexpr and
-             (upcase(TScanRecord(Occ[i]).Pattern) <> C_Name_Vararg) then
+             (ucfs_to_string(TScanRecord(Occ[i]).Pattern) <> C_Name_Vararg) then
             begin
               Result := false;
-              put_error_for(Occ[i].Line,Occ[i].Column,CurrentStreamID,
+              put_error_for(Occ[i].Line,Occ[i].Column,ucfs_to_string(cscan_streamid),
                 'Only Parameters with Default Expression or Vararg is allowed after Default Expressions.');
             end;
         end;
       {handle/check ident}
-      if idxtab^.Lookup(upcase(TScanRecord(Occ[i]).Pattern)) = nil then
+      if idxtab^.Lookup(TScanRecord(Occ[i]).Pattern) = nil then
         begin
           Inc(argsn,1);
-          if upcase(TScanRecord(Occ[i]).Pattern) <> C_Name_Vararg then
+          if ucfs_to_string(TScanRecord(Occ[i]).Pattern) <> C_Name_Vararg then
             begin
               if not dexpr then
                 Inc(argsf,1);
@@ -693,12 +709,12 @@ begin
               if Assigned(Occ[i+1]) then
                 varargexpr := true;
             end;
-          idxtab^.Add(upcase(TScanRecord(Occ[i]).Pattern),PtrInt(argsn+1)+nil);
+          idxtab^.Add(TScanRecord(Occ[i]).Pattern,PtrInt(argsn+1)+nil);
         end
       else
         begin
-          put_error_for(Occ[i].Line,Occ[i].Column,CurrentStreamID,
-            'Duplicate Identifier '+TScanRecord(Occ[i]).Pattern);
+          put_error_for(Occ[i].Line,Occ[i].Column,ucfs_to_string(cscan_streamid),
+            'Duplicate Identifier '+ucfs_to_string(TScanRecord(Occ[i]).Pattern));
           Result := false;
         end;
       Inc(i,2);
@@ -706,7 +722,7 @@ begin
 
   if not check_cc_maxargs(argsn) then
     begin
-      put_error_for(Line,Column,CurrentStreamID,'Function exceeds max. arg Limit.');
+      put_error_for(Line,Column,ucfs_to_string(cscan_streamid),'Function exceeds max. arg Limit.');
       Result := false;
     end;
 
@@ -808,15 +824,15 @@ begin
      begin
        {Register Function Name as Variable which contains itself
         (the function object @ slot 1) if it wasnt overridden by arguments}
-       if idxtab^.Lookup(Upcase(TScanRecord(Occ[0]).Pattern)) = nil then
+       if idxtab^.Lookup(TScanRecord(Occ[0]).Pattern) = nil then
          begin
            i := 1;
-           idxtab^.Add(Upcase(TScanRecord(Occ[0]).Pattern),PtrInt(i)+nil);
+           idxtab^.Add(TScanRecord(Occ[0]).Pattern,PtrInt(i)+nil);
          end;
      end;
 
    if ismethod and
-      (Upcase(TScanRecord(Occ[0]).Pattern) = C_Name_Constructor) then
+      (ucfs_to_string(TScanRecord(Occ[0]).Pattern) = C_Name_Constructor) then
      begin
        {special method create, map Result to slot 1, since this is the
         instance that must be returned}
@@ -841,16 +857,16 @@ begin
     well Count-2 may be simpler xD}
    for i := 0 to TParserNode(Occ[Count-2]).Count-1 do
      begin
-       if idxtab^.Lookup(upcase(TScanRecord(TParserNode(Occ[Count-2]).Occ[i]).Pattern)) = nil then
+       if idxtab^.Lookup(TScanRecord(TParserNode(Occ[Count-2]).Occ[i]).Pattern) = nil then
          begin
            Inc(slotn,1);
-           idxtab^.Add(upcase(TScanRecord(TParserNode(Occ[Count-2]).Occ[i]).Pattern),PtrInt(slotn)+nil);
+           idxtab^.Add(TScanRecord(TParserNode(Occ[Count-2]).Occ[i]).Pattern,PtrInt(slotn)+nil);
          end
        else
          begin
            put_error_for(TParserNode(Occ[Count-2]).Occ[i].Line,
-                         TParserNode(Occ[Count-2]).Occ[i].Column,CurrentStreamID,
-             'Duplicate Identifier '+TScanRecord(TParserNode(Occ[Count-2]).Occ[i]).Pattern);
+                         TParserNode(Occ[Count-2]).Occ[i].Column,ucfs_to_string(cscan_streamid),
+             'Duplicate Identifier '+ucfs_to_string(TScanRecord(TParserNode(Occ[Count-2]).Occ[i]).Pattern));
            Result := false;
          end;
      end;
@@ -882,19 +898,19 @@ begin
      begin
        // declare method in current class
        // this will enter the function into the class
-       Assembly.InsStabLoad(Line,Column,isc_m_decl_method_stab,Upcase(TScanRecord(Occ[0]).Pattern));
+       Assembly.InsStabLoad(Line,Column,isc_m_decl_method_stab,TScanRecord(Occ[0]).Pattern);
      end
    else
      begin
        // compile TOS setting after FrameStackPop since it will set it in the frame below
        // which may be again a function
-       ExprAssembleTOSSetter(Line,Column,Assembly,Upcase(TScanRecord(Occ[0]).Pattern)); // function @ TOS -> set by name
+       ExprAssembleTOSSetter(Line,Column,Assembly,TScanRecord(Occ[0]).Pattern); // function @ TOS -> set by name
        Assembly.InsOperand(Line,Column,isc_m_pop_nr,1); // pop after setting
      end;
 
    if not check_cc_maxframe(slotn) then
      begin
-       put_error_for(Line,Column,CurrentStreamID,'Function exceeds max. frame Limit.');
+       put_error_for(Line,Column,ucfs_to_string(cscan_streamid),'Function exceeds max. frame Limit.');
        Result := false;
      end;
    DecRec;
@@ -1105,7 +1121,7 @@ begin
     SMES_ID:
       begin
         {need to check for MCall or MBlock, otherwise EXPR}
-        case LookupMacroNode(CurrentToken.Pattern,nodecls) of
+        case LookupMacroNode(ucfs_to_string(CurrentToken.Pattern),nodecls) of
           tpl_none:
             begin
               Result := TPLStat.Create;
@@ -1184,7 +1200,7 @@ begin
          root statement code outro sequence is wrong -> stats parser stops and
          leaves invalid token..
        -> prefered action, critical and not internal}
-      put_critical_for(CurrentToken.Line, CurrentToken.Column, CurrentStreamID,
+      put_critical_for(CurrentToken.Line, CurrentToken.Column, ucfs_to_string(cscan_streamid),
                        'Unexpected end of Statement');
     end;
 end;
@@ -1203,7 +1219,7 @@ type
 var
   MTrie: THashTrie;
 
-function macrocall_clean( const unused: String; data, unused2: Pointer ): Boolean;
+function macrocall_clean( unused: PUCFS32String; data, unused2: Pointer ): Boolean;
 begin
   Dispose(PMacroPackage(data));
   Result := true;

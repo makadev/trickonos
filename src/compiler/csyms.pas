@@ -22,11 +22,12 @@
 unit csyms;
 
 {$mode objfpc}{$H+}
+{$CODEPAGE UTF8}
 
 interface
 
 uses
-  SysUtils, commontl, eomsg, coreobj;
+  SysUtils, commontl, eomsg, ucfs, coreobj;
 
 type
   TSMESymbol = (
@@ -118,7 +119,7 @@ type
   );
 
 const
-  TResSymbol: array[Ord(S__START_KEY)+1..Ord(S__END_KEY)-1] of String =
+  C_Reserved_Symbol: array[Ord(S__START_KEY)+1..Ord(S__END_KEY)-1] of String =
     (
       'NIL',
       'FALSE',
@@ -151,10 +152,67 @@ const
       'IN'
     );
 
+  C_Char_Capital_a = Ord('A');
+  C_Char_Capital_z = Ord('Z');
+  C_Char_Small_a = Ord('a');
+  C_Char_Small_z = Ord('z');
+
+  C_Char_Small_f = Ord('f');
+  C_Char_Capital_f = Ord('F');
+
+  C_Char_Underscore = Ord('_');
+
+  C_Char_Digit_Zero = Ord('0');
+  C_Char_Digit_One = Ord('1');
+  C_Char_Digit_Seven = Ord('7');
+  C_Char_Digit_Nine = Ord('9');
+
+  C_Char_Dollar = Ord('$');
+  C_Char_Percent = Ord('%');
+  C_Char_Ampersand = Ord('&');
+
+  C_Char_SQuote = Ord('''');
+  C_Char_DQuote = Ord('"');
+
+  C_Char_BackSlash = Ord('\');
+  C_Char_Small_t = Ord('t');
+  C_Char_Small_n = Ord('n');
+  C_Char_Small_l = Ord('l');
+
+  C_Char_Plus = Ord('+');
+  C_Char_Minus = Ord('-');
+  C_Char_Star = Ord('*');
+  C_Char_Dot = Ord('.');
+  C_Char_Comma = Ord(',');
+  C_Char_Colon = Ord(':');
+  C_Char_SColon = Ord(';');
+  C_Char_Equ = Ord('=');
+  C_Char_LRPar = Ord('(');
+  C_Char_RRPar = Ord(')');
+  C_Char_LSPar = Ord('[');
+  C_Char_RSPar = Ord(']');
+  C_Char_LCPar = Ord('{');
+  C_Char_RCPar = Ord('}');
+  C_Char_LAngel = Ord('<');
+  C_Char_RAngel = Ord('>');
+
+
+  C_Set_ID_Follow = [C_Char_Small_a..C_Char_Small_z,
+                     C_Char_Capital_a..C_Char_Capital_z,
+                     C_Char_Digit_Zero..C_Char_Digit_Nine,
+                     C_Char_Underscore];
+
+  C_Set_Num_Follow = [C_Char_Digit_Zero..C_Char_Digit_Nine];
+  C_Set_HexNum_Follow = [C_Char_Digit_Zero..C_Char_Digit_Nine,
+                         C_Char_Capital_a..C_Char_Capital_f,
+                         C_Char_Small_a..C_Char_Small_f];
+  C_Set_OctNum_Follow = [C_Char_Digit_Zero..C_Char_Digit_Seven];
+  C_Set_BinNum_Follow = [C_Char_Digit_Zero..C_Char_Digit_One];
+
 type
   TSMESSymSet = set of TSMESymbol;
 
-function IdToSym( const s: String ): TSMESymbol;
+function IdToSym( us: PUCFS32String ): TSMESymbol;
 
 implementation
 
@@ -162,11 +220,13 @@ var
   i,maxreslen: MachineInt;
   ResTrie: THashTrie;
 
-function IdToSym(const s: String): TSMESymbol;
+function IdToSym(us: PUCFS32String): TSMESymbol;
 var ptrpack: Pointer;
     ptri: MachineInt;
+    s: String;
 begin
   Result := SMES_ID;
+  s := ucfs_to_utf8string(us);
   if Length(s) <= maxreslen then
     begin
       ptrpack := ResTrie.Lookup(upcase(s));
@@ -185,11 +245,11 @@ end;
 initialization
   ResTrie.Init(16);
   maxreslen := 1;
-  for i := Low(TResSymbol) to High(TResSymbol) do
+  for i := Low(C_Reserved_Symbol) to High(C_Reserved_Symbol) do
     begin
-      if Length(TResSymbol[i]) > maxreslen then
-        maxreslen := Length(TResSymbol[i]);
-      ResTrie.Add(Upcase(TResSymbol[i]),Pointer(PtrInt(i)+nil));
+      if Length(C_Reserved_Symbol[i]) > maxreslen then
+        maxreslen := Length(C_Reserved_Symbol[i]);
+      ResTrie.Add(Upcase(C_Reserved_Symbol[i]),Pointer(PtrInt(i)+nil));
     end;
 
 finalization

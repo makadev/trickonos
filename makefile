@@ -10,7 +10,7 @@ VALGRIND = valgrind
 PROJECTFILE = tcci.lpr
 
 ## pathes
-UNIT_PATH = util compiler machine sobject ext ext/subsys
+UNIT_PATH = util compiler machine sobject ext ext/subsys ext/methods
 INC_PATH = 
 DOC_PATH = apidoc
 OBJ_PATH = lib

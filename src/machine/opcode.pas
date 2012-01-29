@@ -175,7 +175,7 @@ type
     {call method unop(TOS) -> pop 1, push new TOS}
     isc_o_unaryop,
 
-    {do list append, special as its not a root method}
+    {do list append}
     isc_o_listappend_nr,
 
     {special, check classname and push true or false}

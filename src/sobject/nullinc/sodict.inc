@@ -45,7 +45,7 @@ begin
   Result := C_SOTYPE_DICTIONARY_NAME;
 end;
 
-function DictComparator( const s: String; data, xdata: Pointer ) : Boolean;
+function DictComparator( s: PUCFS32String; data, xdata: Pointer ) : Boolean;
 var rval: PSOInstance;
 begin
   rval := PSOInstance(PSO_Dict(xdata)^.dict.Lookup(s));
@@ -117,7 +117,7 @@ begin
               check_so_maxcollection(PSO_Dict(soself)^.dict.GetCount+1);
               soargs^[1]^.IncRef; // << entry in table
               soargs^[1]^.IncRef; // << incref again for result
-              oldval := PSOInstance(PSO_Dict(soself)^.dict.Add(so_string_get(soargs^[0]),soargs^[1]));
+              oldval := PSOInstance(PSO_Dict(soself)^.dict.Add(so_string_get_utf8(soargs^[0]),soargs^[1]));
               if Assigned(oldval) then
                 oldval^.DecRef;
               Result := soargs^[1];
@@ -141,7 +141,7 @@ begin
     begin
       if soargs^[0]^.IsType(so_string_class) then
         begin
-          Result := PSO_Dict(soself)^.dict.Lookup(so_string_get(soargs^[0]));
+          Result := PSO_Dict(soself)^.dict.Lookup(so_string_get_utf8(soargs^[0]));
           if Assigned(Result) then
             Result^.IncRef
           else
@@ -211,7 +211,7 @@ begin
       if not Assigned(setter) then
         begin
           ASSERT(PSO_Dict(FReferings[0])^.GetLocked);
-          Result := so_string_init(FHTIter.currcoll^.colstring);
+          Result := so_string_init_ucfs(ucfs_copy(FHTIter.currcoll^.colstring));
         end
       else
         Result := nil;
@@ -320,7 +320,7 @@ begin
         begin
           if not soself^.GetLocked then
             begin
-              Result := PSO_Dict(soself)^.dict.Delete(so_string_get(soargs^[0]));
+              Result := PSO_Dict(soself)^.dict.Delete(so_string_get_utf8(soargs^[0]));
               if not Assigned(Result) then
                 Result := so_nil;
             end

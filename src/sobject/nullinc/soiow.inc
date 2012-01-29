@@ -86,14 +86,14 @@ begin
          (argnum = 1) then
         begin
           if args^[0]^.IsType(so_string_class) then
-            Result := DispatchAttr(so_string_get(args^[0]),soself,nil);
+            Result := DispatchAttr(so_string_get_utf8(args^[0]),soself,nil);
         end
       else if (hashk = DEFAULT_METHOD_SetMember_Hash) and
               (name = DEFAULT_METHOD_SetMember) and
               (argnum = 2) then
         begin
           if args^[0]^.IsType(so_string_class) then
-            Result := DispatchAttr(so_string_get(args^[0]),soself,args^[1]);
+            Result := DispatchAttr(so_string_get_utf8(args^[0]),soself,args^[1]);
         end;
     end;
 end;

@@ -29,7 +29,7 @@ unit coreobj;
 
 interface
 
-uses SysUtils, commontl, corealg;
+uses SysUtils, commontl, ucfs, corealg;
 
 type
   {DOC>> Visitor for DataBucket.ForEach, xdata is passed by ForEach caller,
@@ -207,13 +207,13 @@ type
   end;
 
   {DOC>> HashTrie Visitor Type}
-  THashTrieVisitorProc = function( const s: String; data, xdata: Pointer ) : Boolean;
+  THashTrieVisitorProc = function( us: PUCFS32String; data, xdata: Pointer ) : Boolean;
 
   PHashTrieCollision = ^THashTrieCollision;
   {DOC>> HashTrie Collision Chain Element}
   THashTrieCollision = object
     {DOC>> Key}
-    colstring: String;
+    colstring: PUCFS32String;
     {DOC>> Saved Data}
     data: Pointer;
     {DOC>> Next Link in Collision}
@@ -226,22 +226,34 @@ type
   THashTrie = object
     protected
       FTrie: TDataCritBitTrie;
-      function Hash(const s: String): MachineWord;
+      function Hash(s: PUCFS32String): MachineWord;
     public
       {DOC>> Get Nr Entries}
       function GetCount: MachineInt; inline;
       {DOC>> Checks for Existence of a given Key (so, will work with
              nil data too)}
-      function Exists( const key: String ): Boolean;
+      function Exists( const key: String ): Boolean; deprecated;
+      {DOC>> Checks for Existence of a given Key}
+      function Exists( key: PUCFS32String ): Boolean;
       {DOC>> Lookup Data, returns the associated Data if key exists or nil}
-      function Lookup( const key: String ): Pointer;
+      function Lookup( const key: String ): Pointer; deprecated;
+      {DOC>> Lookup Data, returns the associated Data if key exists or nil}
+      function Lookup( key: PUCFS32String ): Pointer;
       {DOC>> Lookup Data by hash, returns the associated Data if key exists or nil}
-      function LookupByHash( h: MachineWord; const key: String ): Pointer;
+      function LookupByHash( h: MachineWord; const key: String ): Pointer; deprecated;
+      {DOC>> Lookup Data by hash, returns the associated Data if key exists or nil}
+      function LookupByHash( h: MachineWord; key: PUCFS32String ): Pointer;
       {DOC>> Add/Replace, Creates an association for Key or Replaces
              the current one (returning the old data)}
-      function Add( const key: String; newdata: Pointer ): Pointer;
+      function Add( const key: String; newdata: Pointer ): Pointer; deprecated;
+      {DOC>> Add/Replace, Creates an association for Key or Replaces
+             the current one (returning the old data)
+             key is copied for new entries}
+      function Add( key: PUCFS32String; newdata: Pointer ): Pointer;
       {DOC>> Remove an association, return associated Data}
-      function Delete( const key: String ): Pointer;
+      function Delete( const key: String ): Pointer; deprecated;
+      {DOC>> Remove an association, return associated Data}
+      function Delete( key: PUCFS32String ): Pointer;
       {DOC>> Initialize Trie with APrealloc (Default 0), Slots}
       procedure Init( APrealloc: MachineInt = 0; ALinGrow: MachineInt = 8 ); inline;
       {DOC>> Pack the Tries internal nodelist (f.e. after many removals,
@@ -405,7 +417,7 @@ begin
   FTrie.Pack;
 end;
 
-function ObjectHashTrieCleaner( const unused: String; data, xunused: Pointer ): Boolean;
+function ObjectHashTrieCleaner( unused: PUCFS32String; data, xunused: Pointer ): Boolean;
 begin
   if Assigned(data) then
     TObject(data).Free;
@@ -431,10 +443,10 @@ end;
 
 { THashTrie }
 
-function THashTrie.Hash(const s: String): MachineWord;
+function THashTrie.Hash(s: PUCFS32String): MachineWord;
 begin
-  if Length(s) > 0 then
-    Result := mas3hash(s[1],Length(s))
+  if ucfs_length(s) > 0 then
+    Result := mas3hash_sigma(s)
   else
     Result := mas3hash_len0;
 end;
@@ -445,6 +457,14 @@ begin
 end;
 
 function THashTrie.Exists(const key: String): Boolean;
+var tmps: PUCFS32String;
+begin
+  tmps := ucfs_utf8us(key);
+  Result := Exists(tmps);
+  ucfs_release(tmps);
+end;
+
+function THashTrie.Exists(key: PUCFS32String): Boolean;
 var chain: PHashTrieCollision;
     idx: MachineInt;
 begin
@@ -454,13 +474,21 @@ begin
     begin
       chain := FTrie.GetNodeData(idx);
       while Assigned(chain) and
-            (chain^.colstring <> key) do
+            (ucfs_compare(chain^.colstring,key) <> 0) do
         chain := chain^.next;
       Result := Assigned(chain);
     end;
 end;
 
 function THashTrie.Lookup(const key: String): Pointer;
+var tmps: PUCFS32String;
+begin
+  tmps := ucfs_utf8us(key);
+  Result := Lookup(tmps);
+  ucfs_release(tmps);
+end;
+
+function THashTrie.Lookup(key: PUCFS32String): Pointer;
 var chain: PHashTrieCollision;
     idx: MachineInt;
 begin
@@ -470,16 +498,22 @@ begin
     begin
       chain := FTrie.GetNodeData(idx);
       while Assigned(chain) and
-            (chain^.colstring <> key) do
+            (ucfs_compare(chain^.colstring,key) <> 0) do
         chain := chain^.next;
       if Assigned(chain) then
-        begin
-          Result := chain^.data;
-        end;
+        Result := chain^.data;
     end;
 end;
 
 function THashTrie.LookupByHash(h: MachineWord; const key: String): Pointer;
+var tmps: PUCFS32String;
+begin
+  tmps := ucfs_utf8us(key);
+  Result := LookupByHash(h,tmps);
+  ucfs_release(tmps);
+end;
+
+function THashTrie.LookupByHash(h: MachineWord; key: PUCFS32String): Pointer;
 var chain: PHashTrieCollision;
     idx: MachineInt;
 begin
@@ -489,16 +523,22 @@ begin
     begin
       chain := FTrie.GetNodeData(idx);
       while Assigned(chain) and
-            (chain^.colstring <> key) do
+            (ucfs_compare(chain^.colstring,key) <> 0) do
         chain := chain^.next;
       if Assigned(chain) then
-        begin
-          Result := chain^.data;
-        end;
+        Result := chain^.data;
     end;
 end;
 
 function THashTrie.Add(const key: String; newdata: Pointer): Pointer;
+var tmps: PUCFS32String;
+begin
+  tmps := ucfs_utf8us(key);
+  Result := Add(tmps,newdata);
+  ucfs_release(tmps);
+end;
+
+function THashTrie.Add(key: PUCFS32String; newdata: Pointer): Pointer;
 var ochain,chain: PHashTrieCollision;
     idx: MachineInt;
 begin
@@ -511,7 +551,7 @@ begin
       {check for existing entry}
       chain := ochain;
       while Assigned(chain) and
-            (chain^.colstring <> key) do
+            (ucfs_compare(chain^.colstring,key) <> 0) do
         chain := chain^.next;
       if Assigned(chain) then
         begin
@@ -523,13 +563,21 @@ begin
     end;
   {add new (or first) collision}
   chain := New(PHashTrieCollision);
-  chain^.colstring := key;
+  chain^.colstring := ucfs_copy(key);
   chain^.data := newdata;
   chain^.next := ochain;
   FTrie.SetNodeData(idx,chain);
 end;
 
 function THashTrie.Delete(const key: String): Pointer;
+var tmps: PUCFS32String;
+begin
+  tmps := ucfs_utf8us(key);
+  Result := Delete(tmps);
+  ucfs_release(tmps);
+end;
+
+function THashTrie.Delete(key: PUCFS32String): Pointer;
 var pchain,chain: PHashTrieCollision;
     idx: MachineInt;
     h: MachineWord;
@@ -545,7 +593,7 @@ begin
           {check for existing entry, preserve predecessor}
           pchain := nil;
           while Assigned(chain) and
-                (chain^.colstring <> key) do
+                (ucfs_compare(chain^.colstring,key) <> 0) do
             begin
               pchain := chain;
               chain := chain^.next;
@@ -565,6 +613,7 @@ begin
                 end
               else
                 pchain^.next := chain^.next;
+              ucfs_release(chain^.colstring);
               Dispose(chain);
             end;
         end;
@@ -614,6 +663,7 @@ begin
       while Assigned(chain) do
         begin
           dchain := chain^.next;
+          ucfs_release(chain^.colstring);
           Dispose(chain);
           chain := dchain;
         end;

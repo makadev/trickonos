@@ -195,13 +195,13 @@ begin
                 end
               else
                 begin
-                  put_error_for(CurrentStreamLine,-1,Result^.shortname,'Assembling failed');
+                  put_error_for(cscan_line,-1,Result^.shortname,'Assembling failed');
                   put_critical('Couldn''t load "'+Result^.fullname+'"');
                 end;
             end
           else
             begin
-              put_error_for(CurrentStreamLine,-1,Result^.shortname,'Compilation failed');
+              put_error_for(cscan_line,-1,Result^.shortname,'Compilation failed');
               put_critical('Couldn''t load "'+Result^.fullname+'"');
             end;
           ReleaseCC;

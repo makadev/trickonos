@@ -26,7 +26,7 @@ unit assembl;
 interface
 
 uses
-  SysUtils, commontl, eomsg, coreobj, bytecode, opcode;
+  SysUtils, commontl, ucfs, eomsg, coreobj, bytecode, opcode;
 
 type
   TAssemblyNode = class
@@ -81,9 +81,11 @@ type
       function GenLabel: TLabelNode;
 
       {generic, stab entry is operand}
-      procedure InsStabLoad( l,c: Integer; oc: TInsOpcodeCode; const sentry: String );
+      procedure InsStabLoad( l,c: Integer; oc: TInsOpcodeCode; sentry: PUCFS32String );
+
       {generic, no operand (or known from opcode)}
       procedure InsNoOperand( l,c: Integer; oc: TInsOpcodeCode );
+
       {generic, operand is Integer}
       procedure InsOperand( l,c: Integer; oc: TInsOpcodeCode; op: VMInt );
 
@@ -114,54 +116,36 @@ end;
 
 { stab }
 
-type
-  PStabEntry = ^TStabEntry;
-  TStabEntry = record
-    idx: VMInt;
-    s: String;
-  end;
-
 var
   StabEntryNr: VMInt;
   STabLookupTrie: THashTrie;
 
-function STabEntryId( const s: String ): VMInt;
-var pstabe: PStabEntry;
+function STabEntryId( s: PUCFS32String ): VMInt;
 begin
-  pstabe := STabLookupTrie.Lookup(s);
-  if not Assigned(pstabe) then
+  if not STabLookupTrie.Exists(s) then
     begin
-      pstabe := New(PStabEntry);
-      pstabe^.idx := StabEntryNr;
       Result := StabEntryNr;
-      pstabe^.s := s;
+      STabLookupTrie.Add(s,PtrInt(StabEntryNr)+nil);
       Inc(StabEntryNr,1);
-      STabLookupTrie.Add(s,pstabe);
     end
   else
-    Result := pstabe^.idx;
+    begin
+      Result := PtrInt(STabLookupTrie.Lookup(s)-nil);
+    end;
 end;
 
 {init&done}
 
-function StabEntryRelease( const s: String; data, xdata: Pointer ): Boolean;
-begin
-  Dispose(PStabEntry(data));
-  Result := true;
-end;
-
 procedure InitAssembler;
 begin
-  STabLookupTrie.Init(100);
+  STabLookupTrie.Init(CL_LinearRegrow_Fast);
   StabEntryNr := 0;
   NextLabel := 0;
 end;
 
 procedure DoneAssembler;
 begin
-  STabLookupTrie.ForEach(@StabEntryRelease,nil);
-  STabLookupTrie.Clear;
-  STabLookupTrie.Pack;
+  STabLookupTrie.Done;
 end;
 
 { TAssembly }
@@ -306,7 +290,7 @@ begin
     FLast := FFirst;
 end;
 
-procedure TAssembly.InsStabLoad(l,c: Integer; oc: TInsOpcodeCode; const sentry: String);
+procedure TAssembly.InsStabLoad(l,c: Integer; oc: TInsOpcodeCode; sentry: PUCFS32String);
 var n: TInstrNode;
 begin
   AppendNewIns;
@@ -362,9 +346,11 @@ begin
   ASSERT(n.Ins.IsValid);
 end;
 
-function StabWriter( const s: String; data, xdata: Pointer ): Boolean;
+function StabWriter( us: PUCFS32String; data, xdata: Pointer ): Boolean;
+var s: String;
 begin
-  PByteCodeBlock(xdata)^.stab[PStabEntry(data)^.idx] := s;
+  s := ucfs_to_utf8string(us);
+  PByteCodeBlock(xdata)^.stab[PtrInt(data-nil)] := s;
   Inc(PByteCodeBlock(xdata)^.bcsize,Length(s));
   Result := true;
 end;
@@ -396,9 +382,7 @@ begin
   STabLookupTrie.ForEach(@StabWriter,@codeblock);
 
   {release a bit of mem}
-  STabLookupTrie.ForEach(@StabEntryRelease,nil);
-  STabLookupTrie.Clear;
-  STabLookupTrie.Pack;
+  STabLookupTrie.Done;
 
   {linking pass 1, collect label positions, count instructions}
   if NextLabel > 0 then

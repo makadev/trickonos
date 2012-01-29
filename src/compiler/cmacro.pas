@@ -26,7 +26,7 @@ unit cmacro;
 interface
 
 uses
-  SysUtils, eomsg, appstart, ccbase, assembl, ccexprp, ccstatn, cscan,
+  SysUtils, eomsg, ucfs, appstart, ccbase, assembl, ccexprp, ccstatn, cscan,
   csyms, opcode;
 
 type
@@ -107,7 +107,7 @@ implementation
 { TCoreMacro_LNMarker }
 
 class function TCoreMacro_LNMarker.Parse: TParserNode;
-var lmarker: String;
+var lmarker: PUCFS32String;
 begin
   IncRec;
   ExpectSym(SMES_ID);
@@ -118,7 +118,7 @@ begin
   lmarker := CurrentToken.Pattern;
   NextToken;
   ExpectSym(SMES_SColon);
-  StreamScannerSetLComment(lmarker);
+  cscan_setlcmarker(lmarker);
   NextToken;
   DecRec;
 end;
@@ -132,7 +132,7 @@ end;
 { TCoreMacro_ECCMarker }
 
 class function TCoreMacro_ECCMarker.Parse: TParserNode;
-var imarker, omarker: String;
+var imarker, omarker: PUCFS32String;
 begin
   IncRec;
   ExpectSym(SMES_ID);
@@ -148,7 +148,7 @@ begin
   omarker := CurrentToken.Pattern;
   NextToken;
   ExpectSym(SMES_SColon);
-  StreamScannerSetECComment(imarker,omarker);
+  cscan_seteccmarker(imarker,omarker);
   NextToken;
   DecRec;
 end;
@@ -191,7 +191,7 @@ end;
 { TCoreMacro_Marker }
 
 class function TCoreMacro_Marker.Parse: TParserNode;
-var imarker, omarker: String;
+var imarker, omarker: PUCFS32String;
 begin
   IncRec;
   ExpectSym(SMES_ID);
@@ -207,7 +207,7 @@ begin
   omarker := CurrentToken.Pattern;
   NextToken;
   ExpectSym(SMES_SColon);
-  StreamScannerSetMarker(imarker,omarker);
+  cscan_setcodemarker(imarker,omarker);
   NextToken;
   DecRec;
 end;
@@ -277,7 +277,7 @@ begin
   Result.SetLineInfoFrom(CurrentToken);
   Result.AddOcc(CurrentToken);
   NextToken;
-  if (Length(TScanRecord(Result.Occ[0]).Pattern) > 4) and
+  if (ucfs_length(TScanRecord(Result.Occ[0]).Pattern) > 4) and
      (CurrentToken.TokenType = SMES_SColon) then
     NextToken  // allow no expression for LineEnding only
   else
@@ -294,9 +294,9 @@ begin
   IncRec;
   Assert(Count >= 1);
   ASSERT(Occ[0].ClassType = TScanRecord);
-  ASSERT(((Count=2) and (Occ[1] is TParserNode)) or (Length(TScanRecord(Occ[0]).Pattern) > 5));
+  ASSERT(((Count=2) and (Occ[1] is TParserNode)) or (ucfs_length(TScanRecord(Occ[0]).Pattern) > 5));
   Result := true;
-  if Length(TScanRecord(Occ[0]).Pattern) > 5 then
+  if ucfs_length(TScanRecord(Occ[0]).Pattern) > 5 then
     begin
       if Count = 2 then
         begin
@@ -384,7 +384,7 @@ begin
     end
   else
     begin
-      put_error_for(Line,Column,CurrentStreamID,
+      put_error_for(Line,Column,ucfs_to_utf8string(cscan_streamid),
         'Unexpected Number of Arguments for HALT. Expected 0..1, Got '+IntToStr(Count-1));
       Result := false;
     end;

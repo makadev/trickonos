@@ -587,14 +587,14 @@ begin
      (so_integer_get(soargs^[0],true) <= tpl_stackptr) then
     begin
       if so_integer_get(soargs^[0],true) <= 0 then
-        Result := so_string_init('CURRENT')
+        Result := so_string_init_a7('CURRENT')
       else
         begin
           if tpl_stack[tpl_stackptr-so_integer_get(soargs^[0],true)].code^.pbcode^.image[
             tpl_stack[tpl_stackptr-so_integer_get(soargs^[0],true)].ip ].GetOpcode in CTPLIncludeOpcodes then
-            Result := so_string_init('INCLUSION')
+            Result := so_string_init_a7('INCLUSION')
           else
-            Result := so_string_init('CALL');
+            Result := so_string_init_a7('CALL');
         end;
     end
   else
@@ -609,7 +609,7 @@ begin
      (so_integer_get(soargs^[0],true) >= 0) and
      (so_integer_get(soargs^[0],true) <= tpl_stackptr) then
     begin
-      Result := so_string_init(tpl_stack[tpl_stackptr-so_integer_get(soargs^[0],true)].code^.shortname);
+      Result := so_string_init_utf8(tpl_stack[tpl_stackptr-so_integer_get(soargs^[0],true)].code^.shortname);
     end
   else
     Result := nil;
@@ -623,7 +623,7 @@ begin
      (so_integer_get(soargs^[0],true) >= 0) and
      (so_integer_get(soargs^[0],true) <= tpl_stackptr) then
     begin
-      Result := so_string_init(tpl_stack[tpl_stackptr-so_integer_get(soargs^[0],true)].code^.fullname);
+      Result := so_string_init_utf8(tpl_stack[tpl_stackptr-so_integer_get(soargs^[0],true)].code^.fullname);
     end
   else
     Result := nil;

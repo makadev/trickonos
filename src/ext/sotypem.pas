@@ -1,6 +1,6 @@
-{   Loader/Starter
+{   Unit for type extension (methods/attr handler) loading
 
-    Copyright (C) 2011-2012  Matthias Karbe
+    Copyright (C) 2012  Matthias Karbe
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,38 +19,25 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 }
 
-program tcci;
+unit sotypem;
 
 {$mode objfpc}{$H+}
 
+interface
 
-uses sysutils, appstart, eomsg
-  {compiler macros},
-  cmacro
-  {type/method extension},
-  sotypem
-  {subsystems},
-  sossi;
+uses SysUtils, appstart
+     {typem units},
+     exstring;
 
-{$R *.res}
+implementation
 
+procedure so_tm_interfacing;
 begin
-  ExitCode := 2;
-{$IFDEF CLEANSHUTDOWN}
-  try
-{$ENDIF}
-  appstart.Setup;
-  appstart.Run;
-{$IFDEF CLEANSHUTDOWN}
-  except
-    on e: ECriticalException do
-      begin
-        // ignore for clean shutdown - exitcode is set
-      end;
-    on Exception do
-      raise; // reraise others
-  end;
-{$ENDIF}
-  appstart.Shutdown;
+  exstring.InitAndRegister;
+end;
+
+initialization
+  appstart.RegisterInit(@so_tm_interfacing);
+
 end.
 

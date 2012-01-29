@@ -26,7 +26,7 @@ unit ccexprn;
 interface
 
 uses
-  SysUtils, commontl, eomsg, ccbase, cscan, csyms, assembl, opcode;
+  SysUtils, commontl, ucfs, eomsg, ccbase, cscan, csyms, assembl, opcode, ffpa;
 
 type
   {int or string}
@@ -106,8 +106,8 @@ type
       function Compile: Boolean; override;
   end;
 
-procedure ExprAssembleTOSSetter( Line, Column: Integer; Assembly: TAssembly; const name: String );
-procedure ExprAssembleTOSGetter( Line, Column: Integer; Assembly: TAssembly; const name: String );
+procedure ExprAssembleTOSSetter( Line, Column: Integer; Assembly: TAssembly; name: PUCFS32String );
+procedure ExprAssembleTOSGetter( Line, Column: Integer; Assembly: TAssembly; name: PUCFS32String );
 
 implementation
 
@@ -130,7 +130,7 @@ begin
   ASSERT(Occ[1].ClassType = TScanRecord);
   Result := TParserNode(Occ[0]).Compile;
   Assembly.AppendAssembly(TParserNode(Occ[0]).Assembly);
-  Assembly.InsStabLoad(Line,Column,isc_o_typecheck_stab,Upcase(TScanRecord(Occ[1]).Pattern));
+  Assembly.InsStabLoad(Line,Column,isc_o_typecheck_stab,TScanRecord(Occ[1]).Pattern);
   DecRec;
 end;
 
@@ -149,6 +149,8 @@ begin
 end;
 
 function TExprConst.Compile: Boolean;
+var tmps: String;
+    tmpi: PTFM_Integer;
 begin
   CreateAssembly;
   IncRec;
@@ -163,44 +165,56 @@ begin
 
     SMES_Int:
       begin
-        if StrToIntDef(TScanRecord(Occ[0]).Pattern,-1) >= 0 then
-          Assembly.InsOperand(Line,Column,isc_m_load_int_oper,StrToInt(TScanRecord(Occ[0]).Pattern))
+        tmps := ucfs_to_string(TScanRecord(Occ[0]).Pattern);
+        if StrToIntDef(tmps,-1) >= 0 then
+          Assembly.InsOperand(Line,Column,isc_m_load_int_oper,StrToInt(tmps))
         else
           begin
-            put_error_for(Line,Column,CurrentStreamID,'Int >= 31 bit currently not supported.');
-            Result := false;
+            {$WARNING todo: q scan part}
+            tmpi := tfm_from_string(tmps,32);
+            tmps := tfm_to_hex(tmpi);
+            TScanRecord(Occ[0]).PatternSetS(tmps);
+            TScanRecord(Occ[0]).TokenType := SMES_IntHex;
+            Assembly.InsStabLoad(Line,Column,isc_m_load_int_stab,TScanRecord(Occ[0]).Pattern);
           end;
-        // Assembly.InsStabLoad(Line,Column,isc_m_load_int_stab,TScanRecord(Occ[0]).Pattern);
       end;
     SMES_IntBin:
       begin
-        if StrToIntDef('%'+TScanRecord(Occ[0]).Pattern,-1) >= 0 then
-          Assembly.InsOperand(Line,Column,isc_m_load_int_oper,StrToInt('%'+TScanRecord(Occ[0]).Pattern))
+        {$WARNING todo: q scan part, missing bin conv}
+        tmps := ucfs_to_string(TScanRecord(Occ[0]).Pattern);
+        if StrToIntDef('%'+tmps,-1) >= 0 then
+          Assembly.InsOperand(Line,Column,isc_m_load_int_oper,StrToInt('%'+tmps))
         else
           begin
-            put_error_for(Line,Column,CurrentStreamID,'Int > 31 bit currently not supported.');
+            put_error_for(Line,Column,ucfs_to_string(cscan_streamid),'Int > 31 bit currently not supported.');
             Result := false;
           end;
         // Assembly.InsStabLoad(Line,Column,isc_m_load_int_stab,'%'+TScanRecord(Occ[0]).Pattern);
       end;
     SMES_IntHex:
       begin
-        if StrToIntDef('$'+TScanRecord(Occ[0]).Pattern,-1) >= 0 then
-          Assembly.InsOperand(Line,Column,isc_m_load_int_oper,StrToInt('$'+TScanRecord(Occ[0]).Pattern))
+        tmps := ucfs_to_string(TScanRecord(Occ[0]).Pattern);
+        if StrToIntDef('$'+tmps,-1) >= 0 then
+          Assembly.InsOperand(Line,Column,isc_m_load_int_oper,StrToInt('$'+tmps))
         else
           begin
-            put_error_for(Line,Column,CurrentStreamID,'Int > 31 bit currently not supported.');
-            Result := false;
+            {$WARNING todo: q scan part}
+            tmpi := tfm_from_hex(tmps,32); // round trip conv -> strip leading zero, overflow, ..
+            tmps := tfm_to_hex(tmpi);
+            TScanRecord(Occ[0]).PatternSetS(tmps);
+            TScanRecord(Occ[0]).TokenType := SMES_IntHex;
+            Assembly.InsStabLoad(Line,Column,isc_m_load_int_stab,TScanRecord(Occ[0]).Pattern);
           end;
-        // Assembly.InsStabLoad(Line,Column,isc_m_load_int_stab,'$'+TScanRecord(Occ[0]).Pattern);
       end;
     SMES_IntOct:
       begin
-        if StrToIntDef('&'+TScanRecord(Occ[0]).Pattern,-1) >= 0 then
-          Assembly.InsOperand(Line,Column,isc_m_load_int_oper,StrToInt('&'+TScanRecord(Occ[0]).Pattern))
+        {$WARNING todo: q scan part, missing oct conv (prob. extend string conv to variable radix)}
+        tmps := ucfs_to_string(TScanRecord(Occ[0]).Pattern);
+        if StrToIntDef('&'+tmps,-1) >= 0 then
+          Assembly.InsOperand(Line,Column,isc_m_load_int_oper,StrToInt('&'+tmps))
         else
           begin
-            put_error_for(Line,Column,CurrentStreamID,'Int > 31 bit currently not supported.');
+            put_error_for(Line,Column,ucfs_to_string(cscan_streamid),'Int > 31 bit currently not supported.');
             Result := false;
           end;
         // Assembly.InsStabLoad(Line,Column,isc_m_load_int_stab,'&'+TScanRecord(Occ[0]).Pattern);
@@ -313,7 +327,7 @@ begin
                 begin
                   Assembly.AppendAssembly(TParserNode(Occ[i+1]).Assembly);
                   Assembly.InsStabLoad(Occ[i].Line,Occ[i].Column,isc_o_setm_stab,
-                    upcase(TScanRecord(Occ[i]).Pattern));
+                                       TScanRecord(Occ[i]).Pattern);
                 end
               else
                 begin
@@ -333,12 +347,12 @@ begin
   DecRec;
 end;
 
-procedure ExprAssembleTOSGetter( Line, Column: Integer; Assembly: TAssembly; const name: String );
+procedure ExprAssembleTOSGetter( Line, Column: Integer; Assembly: TAssembly; name: PUCFS32String );
 begin
   if FrameStackNoFun or
      (not FrameStackTopFun^.local_index^.Exists(name)) then
     {default global load}
-    Assembly.InsStabLoad(Line,Column,isc_m_getenv_stab,Upcase(name))
+    Assembly.InsStabLoad(Line,Column,isc_m_getenv_stab,name)
   else
     begin
       {local load slot in function frame}
@@ -366,7 +380,7 @@ begin
   ASSERT(Count=1);
   ASSERT(Occ[0].ClassType = TScanRecord);
   IncRec;
-  ExprAssembleTOSGetter(Line,Column,Assembly,Upcase(TScanRecord(Occ[0]).Pattern));
+  ExprAssembleTOSGetter(Line,Column,Assembly,TScanRecord(Occ[0]).Pattern);
   Result := true;
   DecRec;
 end;
@@ -415,7 +429,7 @@ begin
   Result := TParserNode(Occ[0]).Compile;
   Assembly.AppendAssembly(TParserNode(Occ[0]).Assembly);
   {assemble member get}
-  Assembly.InsStabLoad(Line,Column,isc_o_getm_stab,Upcase(TScanRecord(Occ[1]).Pattern));
+  Assembly.InsStabLoad(Line,Column,isc_o_getm_stab,TScanRecord(Occ[1]).Pattern);
   DecRec;
 end;
 
@@ -452,7 +466,7 @@ begin
         end;
       {load ident for call -> TOS}
       Assembly.InsStabLoad(Occ[0].Line,Occ[0].Column,isc_m_load_string_stab,
-        Upcase(TScanRecord(TParserNode(Occ[0]).Occ[1]).Pattern));
+                           TScanRecord(TParserNode(Occ[0]).Occ[1]).Pattern);
       {callm}
       Assembly.InsCall(Line,Column, isc_o_callm_nrops, Count-1 );
     end
@@ -472,7 +486,7 @@ begin
   if not check_cc_maxargs(Count-1) then
     begin
       Result := false;
-      put_error_for(Line,Column,CurrentStreamID,'Call exceeds max. arg Limit.');
+      put_error_for(Line,Column,ucfs_to_string(cscan_streamid),'Call exceeds max. arg Limit.');
     end;
   DecRec;
 end;
@@ -621,7 +635,7 @@ begin
   put_internalerror(2011112946);
 end;
 
-procedure ExprAssembleTOSSetter( Line, Column: Integer; Assembly: TAssembly; const name: String );
+procedure ExprAssembleTOSSetter( Line, Column: Integer; Assembly: TAssembly; name: PUCFS32String );
 begin
   {setter}
   if FrameStackNoFun or
@@ -653,7 +667,7 @@ begin
       Result := TParserNode(Occ[1]).Compile and Result;
       Assembly.AppendAssembly(TParserNode(Occ[1]).Assembly);
       {setter}
-      ExprAssembleTOSSetter(Line,Column,Assembly,Upcase(TScanRecord(TParserNode(Occ[0]).Occ[0]).Pattern));
+      ExprAssembleTOSSetter(Line,Column,Assembly,TScanRecord(TParserNode(Occ[0]).Occ[0]).Pattern);
     end
   else if Occ[0].ClassType = TExprSelect then
     begin
@@ -669,7 +683,7 @@ begin
       Assembly.AppendAssembly(TParserNode(Occ[1]).Assembly);
       {setm}
       Assembly.InsStabLoad(Line,Column,isc_o_setm_stab,
-        Upcase(TScanRecord(TParserNode(Occ[0]).Occ[1]).Pattern));
+        TScanRecord(TParserNode(Occ[0]).Occ[1]).Pattern);
     end
   else if Occ[0].ClassType = TExprIndex then
     begin
@@ -691,7 +705,7 @@ begin
     end
   else
     begin
-      put_error_for(Line, Column, CurrentStreamID, 'Invalid Assignment.');
+      put_error_for(Line, Column, ucfs_to_string(cscan_streamid), 'Invalid Assignment.');
       Result := false;
     end;
   DecRec;

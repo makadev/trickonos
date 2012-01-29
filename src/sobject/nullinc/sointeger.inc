@@ -414,7 +414,7 @@ function _Integer_ToStr_( const mname: String; soself: PSOInstance; soargs: PSOM
 begin
   if argnum = 0 then
     begin
-      Result := so_string_init(tfm_to_string(PSO_Integer(soself)^.fnum));
+      Result := so_string_init_a7(tfm_to_string(PSO_Integer(soself)^.fnum));
     end
   else
     Result := init_invargnum_error(soself,argnum,mname);

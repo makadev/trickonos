@@ -83,9 +83,9 @@ const
 const
   TSOClsString: TSOTypeCls = (
     IsMortal: true;
-    Wipe: true;
+    Wipe: false;
     InstanceSize: SizeOf( TSO_String );
-    PostConstructor: nil { @socls_String_PostConstructor };
+    PostConstructor: @socls_String_PostConstructor;
     PreDestructor: @socls_String_PreDestructor;
     GCEnumerator: nil { @socls_String_GCEnumerator };
     MethodCall: @socls_String_MethodCall;

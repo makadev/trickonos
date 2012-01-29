@@ -480,27 +480,27 @@ begin
 end;
 
 initialization
-  DEFAULT_METHOD_SetMember_Hash := mas3hash(DEFAULT_METHOD_SetMember[1],Length(DEFAULT_METHOD_SetMember));
-  DEFAULT_METHOD_GetMember_Hash := mas3hash(DEFAULT_METHOD_GetMember[1],Length(DEFAULT_METHOD_GetMember));
-  DEFAULT_METHOD_SetIndex_Hash := mas3hash(DEFAULT_METHOD_SetIndex[1],Length(DEFAULT_METHOD_SetIndex));
-  DEFAULT_METHOD_GetIndex_Hash := mas3hash(DEFAULT_METHOD_GetIndex[1],Length(DEFAULT_METHOD_GetIndex));
-  DEFAULT_METHOD_BinOpAdd_Hash := mas3hash(DEFAULT_METHOD_BinOpAdd[1],Length(DEFAULT_METHOD_BinOpAdd));
-  DEFAULT_METHOD_BinOpSub_Hash := mas3hash(DEFAULT_METHOD_BinOpSub[1],Length(DEFAULT_METHOD_BinOpSub));
-  DEFAULT_METHOD_BinOpMul_Hash := mas3hash(DEFAULT_METHOD_BinOpMul[1],Length(DEFAULT_METHOD_BinOpMul));
-  DEFAULT_METHOD_BinOpDiv_Hash := mas3hash(DEFAULT_METHOD_BinOpDiv[1],Length(DEFAULT_METHOD_BinOpDiv));
-  DEFAULT_METHOD_BinOpMod_Hash := mas3hash(DEFAULT_METHOD_BinOpMod[1],Length(DEFAULT_METHOD_BinOpMod));
-  DEFAULT_METHOD_BinOpShl_Hash := mas3hash(DEFAULT_METHOD_BinOpShl[1],Length(DEFAULT_METHOD_BinOpShl));
-  DEFAULT_METHOD_BinOpShr_Hash := mas3hash(DEFAULT_METHOD_BinOpShr[1],Length(DEFAULT_METHOD_BinOpShr));
-  DEFAULT_METHOD_BinOpRol_Hash := mas3hash(DEFAULT_METHOD_BinOpRol[1],Length(DEFAULT_METHOD_BinOpRol));
-  DEFAULT_METHOD_BinOpRor_Hash := mas3hash(DEFAULT_METHOD_BinOpRor[1],Length(DEFAULT_METHOD_BinOpRor));
-  DEFAULT_METHOD_BinOpAnd_Hash := mas3hash(DEFAULT_METHOD_BinOpAnd[1],Length(DEFAULT_METHOD_BinOpAnd));
-  DEFAULT_METHOD_BinOpOr_Hash := mas3hash(DEFAULT_METHOD_BinOpOr[1],Length(DEFAULT_METHOD_BinOpOr));
-  DEFAULT_METHOD_BinOpXor_Hash := mas3hash(DEFAULT_METHOD_BinOpXor[1],Length(DEFAULT_METHOD_BinOpXor));
-  DEFAULT_METHOD_UnOpNeg_Hash := mas3hash(DEFAULT_METHOD_UnOpNeg[1],Length(DEFAULT_METHOD_UnOpNeg));
-  DEFAULT_METHOD_UnOpAbs_Hash := mas3hash(DEFAULT_METHOD_UnOpAbs[1],Length(DEFAULT_METHOD_UnOpAbs));
-  DEFAULT_METHOD_UnOpNot_Hash := mas3hash(DEFAULT_METHOD_UnOpNot[1],Length(DEFAULT_METHOD_UnOpNot));
-  DEFAULT_METHOD_DirectCall_Hash := mas3hash(DEFAULT_METHOD_DirectCall[1],Length(DEFAULT_METHOD_DirectCall));
-  SPECIAL_METHOD_Create_Hash := mas3hash(SPECIAL_METHOD_Create[1],Length(SPECIAL_METHOD_Create));
+  DEFAULT_METHOD_SetMember_Hash := mas3hash_sigma_s(DEFAULT_METHOD_SetMember);
+  DEFAULT_METHOD_GetMember_Hash := mas3hash_sigma_s(DEFAULT_METHOD_GetMember);
+  DEFAULT_METHOD_SetIndex_Hash := mas3hash_sigma_s(DEFAULT_METHOD_SetIndex);
+  DEFAULT_METHOD_GetIndex_Hash := mas3hash_sigma_s(DEFAULT_METHOD_GetIndex);
+  DEFAULT_METHOD_BinOpAdd_Hash := mas3hash_sigma_s(DEFAULT_METHOD_BinOpAdd);
+  DEFAULT_METHOD_BinOpSub_Hash := mas3hash_sigma_s(DEFAULT_METHOD_BinOpSub);
+  DEFAULT_METHOD_BinOpMul_Hash := mas3hash_sigma_s(DEFAULT_METHOD_BinOpMul);
+  DEFAULT_METHOD_BinOpDiv_Hash := mas3hash_sigma_s(DEFAULT_METHOD_BinOpDiv);
+  DEFAULT_METHOD_BinOpMod_Hash := mas3hash_sigma_s(DEFAULT_METHOD_BinOpMod);
+  DEFAULT_METHOD_BinOpShl_Hash := mas3hash_sigma_s(DEFAULT_METHOD_BinOpShl);
+  DEFAULT_METHOD_BinOpShr_Hash := mas3hash_sigma_s(DEFAULT_METHOD_BinOpShr);
+  DEFAULT_METHOD_BinOpRol_Hash := mas3hash_sigma_s(DEFAULT_METHOD_BinOpRol);
+  DEFAULT_METHOD_BinOpRor_Hash := mas3hash_sigma_s(DEFAULT_METHOD_BinOpRor);
+  DEFAULT_METHOD_BinOpAnd_Hash := mas3hash_sigma_s(DEFAULT_METHOD_BinOpAnd);
+  DEFAULT_METHOD_BinOpOr_Hash := mas3hash_sigma_s(DEFAULT_METHOD_BinOpOr);
+  DEFAULT_METHOD_BinOpXor_Hash := mas3hash_sigma_s(DEFAULT_METHOD_BinOpXor);
+  DEFAULT_METHOD_UnOpNeg_Hash := mas3hash_sigma_s(DEFAULT_METHOD_UnOpNeg);
+  DEFAULT_METHOD_UnOpAbs_Hash := mas3hash_sigma_s(DEFAULT_METHOD_UnOpAbs);
+  DEFAULT_METHOD_UnOpNot_Hash := mas3hash_sigma_s(DEFAULT_METHOD_UnOpNot);
+  DEFAULT_METHOD_DirectCall_Hash := mas3hash_sigma_s(DEFAULT_METHOD_DirectCall);
+  SPECIAL_METHOD_Create_Hash := mas3hash_sigma_s(SPECIAL_METHOD_Create);
 
 end.
 

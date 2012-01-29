@@ -27,7 +27,7 @@ unit solnull;
 interface
 
 uses
-  SysUtils, commontl, eomsg, socore, coreobj, ccache, ffpa;
+  SysUtils, commontl, eomsg, socore, coreobj, ccache, ffpa, ucfs;
 
 
 const
@@ -88,9 +88,17 @@ function init_invargnum_error(soself: PSOInstance; argnum: MachineInt; const opn
 function init_lockmod(soself: PSOInstance; const opname: String): PSOInstance; inline;
 
 {string}
-function so_string_init( const s: String ): PSOInstance; inline;
-function so_string_get( sostring: PSOInstance ): String; inline;
-
+function so_string_init_a7( const s: String ): PSOInstance; inline;
+function so_string_init_utf8( const s: String ): PSOInstance; inline;
+function so_string_init_char( uc: TUCFS32Char ): PSOInstance; inline;
+function so_string_init_ucfs( ps: PUCFS32String ): PSOInstance; inline;
+function so_string_init_empty: PSOInstance; inline;
+function so_string_length( sostring: PSOInstance ): VMInt; inline;
+function so_string_get_ucfs( sostring: PSOInstance ): PUCFS32String; inline;
+function so_string_get_a7( sostring: PSOInstance; dereplace: Boolean = false ): String; inline;
+function so_string_get_utf8( sostring: PSOInstance ): String; inline;
+procedure so_string_set_ucfs( sostring: PSOInstance; newstr: PUCFS32String; releaseold: Boolean = true ); inline;
+procedure so_string_addmethod( const mname: String; methh: TSOMethodHandlerPure ); inline;
 
 {integer}
 function so_integer_init( const i: VMInt ): PSOInstance; inline;
@@ -103,9 +111,7 @@ function so_integer_string( soint: PSOInstance ): String; inline;
 {list}
 function so_list_init: PSOInstance; inline;
 function so_list_append( soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: Integer ): PSOInstance; inline;
-
 function so_list_count( plst: PSOInstance ): VMInt;
-
 {DOC>> Low Level List Access. @br
   iter=nil: get first, iter<>nil: get next,
   returns @false if there is no next or first.
@@ -378,7 +384,7 @@ begin
     Result := socmp_NotComparable;
 end;
 
-function hashtrie_gcenum( const unused: String; data, xdata: Pointer ): Boolean;
+function hashtrie_gcenum( unused: PUCFS32String; data, xdata: Pointer ): Boolean;
 {default enumerator for hastrie holding PSOInstances}
 begin
   TGarbageCollectorTracer(xdata)(PSOInstance(data));
@@ -473,13 +479,13 @@ type
   PSSDAttrEntry = ^TSSDAttributHandlerM;
   PSSDMethEntry = ^TSSDMethodHandlerM;
 
-function pssdae_disposer( const unused: String; data, unused2: Pointer ): Boolean;
+function pssdae_disposer( unused: PUCFS32String; data, unused2: Pointer ): Boolean;
 begin
   Dispose(PSSDAttrEntry(data));
   Result := true;
 end;
 
-function pssdme_disposer( const unused: String; data, unused2: Pointer ): Boolean;
+function pssdme_disposer( unused: PUCFS32String; data, unused2: Pointer ): Boolean;
 begin
   Dispose(PSSDMethEntry(data));
   Result := true;
@@ -615,13 +621,6 @@ begin
   so_string_addmethod(DEFAULT_METHOD_GetIndex,@_String_GetIndex_);
   so_string_addmethod(DEFAULT_METHOD_SetIndex,@_String_SetIndex_);
   so_string_addmethod(C_STDCALLM_LENGTH,@_String_Length_);
-  so_string_addmethod('TRIM',@_String_Trim_);
-  so_string_addmethod('TRIMLEFT',@_String_TrimLeft_);
-  so_string_addmethod('TRIMRIGHT',@_String_TrimRight_);
-  so_string_addmethod('SPLIT',@_String_Split_);
-  so_string_addmethod('JOIN',@_String_Join_);
-  so_string_addmethod('Upcase',@_String_Upcase_);
-  so_string_addmethod('Lowercase',@_String_Lowercase_);
 
   so_integer_addmethod(DEFAULT_METHOD_BinOpAdd,@_Integer_Add_);
   so_integer_addmethod(DEFAULT_METHOD_BinOpAnd,@_Integer_And_);
@@ -691,7 +690,7 @@ begin
     end
   else if soinstance^.GetTypeCls = so_string_class then
     begin
-      Result := so_string_get(soinstance);
+      Result := so_string_get_utf8(soinstance);
     end
   else if soinstance^.GetTypeCls = so_function_class then
     begin

@@ -215,10 +215,10 @@ begin
             begin
               soargs^[1]^.IncRef; // << entry in table
               soargs^[1]^.IncRef; // << incref again for result
-              oldval := PSOInstance(PSO_ClsInstance(soself)^.attrtab.Add(so_string_get(soargs^[0]),soargs^[1]));
+              oldval := PSOInstance(PSO_ClsInstance(soself)^.attrtab.Add(so_string_get_utf8(soargs^[0]),soargs^[1]));
             end
           else
-            oldval := PSOInstance(PSO_ClsInstance(soself)^.attrtab.Delete(so_string_get(soargs^[0])));
+            oldval := PSOInstance(PSO_ClsInstance(soself)^.attrtab.Delete(so_string_get_utf8(soargs^[0])));
           if Assigned(oldval) then
             oldval^.DecRef;
           Result := soargs^[1];
@@ -239,7 +239,7 @@ begin
     begin
       if soargs^[0]^.IsType(so_string_class) then
         begin
-          Result := PSO_ClsInstance(soself)^.attrtab.Lookup(so_string_get(soargs^[0]));
+          Result := PSO_ClsInstance(soself)^.attrtab.Lookup(so_string_get_utf8(soargs^[0]));
           if Assigned(Result) then
             Result^.IncRef
           else

@@ -33,7 +33,7 @@
         <FormatVersion Value="1"/>
       </local>
     </RunParams>
-    <Units Count="47">
+    <Units Count="46">
       <Unit0>
         <Filename Value="tcci.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -141,113 +141,109 @@
         <IsPartOfProject Value="True"/>
       </Unit23>
       <Unit24>
-        <Filename Value="sobject/nullinc/sotypebase.inc"/>
-        <IsPartOfProject Value="True"/>
-      </Unit24>
-      <Unit25>
         <Filename Value="machine/bytecode.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="bytecode"/>
-      </Unit25>
-      <Unit26>
+      </Unit24>
+      <Unit25>
         <Filename Value="machine/compload.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="compload"/>
-      </Unit26>
-      <Unit27>
+      </Unit25>
+      <Unit26>
         <Filename Value="machine/ccache.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="ccache"/>
-      </Unit27>
-      <Unit28>
+      </Unit26>
+      <Unit27>
         <Filename Value="machine/fpath.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="fpath"/>
-      </Unit28>
-      <Unit29>
+      </Unit27>
+      <Unit28>
         <Filename Value="machine/opcode.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="opcode"/>
-      </Unit29>
-      <Unit30>
+      </Unit28>
+      <Unit29>
         <Filename Value="machine/vmstate.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="vmstate"/>
-      </Unit30>
-      <Unit31>
+      </Unit29>
+      <Unit30>
         <Filename Value="compiler/assembl.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="assembl"/>
-      </Unit31>
-      <Unit32>
+      </Unit30>
+      <Unit31>
         <Filename Value="compiler/ccbase.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="ccbase"/>
-      </Unit32>
-      <Unit33>
+      </Unit31>
+      <Unit32>
         <Filename Value="compiler/ccexprn.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="ccexprn"/>
-      </Unit33>
-      <Unit34>
+      </Unit32>
+      <Unit33>
         <Filename Value="compiler/ccexprp.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="ccexprp"/>
-      </Unit34>
-      <Unit35>
+      </Unit33>
+      <Unit34>
         <Filename Value="compiler/ccstatn.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="ccstatn"/>
-      </Unit35>
-      <Unit36>
+      </Unit34>
+      <Unit35>
         <Filename Value="compiler/cmacro.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="cmacro"/>
-      </Unit36>
-      <Unit37>
+      </Unit35>
+      <Unit36>
         <Filename Value="compiler/csyms.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="csyms"/>
-      </Unit37>
-      <Unit38>
+      </Unit36>
+      <Unit37>
         <Filename Value="util/ffpa.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="ffpa"/>
+      </Unit37>
+      <Unit38>
+        <Filename Value="util/ffpa/ffpconv.inc"/>
+        <IsPartOfProject Value="True"/>
       </Unit38>
       <Unit39>
-        <Filename Value="util/ffpa/ffpconv.inc"/>
+        <Filename Value="util/ffpa/ffpawrap.inc"/>
         <IsPartOfProject Value="True"/>
       </Unit39>
       <Unit40>
-        <Filename Value="util/ffpa/ffpawrap.inc"/>
+        <Filename Value="util/ffpa/ffpidiop.inc"/>
         <IsPartOfProject Value="True"/>
       </Unit40>
       <Unit41>
-        <Filename Value="util/ffpa/ffpidiop.inc"/>
+        <Filename Value="util/ffpa/ffpamulo.inc"/>
         <IsPartOfProject Value="True"/>
       </Unit41>
       <Unit42>
-        <Filename Value="util/ffpa/ffpamulo.inc"/>
+        <Filename Value="util/ffpa/ffpistat.inc"/>
         <IsPartOfProject Value="True"/>
       </Unit42>
       <Unit43>
-        <Filename Value="util/ffpa/ffpistat.inc"/>
+        <Filename Value="util/ffpa/ffpisett.inc"/>
         <IsPartOfProject Value="True"/>
       </Unit43>
       <Unit44>
-        <Filename Value="util/ffpa/ffpisett.inc"/>
-        <IsPartOfProject Value="True"/>
-      </Unit44>
-      <Unit45>
         <Filename Value="ext/sossi.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="sossi"/>
-      </Unit45>
-      <Unit46>
+      </Unit44>
+      <Unit45>
         <Filename Value="ext/subsys/subsscan.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="subsscan"/>
-      </Unit46>
+      </Unit45>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -257,7 +253,7 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir);util/ffpa;sobject;sobject/nullinc"/>
-      <OtherUnitFiles Value="compiler;ext;ext/subsys;machine;sobject;util"/>
+      <OtherUnitFiles Value="compiler;ext;ext/subsys;machine;sobject;util;ext/methods"/>
       <UnitOutputDirectory Value="../lib"/>
     </SearchPaths>
     <Other>

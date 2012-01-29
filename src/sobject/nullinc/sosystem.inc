@@ -83,14 +83,14 @@ begin
          (argnum = 1) and
          (args^[0]^.IsType(so_string_class)) then
         begin
-          Result := SubSys_FW_Attr_Dispatch(so_string_get(args^[0]),soself,nil);
+          Result := SubSys_FW_Attr_Dispatch(so_string_get_utf8(args^[0]),soself,nil);
         end
       else if (hashk = DEFAULT_METHOD_SetMember_Hash) and
               (name = DEFAULT_METHOD_SetMember) and
               (argnum = 2) and
               (args^[0]^.IsType(so_string_class)) then
         begin
-          Result := SubSys_FW_Attr_Dispatch(so_string_get(args^[0]),soself,args^[1]);
+          Result := SubSys_FW_Attr_Dispatch(so_string_get_utf8(args^[0]),soself,args^[1]);
         end
       else
         Result := init_subsys_meth_error(soself,name);
@@ -192,14 +192,14 @@ begin
          (argnum = 1) and
          (args^[0]^.IsType(so_string_class)) then
         begin
-          Result := SubSys_OW_Attr_Dispatch(so_string_get(args^[0]),soself,nil);
+          Result := SubSys_OW_Attr_Dispatch(so_string_get_utf8(args^[0]),soself,nil);
         end
       else if (hashk = DEFAULT_METHOD_SetMember_Hash) and
               (name = DEFAULT_METHOD_SetMember) and
               (argnum = 2) and
               (args^[0]^.IsType(so_string_class)) then
         begin
-          Result := SubSys_OW_Attr_Dispatch(so_string_get(args^[0]),soself,args^[1]);
+          Result := SubSys_OW_Attr_Dispatch(so_string_get_utf8(args^[0]),soself,args^[1]);
         end
       else
         Result := init_subsys_meth_error(soself,name);
@@ -301,7 +301,7 @@ begin
   PSO_System(instance)^.subsysteme.Init(0,2);
 end;
 
-function psse_disposer( const unused: String; data, unused2: Pointer ): Boolean;
+function psse_disposer( unused: PUCFS32String; data, unused2: Pointer ): Boolean;
 begin
   Dispose(PSubsystemEntry(data));
   Result := true;
@@ -313,7 +313,7 @@ begin
   PSO_System(instance)^.subsysteme.Done;
 end;
 
-function sys_collenum( const unused: String; data, xdata: Pointer ): Boolean;
+function sys_collenum( unused: PUCFS32String; data, xdata: Pointer ): Boolean;
 begin
   if Assigned(PSubsystemEntry(data)^.ssinstance) then
     TGarbageCollectorTracer(xdata)(PSubsystemEntry(data)^.ssinstance);
@@ -355,7 +355,7 @@ begin
   if (argnum = 1) and
      (soargs^[0]^.IsType(so_string_class)) then
     begin
-      name := so_string_get(soargs^[0]);
+      name := so_string_get_utf8(soargs^[0]);
     end
   else
     Exit(nil);
@@ -442,7 +442,7 @@ begin
   if (argnum = 2) and
      (soargs^[0]^.IsType(so_string_class)) then
     begin
-      name := so_string_get(soargs^[0]);
+      name := so_string_get_utf8(soargs^[0]);
     end
   else
     Exit(nil);
@@ -521,7 +521,7 @@ end;
 function _System_TypeOf_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
 begin
   if argnum = 1 then
-    Result := so_string_init(soargs^[0]^.GetTypeCls^.TypeQuery(soargs^[0]))
+    Result := so_string_init_utf8(soargs^[0]^.GetTypeCls^.TypeQuery(soargs^[0]))
   else
     Result := init_invargnum_error(soself,argnum,mname);
 end;
@@ -535,7 +535,7 @@ begin
         begin
           if soargs^[1]^.IsType(so_string_class) then
             begin
-              cscan.StreamScannerSetMarker(so_string_get(soargs^[0]),so_string_get(soargs^[1]));
+              cscan.cscan_setcodemarker(so_string_get_ucfs(soargs^[0]),so_string_get_ucfs(soargs^[1]));
               Result := so_nil;
             end
           else
@@ -557,7 +557,7 @@ begin
         begin
           if soargs^[1]^.IsType(so_string_class) then
             begin
-              cscan.StreamScannerSetECComment(so_string_get(soargs^[0]),so_string_get(soargs^[1]));
+              cscan.cscan_seteccmarker(so_string_get_ucfs(soargs^[0]),so_string_get_ucfs(soargs^[1]));
               Result := so_nil;
             end
           else
@@ -577,7 +577,7 @@ begin
     begin
       if soargs^[0]^.IsType(so_string_class) then
         begin
-          cscan.StreamScannerSetLComment(so_string_get(soargs^[0]));
+          cscan.cscan_setlcmarker(so_string_get_ucfs(soargs^[0]));
           Result := so_nil;
         end
       else

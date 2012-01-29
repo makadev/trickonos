@@ -70,22 +70,22 @@ const
     created for Less/More restrictive Systems/Plattforms.
     Furthermore, some of these restrictions should aid in Bugtracking.}
 
-   {further restrict StreamSize to 1GB, for reduced overflow possibilities}
-   CL_MAX_StreamSize = 1073741824;
+   {further restrict StreamSize, for reduced overflow possibilities}
+   CL_MAX_StreamSize = 1073741824; // 1GB
+
    {upper limit for _tempory_ buffer}
-   CL_MAX_TmpBufferSize = 16777216;
+   CL_MAX_TmpBufferSize = 1048576; // 1MB
 
    {default buffer size for small chunks}
-   CL_Default_FileBuffer = 1024;
+   CL_Default_FileBuffer = 1024; // 1kb
 
    {Stricter limits for Bytecode (per file)}
-   CL_BC_MaxStab = 1048576; {Stab Entries}
-   CL_BC_MaxCode = 1048576; {Code Entries}
-   CL_BC_MaxSize = 33554432; {Overall (loaded) BC Size}
+   CL_BC_MaxStab = 1048576; {Stab Entries - 1m entries}
+   CL_BC_MaxCode = 1048576; {Code Entries - 1m entries}
+   CL_BC_MaxSize = 33554432; {Overall (loaded) BC Size - 32MB}
 
-   {Again, harder restrict the overall loading of Bytecode. A Sum of 128 MB
-    should not be Broken.}
-   CL_BC_CompoundSize = 134217728;
+   {Again, harder restrict the overall loading of Bytecode.}
+   CL_BC_CompoundSize = 134217728; // 128MB
 
    {Restrict Nr of Parser/CC recursions.}
    CL_Max_CCRecurse = 16384;

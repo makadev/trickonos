@@ -25,7 +25,7 @@ unit sstreams;
 
 interface
 
-uses SysUtils, commontl;
+uses SysUtils, commontl, ucfs;
 
 type
   //DOC>> Abstract Character (Reader) Stream
@@ -34,10 +34,11 @@ type
       //DOC>> Load Next Char @returns @false on end of stream
       function NextChar: Boolean; virtual; abstract;
       {DOC>> @returns Current Character after NextChar was called and
-             returned @true, undefined (behavior) otherwise}
-      function CurrentChar: Char; virtual; abstract;
-      {DOC>> @returns Stream Identifier}
-      function StreamID: String; virtual; abstract;
+             returned @true, undefined (behavior) otherwise.
+             CurrentChar will be < 0 if utf8 sequence decoding failed.}
+      function CurrentChar: TUCFS32Char; virtual; abstract;
+      {DOC>> @returns Stream Identifier (no copy)}
+      function StreamID: PUCFS32String; virtual; abstract;
   end;
 
   //DOC>> TScannerStream NewLine (LineEnding) detection Modes
@@ -65,7 +66,7 @@ type
 
       {LookAhead Support}
       //DOC>> LookAhead RingBuffer
-      FRBuffer: array of Char;
+      FRBuffer: array of TUCFS32Char;
       //DOC>> RingBuffer Index for last loaded LookAhead Symbol (Char)
       FLAIndex: Integer;
       //DOC>> Keeps track of the number of loaded LookAhead Symbols
@@ -112,17 +113,17 @@ type
       {DOC>> Get the n'th LookAhead Char
              @returns Char if n is in (possible) LookAhead Range, 
              otherwise undefined}
-      function LookAheadChar( n: Integer ): Char;
+      function LookAheadChar( n: Integer ): TUCFS32Char;
       //DOC>> Skip n Chars @returns @false if end of stream is hit
       function FastForward( n: Integer ): Boolean;
 
       {Char Reader Part}
-      function StreamID: String; override;
+      function StreamID: PUCFS32String; override;
       //DOC>> Set the Next Char (and Reads the Next LookAhead Symbol)
       //DOC>> Update Pos/Line/Col and CurrentChar
       //DOC>> @returns @false if there is no Next Char
       function NextChar: Boolean; override;
-      function CurrentChar: Char; override;
+      function CurrentChar: TUCFS32Char; override;
       //DOC>> @param ALASize Max LookAhead, will be preloaded
       //DOC>> @param ACharStream Stream to read from (Wrapped Stream)
       //DOC>> @param AStreamOwner Wether ACharStream should be Freed on Destroy
@@ -135,25 +136,29 @@ type
   //DOC>> Concrete Character (Reader) FileStream
   TFileReaderStream = class( TCharReaderStream )
     private
-      FID: String;
-      FFileName: String;
+      FID: PUCFS32String;
+      FFileName: PUCFS32String;
       FFileHandle: THandle;
       FOpen: Boolean;
-      FBuffer: packed array of Char;
+      FChar: TUCFS32Char;
+      FBuffer: array of Byte;
       FBufMax: Integer;
       FBufSize: Integer;
       FBufPos: Integer;
       function BufferNext: Boolean;
     public
-      property FileName: String read FFileName;
+      //DOC>> Returns the Filename (no copy)
+      property FileName: PUCFS32String read FFileName;
       function NextChar: Boolean; override;
-      function CurrentChar: Char; override;
-      function StreamID: String; override;
-      constructor Create( const AID, AFileName: String; ABufMax: Integer = CL_Default_FileBuffer );
+      function CurrentChar: TUCFS32Char; override;
+      function StreamID: PUCFS32String; override;
+      {DOC>> Create Filereader with ID AID, FileName AFilename and Internal MaxBuffer ABufMax.
+             AID/AFilename will be copied.}
+      constructor Create( AID, AFileName: PUCFS32String; ABufMax: Integer = CL_Default_FileBuffer );
       destructor Destroy; override;
   end;
 
-  TMemoryChunk = array of Char;
+  TMemoryChunk = array of Byte;
 
   TMemoryBlock = class
     private
@@ -161,76 +166,94 @@ type
       FChunkSize: Integer;
       FSize: StreamInt;
     public
+      {DOC>> Reset Internal Buffers and Free Memory}
       procedure Reset;
-      function ReadFromFile( const AFileName: String ): Boolean;
-
+      {DOC>> Open and Buffer AFilename, @returns @true if the file was buffered
+             Reads File in Chunksize chunks (so higher Chunksize speeds things),
+             last chunk is cut, which (i.g.) removes overhead}
+      function ReadFromFile( AFileName: PUCFS32String ): Boolean;
+      //DOC>> get full size of Buffer
       function Size: StreamInt;
-      function Read( index: StreamInt ): Char;
+      //DOC>> Read buffered Byte at index (0 index start)
+      function Read( index: StreamInt ): Byte;
+      {DOC>> Create Memory Buffer with Chunksize AChunkSize. The Memory
+             Block will be buffered in multiple Chunks.}
       constructor Create( AChunkSize: Integer = CL_Default_FileBuffer );
       destructor Destroy; override;
   end;
 
   TMemoryBlockReaderStream = class( TCharReaderStream )
     private
-      FID: String;
+      FID: PUCFS32String;
       FMemBlock: TMemoryBlock;
       FSRead: SizeInt;
-      FChar: Char;
+      FChar: TUCFS32Char;
       FBlockOwner: Boolean;
     public
-      function CurrentChar: Char; override;
+      function CurrentChar: TUCFS32Char; override;
       function NextChar: Boolean; override;
-      function StreamID: String; override;
-      constructor Create( const AID: String; AMemBlock: TMemoryBlock; ABlockOwner: Boolean = True );
+      function StreamID: PUCFS32String; override;
+      {DOC>> Create Memory Block Reader on AMemBlock, with id AID. AID
+             will be copied. if ABlockOwner=true, AMemBlock will be freed
+             on Destroy.}
+      constructor Create( AID: PUCFS32String; AMemBlock: TMemoryBlock; ABlockOwner: Boolean = True );
       destructor Destroy; override;
   end;
 
   TStringReaderStream = class( TCharReaderStream )
     private
-      FID: String;
-      FReadString: String;
+      FID: PUCFS32String;
+      FReadString: PUCFS32String;
       FPos: Integer;
-      FChar: Char;
+      FChar: TUCFS32Char;
     public
-      function CurrentChar: Char; override;
+      function CurrentChar: TUCFS32Char; override;
       function NextChar: Boolean; override;
-      function StreamID: String; override;
-      constructor Create( const AID: String; const AReadString: String );
+      function StreamID: PUCFS32String; override;
+      {DOC>> Create String Reader, AID and AReadString will be copied.}
+      constructor Create( AID, AReadString: PUCFS32String );
+      destructor Destroy; override;
   end;
 
 implementation
 
 { TStringReaderStream }
 
-function TStringReaderStream.CurrentChar: Char;
+function TStringReaderStream.CurrentChar: TUCFS32Char;
 begin
   Result := FChar;
 end;
 
 function TStringReaderStream.NextChar: Boolean;
 begin
-  if FPos < Length(FReadString) then
+  if FPos < ucfs_length(FReadString) then
     begin
       Inc(FPos,1);
-      FChar := FReadString[ FPos ];
+      FChar := ucfs_getc( FReadString, FPos );
       Result := true;
     end
   else
     Result := false;
 end;
 
-function TStringReaderStream.StreamID: String;
+function TStringReaderStream.StreamID: PUCFS32String;
 begin
   Result := FID;
 end;
 
-constructor TStringReaderStream.Create(const AID: String;
-  const AReadString: String);
+constructor TStringReaderStream.Create(AID, AReadString: PUCFS32String);
 begin
-  FID := AID;
-  FReadString := AReadString;
+  FID := ucfs_copy(AID,1,ucfs_length(AID));
+  FReadString := ucfs_copy(AReadString,1,ucfs_length(AReadString));
   FPos := 0;
-  FChar := #0;
+  FChar := -1;
+end;
+
+destructor TStringReaderStream.Destroy;
+begin
+  ucfs_release(FID);
+  ucfs_release(FReadString);
+  inherited Destroy;
 end;
 
 { TMemoryBlock }
@@ -244,15 +267,17 @@ begin
   FSize := 0;
 end;
 
-function TMemoryBlock.ReadFromFile(const AFileName: String): Boolean;
+function TMemoryBlock.ReadFromFile(AFileName: PUCFS32String): Boolean;
 var fhandle: THandle;
     fread: Integer;
+    u8s: String;
 begin
   Reset;
-  if FileExists(AFileName) then
+  u8s := ucfs_to_utf8string(AFileName);
+  if FileExists(u8s) then
     begin
       FSize := 0;
-      fhandle := FileOpen( AFileName, fmOpenRead );
+      fhandle := FileOpen( u8s, fmOpenRead );
       repeat
         SetLength(FChunkTable,Length(FChunkTable)+1);
         SetLength(FChunkTable[High(FChunkTable)],FChunkSize);
@@ -282,7 +307,7 @@ begin
   Result := FSize;
 end;
 
-function TMemoryBlock.Read(index: StreamInt): Char;
+function TMemoryBlock.Read(index: StreamInt): Byte;
 begin
   Result := FChunkTable[ index div FChunkSize ][ index mod FChunkSize ];
 end;
@@ -302,39 +327,80 @@ end;
 
 { TMemoryBlockReaderStream }
 
-function TMemoryBlockReaderStream.CurrentChar: Char;
+function TMemoryBlockReaderStream.CurrentChar: TUCFS32Char;
 begin
   Result := FChar;
 end;
 
 function TMemoryBlockReaderStream.NextChar: Boolean;
+var utf8c: TFSUtf8Char;
+    decode_len, i: VMInt;
 begin
   if FSRead < FMemBlock.Size then
     begin
-      FChar := FMemBlock.Read(FSRead);
-      Inc(FSRead,1);
       Result := true;
+      FChar := FMemBlock.Read(FSRead);
+      decode_len := ucfs_firstbyte_to_charlength(FChar);
+      if decode_len >= 1 then
+        begin
+          {buffer first character (part - the length or a7 byte)}
+          utf8c.cbytes[0] := FChar;
+          utf8c.len := decode_len;
+          Dec(decode_len,1);
+          Inc(FSRead,1);
+          if decode_len >= 1 then
+            begin
+              {read missing utf8 sequence part - stops with decode_len > 0
+               if missing bytes are not present or invalid follow bytes
+               are read}
+              i := 1;
+              while (FSRead < FMemBlock.Size) and
+                    (decode_len >= 1) do
+                begin
+                  FChar := FMemBlock.Read(FSRead);
+                  utf8c.cbytes[i] := FChar;
+                  if not ucfs_valid_follow(FChar) then
+                    break;
+                  Dec(decode_len,1);
+                  Inc(i,1);
+                  Inc(FSRead,1);
+                end;
+            end;
+          if decode_len <= 0 then
+            begin
+              {read complete sequence: convert}
+              FChar := ucfs_utf8c_to_u32c(@utf8c);
+            end
+          else
+            FChar := -1;
+        end
+      else
+        FChar := -1;
     end
   else
-    Result := false;
+    begin
+      FChar := -1;
+      Result := false;
+    end;
 end;
 
-function TMemoryBlockReaderStream.StreamID: String;
+function TMemoryBlockReaderStream.StreamID: PUCFS32String;
 begin
   Result := FID;
 end;
 
-constructor TMemoryBlockReaderStream.Create(const AID: String;
+constructor TMemoryBlockReaderStream.Create(AID: PUCFS32String;
   AMemBlock: TMemoryBlock; ABlockOwner: Boolean);
 begin
-  FID := AID;
+  FID := ucfs_copy(AID,1,ucfs_length(AID));
   FMemBlock := AMemBlock;
   FBlockOwner := ABlockOwner;
-  FSRead := 1;
+  FSRead := 0;
 end;
 
 destructor TMemoryBlockReaderStream.Destroy;
 begin
+  ucfs_release(FID);
   if FBlockOwner then
     FMemBlock.Free;
   inherited Destroy;
@@ -342,7 +408,7 @@ end;
 
 { TScannerStream }
 
-function TScannerStream.StreamID: String;
+function TScannerStream.StreamID: PUCFS32String;
 begin
   Result := FCharStream.StreamID;
 end;
@@ -352,10 +418,9 @@ begin
   Result := (0<=n) and (n<=FLAFillCounter);
 end;
 
-function TScannerStream.LookAheadChar(n: Integer): Char;
+function TScannerStream.LookAheadChar(n: Integer): TUCFS32Char;
 begin
-  if not LookAhead(n) then
-    raise ERangeError.Create('LA not in buffered Range');
+  ASSERT(LookAhead(n));
   Result := FRBuffer[(FCIndex+n) mod Length(FRBuffer)];
 end;
 
@@ -395,7 +460,7 @@ begin
              ((FNewLineHit = FNewLineMode) or
               ((FNewLineMode = nlmMixed) and
                ((FNewLineHit <> nlmMac) or
-                (Byte(CurrentChar) <> 10)))) then
+                (CurrentChar <> 10)))) then
           begin
             {-> either NewLineHit = Mode or
                 Mixed Mode and NO crlf (where lf is the current char) which will
@@ -406,7 +471,7 @@ begin
           end;
         end;
       {Update NewLine}
-      case Byte(CurrentChar) of
+      case CurrentChar of
         10:
           begin
             if FNewLineHit <> nlmMac then
@@ -424,7 +489,7 @@ begin
     end;
 end;
 
-function TScannerStream.CurrentChar: Char;
+function TScannerStream.CurrentChar: TUCFS32Char;
 begin
   Result := FRBuffer[FCIndex];
 end;
@@ -453,6 +518,8 @@ begin
       Inc(FLAIndex,1);
       Inc(FLAFillCounter,1);
       FRBuffer[FLAIndex] := FCharStream.CurrentChar;
+      if FRBuffer[FLAIndex] < 0 then
+        break;
     end;
 end;
 
@@ -482,36 +549,86 @@ begin
 end;
 
 function TFileReaderStream.NextChar: Boolean;
+var utf8c: TFSUtf8Char;
+    decode_len,i: VMInt;
 begin
   if FOpen then
-  begin
-    Inc( FBufPos, 1 );
-    Result := ( FBufPos < FBufSize ) or BufferNext;
-  end else Result := false;
+    begin
+      Inc( FBufPos, 1 );
+      Result := ( FBufPos < FBufSize ) or BufferNext;
+      if Result then
+        begin
+          decode_len := ucfs_firstbyte_to_charlength(FBuffer[ FBufPos ]);
+          if decode_len >= 1 then
+            begin
+              {set first utf8char}
+              utf8c.cbytes[0] := FBuffer[ FBufPos ];
+              utf8c.len := decode_len;
+              Dec(decode_len,1);
+              if decode_len >= 1 then
+                begin
+                  {decode follow sequence}
+                  i := 1;
+                  repeat
+                    Inc( FBufPos, 1 );
+                    Result := ( FBufPos < FBufSize ) or BufferNext;
+                    if Result then
+                      begin
+                        utf8c.cbytes[i] := FBuffer[ FBufPos ];
+                        if not ucfs_valid_follow(FBuffer[ FBufPos ]) then
+                          break;
+                        Dec(decode_len,1);
+                        Inc(i,1);
+                      end;
+                  until (decode_len <= 0) or
+                        (not Result);
+                end;
+              if decode_len <= 0 then
+                begin
+                  FChar := ucfs_utf8c_to_u32c(@utf8c);
+                end
+              else
+                begin
+                  FChar := -1;
+                  Result := true; // <- correct, so last invalid sequence wont be dropped
+                end;
+            end
+          else
+            FChar := -1;
+        end;
+    end
+  else
+    begin
+      Result := false;
+      FChar := -1; // invalidate char
+    end;
 end;
 
-function TFileReaderStream.CurrentChar: Char;
+function TFileReaderStream.CurrentChar: TUCFS32Char;
 begin
-  Result := FBuffer[ FBufPos ];
+  Result := FChar;
 end;
 
-function TFileReaderStream.StreamID: String;
+function TFileReaderStream.StreamID: PUCFS32String;
 begin
   Result := FID;
 end;
 
-constructor TFileReaderStream.Create(const AID, AFileName: String; ABufMax: Integer);
+constructor TFileReaderStream.Create(AID, AFileName: PUCFS32String; ABufMax: Integer);
+var u8s: String;
 begin
   inherited Create;
-  FID := AID;
-  FFileName := AFileName;
+  FID := ucfs_copy(AID,1,ucfs_length(AID));
+  FFileName := ucfs_copy(AFileName,1,ucfs_length(AFileName));
   SetLength( FBuffer, ABufMax );
   FBufMax := ABufMax;
   FBufSize := 0;
   FBufPos := 0;
-  if FileExists( AFileName ) then
+  FChar := -1;
+  u8s := ucfs_to_utf8string(AFileName);
+  if FileExists( u8s ) then
     begin
-      FFileHandle := FileOpen( AFileName, fmOpenRead );
+      FFileHandle := FileOpen( u8s, fmOpenRead );
       BufferNext;
       FOpen := FBufSize >= 0;
       FBufPos := -1;
@@ -522,6 +639,8 @@ end;
 
 destructor TFileReaderStream.Destroy;
 begin
+  ucfs_release(FID);
+  ucfs_release(FFileName);
   SetLength( FBuffer, 0 );
   if FOpen then
     FileClose( FFileHandle );

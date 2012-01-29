@@ -26,7 +26,7 @@ unit ccbase;
 interface
 
 uses
-  SysUtils, commontl, gens, eomsg, coreobj, csyms, assembl;
+  SysUtils, commontl, gens, ucfs, eomsg, coreobj, csyms, assembl;
 
 type
   {traced Node, only valid in compilation stage, no freeing needed, garbage
@@ -55,11 +55,14 @@ type
   TScanRecord = class(TCCNode)
     private
       FTokenType: TSMESymbol;
-      FPattern: String;
+      FPattern: PUCFS32String;
     public
       property TokenType: TSMESymbol read FTokenType write FTokenType;
-      property Pattern: String read FPattern write FPattern;
+      property Pattern: PUCFS32String read FPattern;
+      procedure PatternSetS( const s: String );
+      procedure PatternSetU( us: PUCFS32String );
       constructor Create; override;
+      destructor Destroy; override;
   end;
 
   {Parser/AST/Compiler Node Base}
@@ -328,11 +331,28 @@ end;
 
 { TScanRecord }
 
+procedure TScanRecord.PatternSetS(const s: String);
+begin
+  PatternSetU(ucfs_utf8us(s));
+end;
+
+procedure TScanRecord.PatternSetU(us: PUCFS32String);
+begin
+  ucfs_release(FPattern);
+  FPattern := us;
+end;
+
 constructor TScanRecord.Create;
 begin
   inherited Create;
   FTokenType := SMES_ERROR;
-  FPattern := '';
+  FPattern := nil;
+end;
+
+destructor TScanRecord.Destroy;
+begin
+  ucfs_release(FPattern);
+  inherited Destroy;
 end;
 
 

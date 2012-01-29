@@ -25,7 +25,7 @@ unit subsscan;
 
 interface
 
-uses SysUtils, commontl, eomsg, socore, solnull, sstreams, fpath;
+uses SysUtils, commontl, ucfs, eomsg, socore, solnull, sstreams, fpath;
 
 (* This serves both, as test for TSubSystemDispatcher and extension which allows
    to use sstream based streams and build scanners.
@@ -161,7 +161,7 @@ begin
      (soargs^[0]^.IsType(so_integer_class)) then
     begin
       if FScanStream.LookAhead(so_integer_get(soargs^[0],true)) then
-        Result := so_string_init(FScanStream.LookAheadChar(so_integer_get(soargs^[0],true)))
+        Result := so_string_init_char(FScanStream.LookAheadChar(so_integer_get(soargs^[0],true)))
       else
         Result := so_nil;
     end
@@ -205,7 +205,7 @@ begin
   if not Assigned(setter) then
     begin
       if FScanStream.LookAhead(0) then
-        Result := so_string_init(FScanStream.CurrentChar)
+        Result := so_string_init_char(FScanStream.CurrentChar)
       else
         Result := so_nil;
     end
@@ -258,7 +258,7 @@ function TScanStreamIO.AttrNewLineHit(const aname: String; soself: PSOInstance;
   setter: PSOInstance): PSOInstance;
 begin
   if not Assigned(setter) then
-    Result := so_string_init(nlmtostring(FScanStream.NewLineHit))
+    Result := so_string_init_utf8(nlmtostring(FScanStream.NewLineHit))
   else
     Result := nil;
 end;
@@ -268,40 +268,40 @@ function TScanStreamIO.AttrNewLineStyle(const aname: String;
 begin
   if not Assigned(setter) then
     begin
-      Result := so_string_init(nlmtostring(FScanStream.NewLineMode));
+      Result := so_string_init_utf8(nlmtostring(FScanStream.NewLineMode));
     end
   else
     begin
       Result := nil;
       if setter^.IsType(so_string_class) then
         begin
-          if Length(so_string_get(setter)) <= 7 then
+          if Length(so_string_get_utf8(setter)) <= 7 then
             begin
-              if so_string_get(setter) = 'none' then
+              if so_string_get_utf8(setter) = 'none' then
                 begin
                   FScanStream.NewLineMode := nlmNone;
                   Result := setter;
                   Result^.IncRef;
                 end
-              else if so_string_get(setter) = 'windows' then
+              else if so_string_get_utf8(setter) = 'windows' then
                 begin
                   FScanStream.NewLineMode := nlmWindows;
                   Result := setter;
                   Result^.IncRef;
                 end
-              else if so_string_get(setter) = 'unix' then
+              else if so_string_get_utf8(setter) = 'unix' then
                 begin
                   FScanStream.NewLineMode := nlmUnix;
                   Result := setter;
                   Result^.IncRef;
                 end
-              else if so_string_get(setter) = 'mac' then
+              else if so_string_get_utf8(setter) = 'mac' then
                 begin
                   FScanStream.NewLineMode := nlmMac;
                   Result := setter;
                   Result^.IncRef;
                 end
-              else if so_string_get(setter) = 'mixed' then
+              else if so_string_get_utf8(setter) = 'mixed' then
                 begin
                   FScanStream.NewLineMode := nlmMixed;
                   Result := setter;
@@ -418,7 +418,7 @@ begin
       if (Upcase(mname) = 'FILESCANSTREAM') or
          (Upcase(mname) = 'MEMORYSCANSTREAM') then
         begin
-          fname := fpath_rel_to_abs(so_string_get(soargs^[0]));
+          fname := fpath_rel_to_abs(so_string_get_utf8(soargs^[0]));
           put_debug('open file for input: '+fname);
           if (Length(fname) <= 0) or
              (not FileExists(fname)) then
@@ -426,8 +426,8 @@ begin
           if Upcase(mname) = 'MEMORYSCANSTREAM' then
             begin
               memblock := TMemoryBlock.Create;
-              if memblock.ReadFromFile(fname) then
-                readerstream := TMemoryBlockReaderStream.Create(so_string_get(soargs^[0]),memblock)
+              if memblock.ReadFromFile(ucfs_utf8us(fname)) then
+                readerstream := TMemoryBlockReaderStream.Create(so_string_get_ucfs(soargs^[0]),memblock)
               else
                 begin
                   memblock.Free;
@@ -435,10 +435,10 @@ begin
                 end;
             end
           else
-            readerstream := TFileReaderStream.Create(so_string_get(soargs^[0]), fname);
+            readerstream := TFileReaderStream.Create(so_string_get_ucfs(soargs^[0]), ucfs_utf8us(fname));
         end
       else
-        readerstream := TStringReaderStream.Create('string',so_string_get(soargs^[0]));
+        readerstream := TStringReaderStream.Create(nil,so_string_get_ucfs(soargs^[0]));
 
       {create the scanner stream}
       scstream := TScannerStream.Create(LAChars,readerstream);
