@@ -32,16 +32,19 @@ begin
   Result := C_SOTYPE_NONE_NAME;
 end;
 
-function socls_None_MethodCall( hashk: MachineWord; const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function socls_None_MethodCall( callinfo: PMethodCallInfo ): PSOInstance;
 begin
-  SelfCheck(soself,so_none_class);
-  if (hashk = DEFAULT_METHOD_UnOpNot_Hash) and
-     (mname = DEFAULT_METHOD_UnOpNot) then
+  with callinfo^ do
     begin
-      {NONE::Not() -> nil}
-      Result := soself;
-    end
-  else
-    Result := nil;
+      SelfCheck(soself,so_none_class);
+      if (hashk = DEFAULT_METHOD_UnOpNot_Hash) and
+         (ucfs_compare(name,ci_us(ci_dm_not,false))=0) then
+        begin
+          {NONE::Not() -> nil}
+          Result := soself;
+        end
+      else
+        Result := nil;
+    end;
 end;
 

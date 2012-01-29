@@ -27,7 +27,7 @@ unit solnull;
 interface
 
 uses
-  SysUtils, commontl, eomsg, socore, coreobj, ccache, ffpa, ucfs;
+  SysUtils, commontl, eomsg, socore, coreobj, corealg, ccache, ffpa, ucfs, cons;
 
 
 const
@@ -80,12 +80,19 @@ function so_type_name( soinstance: PSOInstance ): String; inline;
 function so_error_init( const s: String ): PSOInstance; inline;
 function so_error_get( soerror: PSOInstance ): String; inline;
 
-function init_operation_error(soself: PSOInstance; const opername: String): PSOInstance; inline;
-function init_invargtype_error(soself, arg: PSOInstance; argnum: MachineInt; const opname: String): PSOInstance; inline;
-function init_invargvalue_error(soself, arg: PSOInstance; argnum: MachineInt; const opname: String): PSOInstance; inline;
-function init_range_error(soself, arg: PSOInstance; argnum: MachineInt; const opname: String): PSOInstance; inline;
-function init_invargnum_error(soself: PSOInstance; argnum: MachineInt; const opname: String): PSOInstance; inline;
-function init_lockmod(soself: PSOInstance; const opname: String): PSOInstance; inline;
+function init_operation_error(soself: PSOInstance; const opername: String): PSOInstance; deprecated;
+function init_invargtype_error(soself, arg: PSOInstance; argnum: MachineInt; const opname: String): PSOInstance; deprecated;
+function init_invargvalue_error(soself, arg: PSOInstance; argnum: MachineInt; const opname: String): PSOInstance; deprecated;
+function init_range_error(soself, arg: PSOInstance; argnum: MachineInt; const opname: String): PSOInstance; deprecated;
+function init_invargnum_error(soself: PSOInstance; argnum: MachineInt; const opname: String): PSOInstance; deprecated;
+function init_lockmod(soself: PSOInstance; const opname: String): PSOInstance; deprecated;
+
+function init_operation_error(soself: PSOInstance; opername: PUCFS32String): PSOInstance;
+function init_invargtype_error(soself, arg: PSOInstance; argnum: MachineInt; opname: PUCFS32String): PSOInstance;
+function init_invargvalue_error(soself, arg: PSOInstance; argnum: MachineInt; opname: PUCFS32String): PSOInstance;
+function init_range_error(soself, arg: PSOInstance; argnum: MachineInt; opname: PUCFS32String): PSOInstance;
+function init_invargnum_error(soself: PSOInstance; argnum: MachineInt; opname: PUCFS32String): PSOInstance;
+function init_lockmod(soself: PSOInstance; opname: PUCFS32String): PSOInstance;
 
 {string}
 function so_string_init_a7( const s: String ): PSOInstance; inline;
@@ -98,7 +105,7 @@ function so_string_get_ucfs( sostring: PSOInstance ): PUCFS32String; inline;
 function so_string_get_a7( sostring: PSOInstance; dereplace: Boolean = false ): String; inline;
 function so_string_get_utf8( sostring: PSOInstance ): String; inline;
 procedure so_string_set_ucfs( sostring: PSOInstance; newstr: PUCFS32String; releaseold: Boolean = true ); inline;
-procedure so_string_addmethod( const mname: String; methh: TSOMethodHandlerPure ); inline;
+procedure so_string_addmethod( const mname: String; methh: TSOMethodHandler ); inline;
 
 {integer}
 function so_integer_init( const i: VMInt ): PSOInstance; inline;
@@ -225,8 +232,8 @@ type
     rtstack and binding objects)
   }
 
-  TSSDMethodHandlerM = function( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance of object;
-  TSSDAttributHandlerM = function( const aname: String; soself: PSOInstance; setter: PSOInstance ): PSOInstance of object;
+  TSSDMethodHandlerM = function( callinfo: PMethodCallInfo ): PSOInstance of object;
+  TSSDAttributHandlerM = function( attrinfo: PAttributeInfo ): PSOInstance of object;
 
   TSubSystemDispatcher = class
     private
@@ -255,8 +262,8 @@ procedure RegisterSubsystemObject( const subsysname: String; subsyso: TSubSysDis
  ******************************************************************************)
 
 type
-  TSSDMethodHandlerP = function( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
-  TSSDAttributHandlerP = function( const aname: String; soself: PSOInstance; setter: PSOInstance ): PSOInstance;
+  TSSDMethodHandlerP = function( callinfo: PMethodCallInfo ): PSOInstance;
+  TSSDAttributHandlerP = function( attrinfo: PAttributeInfo ): PSOInstance;
   TSystemLoadCallBack = procedure( var disptab: TDispTables; out data: Pointer );
   TSystemUnloadCallBack = procedure( var data: Pointer );
 
@@ -301,8 +308,8 @@ type
     private
       FDispTab: TDispTables;
       FTypeName: String;
-      function DispatchMethodCall( hashk: MachineWord; const name: String; soself: PSOInstance; args: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
-      function DispatchAttr(const aname: String; soself: PSOInstance; setter: PSOInstance): PSOInstance;
+      function DispatchMethodCall( callinfo: PMethodCallInfo ): PSOInstance;
+      function DispatchAttr( attrinfo: PAttributeInfo ): PSOInstance;
     protected
       FReferings: array of PSOInstance;
       {if you need more/own refhandling}
@@ -351,6 +358,29 @@ function so_internalobject_get( soios: PSOInstance ): TInternalObject;
 (******************************************************************************
  stuff..
  ******************************************************************************)
+
+var
+   DEFAULT_METHOD_SetMember_Hash: MachineWord;
+   DEFAULT_METHOD_GetMember_Hash: MachineWord;
+   DEFAULT_METHOD_SetIndex_Hash: MachineWord;
+   DEFAULT_METHOD_GetIndex_Hash: MachineWord;
+   DEFAULT_METHOD_BinOpAdd_Hash: MachineWord;
+   DEFAULT_METHOD_BinOpSub_Hash: MachineWord;
+   DEFAULT_METHOD_BinOpMul_Hash: MachineWord;
+   DEFAULT_METHOD_BinOpDiv_Hash: MachineWord;
+   DEFAULT_METHOD_BinOpMod_Hash: MachineWord;
+   DEFAULT_METHOD_BinOpShl_Hash: MachineWord;
+   DEFAULT_METHOD_BinOpShr_Hash: MachineWord;
+   DEFAULT_METHOD_BinOpRol_Hash: MachineWord;
+   DEFAULT_METHOD_BinOpRor_Hash: MachineWord;
+   DEFAULT_METHOD_BinOpAnd_Hash: MachineWord;
+   DEFAULT_METHOD_BinOpOr_Hash: MachineWord;
+   DEFAULT_METHOD_BinOpXor_Hash: MachineWord;
+   DEFAULT_METHOD_UnOpNeg_Hash: MachineWord;
+   DEFAULT_METHOD_UnOpAbs_Hash: MachineWord;
+   DEFAULT_METHOD_UnOpNot_Hash: MachineWord;
+   DEFAULT_METHOD_DirectCall_Hash: MachineWord;
+   SPECIAL_METHOD_Create_Hash: MachineWord;
 
 procedure RegisterLevel0Types;
 function DefaultCompare(soself, rightop: PSOInstance): TSOCompareResult;
@@ -452,6 +482,78 @@ end;
 function init_lockmod(soself: PSOInstance; const opname: String): PSOInstance;
 begin
   Result  := so_error_init('Operation '+opname+' on '+
+    IntToStr(soself^.GetLocks)+'-Locked Object ('+soself^.GetTypeCls^.TypeQuery(soself)+')');
+end;
+
+
+
+
+function init_object_attr_error(soself: PSOInstance; opername: PUCFS32String): PSOInstance;
+begin
+  Result := so_error_init('Invalid/Unsupported/Wrong us of Object Attribute '+
+    soself^.GetTypeCls^.TypeQuery(soself)+'.'+
+    ucfs_to_utf8string(opername));
+end;
+
+function init_object_meth_error(soself: PSOInstance; opername: PUCFS32String): PSOInstance;
+begin
+  Result := so_error_init('Invalid/Unsupported/Wrong us of Object Method '+
+    soself^.GetTypeCls^.TypeQuery(soself)+'.'+
+    ucfs_to_utf8string(opername));
+end;
+
+function init_subsys_attr_error(soself: PSOInstance; opername: PUCFS32String): PSOInstance;
+begin
+  Result := so_error_init('Invalid/Unsupported/Wrong us of '+C_SOTYPE_SUBSYSTEM_NAME+' Attribute '+
+    soself^.GetTypeCls^.TypeQuery(soself)+'.'+
+    ucfs_to_utf8string(opername));
+end;
+
+function init_subsys_meth_error(soself: PSOInstance; opername: PUCFS32String): PSOInstance;
+begin
+  Result := so_error_init('Invalid/Unsupported/Wrong us of '+C_SOTYPE_SUBSYSTEM_NAME+' Method '+
+    soself^.GetTypeCls^.TypeQuery(soself)+'.'+
+    ucfs_to_utf8string(opername));
+end;
+
+function init_operation_error(soself: PSOInstance; opername: PUCFS32String): PSOInstance;
+begin
+  Result := so_error_init('Invalid/Unsupported Operation '+
+    soself^.GetTypeCls^.TypeQuery(soself)+'.'+
+    ucfs_to_utf8string(opername));
+end;
+
+function init_invargtype_error(soself, arg: PSOInstance; argnum: MachineInt; opname: PUCFS32String): PSOInstance;
+begin
+  Result := so_error_init('Invalid Type ('+arg^.GetTypeCls^.TypeQuery(arg)+') for Argument ('+
+    IntToStr(argnum)+') in '+soself^.GetTypeCls^.TypeQuery(soself)+'.'+
+    ucfs_to_utf8string(opname)+'(...)');
+end;
+
+function init_invargvalue_error(soself, arg: PSOInstance; argnum: MachineInt; opname: PUCFS32String): PSOInstance;
+begin
+  Result := so_error_init('Invalid Value ('+arg^.GetTypeCls^.TypeQuery(arg)+') for Argument ('+
+    IntToStr(argnum)+') in '+soself^.GetTypeCls^.TypeQuery(soself)+'.'+
+    ucfs_to_utf8string(opname)+'(...)');
+end;
+
+function init_range_error(soself, arg: PSOInstance; argnum: MachineInt; opname: PUCFS32String): PSOInstance;
+begin
+  Result := so_error_init('Value Out of Range ('+arg^.GetTypeCls^.TypeQuery(arg)+') for Argument ('+
+    IntToStr(argnum)+') in '+soself^.GetTypeCls^.TypeQuery(soself)+'.'+
+    ucfs_to_utf8string(opname)+'(...)');
+end;
+
+function init_invargnum_error(soself: PSOInstance; argnum: MachineInt; opname: PUCFS32String): PSOInstance;
+begin
+  Result := so_error_init('Invalid Number of Arguments ('+IntToStr(argnum)+')  in '+
+    soself^.GetTypeCls^.TypeQuery(soself)+'.'+
+    ucfs_to_utf8string(opname)+'(...)');
+end;
+
+function init_lockmod(soself: PSOInstance; opname: PUCFS32String): PSOInstance;
+begin
+  Result  := so_error_init('Operation '+ucfs_to_utf8string(opname)+' on '+
     IntToStr(soself^.GetLocks)+'-Locked Object ('+soself^.GetTypeCls^.TypeQuery(soself)+')');
 end;
 
@@ -612,31 +714,31 @@ begin
   so_dummy_instance := InitInstance(so_dummy_class);
 
   {reg methods & attributes}
-  so_boolean_addmethod(DEFAULT_METHOD_BinOpAnd,@_Boolean_And_);
-  so_boolean_addmethod(DEFAULT_METHOD_BinOpOr,@_Boolean_Or_);
-  so_boolean_addmethod(DEFAULT_METHOD_BinOpXor,@_Boolean_Xor_);
-  so_boolean_addmethod(DEFAULT_METHOD_UnOpNot,@_Boolean_Not_);
+  so_boolean_addmethod(ci_str(ci_dm_and),@_Boolean_And_);
+  so_boolean_addmethod(ci_str(ci_dm_or),@_Boolean_Or_);
+  so_boolean_addmethod(ci_str(ci_dm_xor),@_Boolean_Xor_);
+  so_boolean_addmethod(ci_str(ci_dm_not),@_Boolean_Not_);
 
-  so_string_addmethod(DEFAULT_METHOD_BinOpAdd,@_String_Add_);
-  so_string_addmethod(DEFAULT_METHOD_GetIndex,@_String_GetIndex_);
-  so_string_addmethod(DEFAULT_METHOD_SetIndex,@_String_SetIndex_);
+  so_string_addmethod(ci_str(ci_dm_add),@_String_Add_);
+  so_string_addmethod(ci_str(ci_dm_getindex),@_String_GetIndex_);
+  so_string_addmethod(ci_str(ci_dm_setindex),@_String_SetIndex_);
   so_string_addmethod(C_STDCALLM_LENGTH,@_String_Length_);
 
-  so_integer_addmethod(DEFAULT_METHOD_BinOpAdd,@_Integer_Add_);
-  so_integer_addmethod(DEFAULT_METHOD_BinOpAnd,@_Integer_And_);
-  so_integer_addmethod(DEFAULT_METHOD_BinOpSub,@_Integer_Sub_);
-  so_integer_addmethod(DEFAULT_METHOD_BinOpOr,@_Integer_Or_);
-  so_integer_addmethod(DEFAULT_METHOD_BinOpXor,@_Integer_Xor_);
-  so_integer_addmethod(DEFAULT_METHOD_BinOpMul,@_Integer_Mul_);
-  so_integer_addmethod(DEFAULT_METHOD_BinOpDiv,@_Integer_Div_);
-  so_integer_addmethod(DEFAULT_METHOD_BinOpMod,@_Integer_Mod_);
-  so_integer_addmethod(DEFAULT_METHOD_BinOpRol,@_Integer_Rol_);
-  so_integer_addmethod(DEFAULT_METHOD_BinOpRor,@_Integer_Ror_);
-  so_integer_addmethod(DEFAULT_METHOD_BinOpShl,@_Integer_Shl_);
-  so_integer_addmethod(DEFAULT_METHOD_BinOpShr,@_Integer_Sar_);
-  so_integer_addmethod(DEFAULT_METHOD_UnOpAbs,@_Integer_Abs_);
-  so_integer_addmethod(DEFAULT_METHOD_UnOpNot,@_Integer_Not_);
-  so_integer_addmethod(DEFAULT_METHOD_UnOpNeg,@_Integer_Neg_);
+  so_integer_addmethod(ci_str(ci_dm_add),@_Integer_Add_);
+  so_integer_addmethod(ci_str(ci_dm_and),@_Integer_And_);
+  so_integer_addmethod(ci_str(ci_dm_sub),@_Integer_Sub_);
+  so_integer_addmethod(ci_str(ci_dm_or),@_Integer_Or_);
+  so_integer_addmethod(ci_str(ci_dm_xor),@_Integer_Xor_);
+  so_integer_addmethod(ci_str(ci_dm_mul),@_Integer_Mul_);
+  so_integer_addmethod(ci_str(ci_dm_div),@_Integer_Div_);
+  so_integer_addmethod(ci_str(ci_dm_mod),@_Integer_Mod_);
+  so_integer_addmethod(ci_str(ci_dm_rol),@_Integer_Rol_);
+  so_integer_addmethod(ci_str(ci_dm_ror),@_Integer_Ror_);
+  so_integer_addmethod(ci_str(ci_dm_shl),@_Integer_Shl_);
+  so_integer_addmethod(ci_str(ci_dm_shr),@_Integer_Sar_);
+  so_integer_addmethod(ci_str(ci_dm_abs),@_Integer_Abs_);
+  so_integer_addmethod(ci_str(ci_dm_not),@_Integer_Not_);
+  so_integer_addmethod(ci_str(ci_dm_neg),@_Integer_Neg_);
   so_integer_addmethod('_SHR',@_Integer_Shr_);
   so_integer_addmethod('TOSTR',@_Integer_ToStr_);
 
@@ -644,16 +746,16 @@ begin
   so_list_addmethod(C_STDCALLM_LIST__APPEND,@_List_Append_);
   so_list_addmethod(C_STDCALLM_SEQ_ITERATOR,@_List_Iterator_);
 
-  so_dict_addmethod(DEFAULT_METHOD_GetMember,@_Dict_GetMember_);
-  so_dict_addmethod(DEFAULT_METHOD_GetIndex,@_Dict_GetMember_);
-  so_dict_addmethod(DEFAULT_METHOD_SetMember,@_Dict_SetMember_);
-  so_dict_addmethod(DEFAULT_METHOD_SetIndex,@_Dict_SetMember_);
+  so_dict_addmethod(ci_str(ci_dm_getmember),@_Dict_GetMember_);
+  so_dict_addmethod(ci_str(ci_dm_getindex),@_Dict_GetMember_);
+  so_dict_addmethod(ci_str(ci_dm_setmember),@_Dict_SetMember_);
+  so_dict_addmethod(ci_str(ci_dm_setindex),@_Dict_SetMember_);
   so_dict_addmethod(C_STDCALLM_COUNT,@_Dict_Count_);
   so_dict_addmethod('DELETE',@_Dict_Delete_);
   so_dict_addmethod(C_STDCALLM_SEQ_ITERATOR,@_Dict_Iterator_);
 
-  so_system_addmethod(DEFAULT_METHOD_GetMember,@_System_GetMember_);
-  so_system_addmethod(DEFAULT_METHOD_SetMember,@_System_SetMember_);
+  so_system_addmethod(ci_str(ci_dm_getmember),@_System_GetMember_);
+  so_system_addmethod(ci_str(ci_dm_setmember),@_System_SetMember_);
   so_system_addmethod('GCOLLECT',@_System_GC_);
   so_system_addmethod('INSTANCES',@_System_GCInstances_);
   so_system_addmethod(C_SOTYPE_DUMMY_NAME,@_System_DummyObject_);
@@ -662,8 +764,8 @@ begin
   so_system_addmethod('ECCMARKER',@_System_ECCMarker_);
   so_system_addmethod('LNMARKER',@_System_LNMarker_);
 
-  so_instance_addmethod(DEFAULT_METHOD_GetMember,@_ClsInstance_GetMember_);
-  so_instance_addmethod(DEFAULT_METHOD_SetMember,@_ClsInstance_SetMember_);
+  so_instance_addmethod(ci_str(ci_dm_getmember),@_ClsInstance_GetMember_);
+  so_instance_addmethod(ci_str(ci_dm_setmember),@_ClsInstance_SetMember_);
 end;
 
 (******************************************************************************
@@ -710,6 +812,27 @@ begin
 end;
 
 initialization
+  DEFAULT_METHOD_SetMember_Hash := mas3hash_sigma(ci_us(ci_dm_setmember,false));
+  DEFAULT_METHOD_GetMember_Hash := mas3hash_sigma(ci_us(ci_dm_getmember,false));
+  DEFAULT_METHOD_SetIndex_Hash := mas3hash_sigma(ci_us(ci_dm_setindex,false));
+  DEFAULT_METHOD_GetIndex_Hash := mas3hash_sigma(ci_us(ci_dm_getindex,false));
+  DEFAULT_METHOD_BinOpAdd_Hash := mas3hash_sigma(ci_us(ci_dm_add,false));
+  DEFAULT_METHOD_BinOpSub_Hash := mas3hash_sigma(ci_us(ci_dm_sub,false));
+  DEFAULT_METHOD_BinOpMul_Hash := mas3hash_sigma(ci_us(ci_dm_mul,false));
+  DEFAULT_METHOD_BinOpDiv_Hash := mas3hash_sigma(ci_us(ci_dm_div,false));
+  DEFAULT_METHOD_BinOpMod_Hash := mas3hash_sigma(ci_us(ci_dm_mod,false));
+  DEFAULT_METHOD_BinOpShl_Hash := mas3hash_sigma(ci_us(ci_dm_shl,false));
+  DEFAULT_METHOD_BinOpShr_Hash := mas3hash_sigma(ci_us(ci_dm_shr,false));
+  DEFAULT_METHOD_BinOpRol_Hash := mas3hash_sigma(ci_us(ci_dm_rol,false));
+  DEFAULT_METHOD_BinOpRor_Hash := mas3hash_sigma(ci_us(ci_dm_ror,false));
+  DEFAULT_METHOD_BinOpAnd_Hash := mas3hash_sigma(ci_us(ci_dm_and,false));
+  DEFAULT_METHOD_BinOpOr_Hash := mas3hash_sigma(ci_us(ci_dm_or,false));
+  DEFAULT_METHOD_BinOpXor_Hash := mas3hash_sigma(ci_us(ci_dm_xor,false));
+  DEFAULT_METHOD_UnOpNeg_Hash := mas3hash_sigma(ci_us(ci_dm_neg,false));
+  DEFAULT_METHOD_UnOpAbs_Hash := mas3hash_sigma(ci_us(ci_dm_abs,false));
+  DEFAULT_METHOD_UnOpNot_Hash := mas3hash_sigma(ci_us(ci_dm_not,false));
+  DEFAULT_METHOD_DirectCall_Hash := mas3hash_sigma(ci_us(ci_dm_call,false));
+  SPECIAL_METHOD_Create_Hash := mas3hash_sigma(ci_us(ci_dm_create,false));
   TMethodTrie_Boolean.Init(16);
   TMethodTrie_Integer.Init(16);
   TMethodTrie_String.Init(16);

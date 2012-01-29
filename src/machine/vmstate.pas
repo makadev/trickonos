@@ -577,91 +577,106 @@ end;
   VMState IntroSpection
  ******************************************************************************)
 
-function _MachineState_Meth_RelFrameType( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function _MachineState_Meth_RelFrameType( callinfo: PMethodCallInfo ): PSOInstance;
 {return Frame Creation Type (either call/inclusion/current [current for last frame])}
 begin
-  if (argnum = 1) and
-     (soargs^[0]^.GetTypeCls = so_integer_class) and
-     so_integer_fits(soargs^[0]) and
-     (so_integer_get(soargs^[0],true) >= 0) and
-     (so_integer_get(soargs^[0],true) <= tpl_stackptr) then
+  with callinfo^ do
     begin
-      if so_integer_get(soargs^[0],true) <= 0 then
-        Result := so_string_init_a7('CURRENT')
-      else
+      if (argnum = 1) and
+         (soargs^[0]^.GetTypeCls = so_integer_class) and
+         so_integer_fits(soargs^[0]) and
+         (so_integer_get(soargs^[0],true) >= 0) and
+         (so_integer_get(soargs^[0],true) <= tpl_stackptr) then
         begin
-          if tpl_stack[tpl_stackptr-so_integer_get(soargs^[0],true)].code^.pbcode^.image[
-            tpl_stack[tpl_stackptr-so_integer_get(soargs^[0],true)].ip ].GetOpcode in CTPLIncludeOpcodes then
-            Result := so_string_init_a7('INCLUSION')
+          if so_integer_get(soargs^[0],true) <= 0 then
+            Result := so_string_init_a7('CURRENT')
           else
-            Result := so_string_init_a7('CALL');
-        end;
-    end
-  else
-    Result := nil;
+            begin
+              if tpl_stack[tpl_stackptr-so_integer_get(soargs^[0],true)].code^.pbcode^.image[
+                tpl_stack[tpl_stackptr-so_integer_get(soargs^[0],true)].ip ].GetOpcode in CTPLIncludeOpcodes then
+                Result := so_string_init_a7('INCLUSION')
+              else
+                Result := so_string_init_a7('CALL');
+            end;
+        end
+      else
+        Result := nil;
+    end;
 end;
 
-function _MachineState_Meth_RelFrameShortName( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function _MachineState_Meth_RelFrameShortName( callinfo: PMethodCallInfo ): PSOInstance;
 begin
-  if (argnum = 1) and
-     (soargs^[0]^.GetTypeCls = so_integer_class) and
-     so_integer_fits(soargs^[0]) and
-     (so_integer_get(soargs^[0],true) >= 0) and
-     (so_integer_get(soargs^[0],true) <= tpl_stackptr) then
+  with callinfo^ do
     begin
-      Result := so_string_init_utf8(tpl_stack[tpl_stackptr-so_integer_get(soargs^[0],true)].code^.shortname);
-    end
-  else
-    Result := nil;
+      if (argnum = 1) and
+         (soargs^[0]^.GetTypeCls = so_integer_class) and
+         so_integer_fits(soargs^[0]) and
+         (so_integer_get(soargs^[0],true) >= 0) and
+         (so_integer_get(soargs^[0],true) <= tpl_stackptr) then
+        begin
+          Result := so_string_init_utf8(tpl_stack[tpl_stackptr-so_integer_get(soargs^[0],true)].code^.shortname);
+        end
+      else
+        Result := nil;
+    end;
 end;
 
-function _MachineState_Meth_RelFrameLongName( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function _MachineState_Meth_RelFrameLongName( callinfo: PMethodCallInfo ): PSOInstance;
 begin
-  if (argnum = 1) and
-     (soargs^[0]^.GetTypeCls = so_integer_class) and
-     so_integer_fits(soargs^[0]) and
-     (so_integer_get(soargs^[0],true) >= 0) and
-     (so_integer_get(soargs^[0],true) <= tpl_stackptr) then
+  with callinfo^ do
     begin
-      Result := so_string_init_utf8(tpl_stack[tpl_stackptr-so_integer_get(soargs^[0],true)].code^.fullname);
-    end
-  else
-    Result := nil;
+      if (argnum = 1) and
+         (soargs^[0]^.GetTypeCls = so_integer_class) and
+         so_integer_fits(soargs^[0]) and
+         (so_integer_get(soargs^[0],true) >= 0) and
+         (so_integer_get(soargs^[0],true) <= tpl_stackptr) then
+        begin
+          Result := so_string_init_utf8(tpl_stack[tpl_stackptr-so_integer_get(soargs^[0],true)].code^.fullname);
+        end
+      else
+        Result := nil;
+    end;
 end;
 
-function _MachineState_Meth_RelFrameLine( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function _MachineState_Meth_RelFrameLine( callinfo: PMethodCallInfo ): PSOInstance;
 begin
-  if (argnum = 1) and
-     (soargs^[0]^.GetTypeCls = so_integer_class) and
-     so_integer_fits(soargs^[0]) and
-     (so_integer_get(soargs^[0],true) >= 0) and
-     (so_integer_get(soargs^[0],true) <= tpl_stackptr) then
+  with callinfo^ do
     begin
-      Result := so_integer_init(tpl_stack[tpl_stackptr-so_integer_get(soargs^[0],true)].code^.pbcode^.image[
-                 tpl_stack[tpl_stackptr-so_integer_get(soargs^[0],true)].ip ].GetLine);
-    end
-  else
-    Result := nil;
+      if (argnum = 1) and
+         (soargs^[0]^.GetTypeCls = so_integer_class) and
+         so_integer_fits(soargs^[0]) and
+         (so_integer_get(soargs^[0],true) >= 0) and
+         (so_integer_get(soargs^[0],true) <= tpl_stackptr) then
+        begin
+          Result := so_integer_init(tpl_stack[tpl_stackptr-so_integer_get(soargs^[0],true)].code^.pbcode^.image[
+                     tpl_stack[tpl_stackptr-so_integer_get(soargs^[0],true)].ip ].GetLine);
+        end
+      else
+        Result := nil;
+    end;
 end;
 
-function _MachineState_Meth_RelFrameColumn( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function _MachineState_Meth_RelFrameColumn( callinfo: PMethodCallInfo ): PSOInstance;
 begin
-  if (argnum = 1) and
-     (soargs^[0]^.GetTypeCls = so_integer_class) and
-     so_integer_fits(soargs^[0]) and
-     (so_integer_get(soargs^[0],true) >= 0) and
-     (so_integer_get(soargs^[0],true) <= tpl_stackptr) then
+  with callinfo^ do
     begin
-      Result := so_integer_init(tpl_stack[tpl_stackptr-so_integer_get(soargs^[0],true)].code^.pbcode^.image[
-                 tpl_stack[tpl_stackptr-so_integer_get(soargs^[0],true)].ip ].GetColumn);
-    end
-  else
-    Result := nil;
+      if (argnum = 1) and
+         (soargs^[0]^.GetTypeCls = so_integer_class) and
+         so_integer_fits(soargs^[0]) and
+         (so_integer_get(soargs^[0],true) >= 0) and
+         (so_integer_get(soargs^[0],true) <= tpl_stackptr) then
+        begin
+          Result := so_integer_init(tpl_stack[tpl_stackptr-so_integer_get(soargs^[0],true)].code^.pbcode^.image[
+                     tpl_stack[tpl_stackptr-so_integer_get(soargs^[0],true)].ip ].GetColumn);
+        end
+      else
+        Result := nil;
+    end;
 end;
 
-function _MachineState_Attr_StackFrames( const aname: String; soself: PSOInstance; setter: PSOInstance ): PSOInstance;
+function _MachineState_Attr_StackFrames( attrinfo: PAttributeInfo ): PSOInstance;
 begin
-  if not Assigned(setter) then
+  if not Assigned(attrinfo^.setter) then
     Result := so_integer_init( tpl_stackptr+1 )
   else
     Result := nil;

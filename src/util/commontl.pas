@@ -127,48 +127,48 @@ procedure check_bc_maxcomp( n: MachineInt ); inline;
 
 implementation
 
-uses eomsg;
+uses eomsg, cons;
 
 procedure check_so_maxargs(argnum: VMInt);
 begin
   if (argnum < 0) or
      (argnum > CL_SO_MaxArgs) then
-    put_critical('SO Call Argument Limit - Terminate');
+    put_critical(mi_str(mi_cl_arg_limit));
 end;
 
 procedure check_so_shortbuf(asize: MachineInt);
 begin
   if (asize < 0) or
      (asize > CL_SO_MaxShortBuffer) then
-    put_critical('SO Shortbuffer Limit Exceeded - Terminate');
+    put_critical(mi_str(mi_cl_sbuf_limit));
 end;
 
 procedure check_so_maxcollection( asize: VMInt );
 begin
   if (asize < 0) or
      (asize > CL_SO_MaxItems) then
-    put_critical('SO Collection Limit Exceeded - Terminate');
+    put_critical(mi_str(mi_cl_colitem_limit));
 end;
 
 procedure check_so_maxobjects(asize: MachineInt);
 begin
   if (asize < 0) or
      (asize > CL_SO_MaxObjects) then
-    put_critical('SO Object Limit Exceeded - Terminate');
+    put_critical(mi_str(mi_cl_objtrace_limit));
 end;
 
 procedure check_vm_maxrtstack(asize: VMInt);
 begin
   if (asize < 0) or
      (asize > CL_VM_MaxRTStack) then
-    put_critical('VM Object Stack Limit Exceeded - Terminate');
+    put_critical(mi_str(mi_cl_objstack_limit));
 end;
 
 procedure check_vm_maxtplstack(asize: VMInt);
 begin
   if (asize < 0) or
      (asize > CL_VM_MaxTPLStack) then
-    put_critical('VM Code Stack Limit Exceeded - Terminate');
+    put_critical(mi_str(mi_cl_tplstack_limit));
 end;
 
 function check_cc_maxargs(argnum: VMInt): Boolean;
@@ -187,7 +187,7 @@ procedure check_cc_maxrecurse(nrrec: Machineint);
 begin
   if (nrrec < 0) or
      (nrrec > CL_Max_CCRecurse) then
-    put_critical('Compiler Recursion Depth Exceeded - Terminate');
+    put_critical(mi_str(mi_cl_crecurse_limit));
 end;
 
 function check_bc_maxstab(n: VMInt): Boolean;
@@ -212,7 +212,7 @@ procedure check_bc_maxcomp(n: MachineInt);
 begin
   if (n < 0) or
      (n > CL_BC_CompoundSize) then
-    put_critical('Loader Limit Exceeded - Terminate');
+    put_critical(mi_str(mi_cl_bcloader_limit));
 end;
 
 end.

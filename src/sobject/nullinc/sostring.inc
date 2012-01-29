@@ -26,7 +26,7 @@
 var
   TMethodTrie_String: THashTrie;
 
-procedure so_string_addmethod( const mname: String; methh: TSOMethodHandlerPure );
+procedure so_string_addmethod( const mname: String; methh: TSOMethodHandler );
 begin
   if TMethodTrie_String.Add(UpCase(mname),methh) <> nil then
     put_internalerror(12012202);
@@ -62,15 +62,18 @@ begin
     Result := DefaultCompare(soself, rightop);
 end;
 
-function socls_String_MethodCall( hashk: MachineWord; const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function socls_String_MethodCall( callinfo: PMethodCallInfo ): PSOInstance;
 {generic, lookup method and call}
-var m: TSOMethodHandlerPure;
+var m: TSOMethodHandler;
 begin
-  m := TSOMethodHandlerPure( TMethodTrie_String.LookupByHash(hashk,mname) );
-  if Assigned(m) then
-    Result := m( mname, soself, soargs, argnum )
-  else
-    Result := nil;
+  with callinfo^ do
+    begin
+      m := TSOMethodHandler( TMethodTrie_String.LookupByHash(hashk,name) );
+      if Assigned(m) then
+        Result := m( callinfo )
+      else
+        Result := nil;
+    end;
 end;
 
 procedure socls_String_PreDestructor(instance: PSOInstance);
@@ -88,109 +91,118 @@ end;
  ******************************************************************************)
 
 {String::Add(string) -> string}
-function _String_Add_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function _String_Add_(callinfo: PMethodCallInfo): PSOInstance;
 begin
-  SelfCheck(soself,so_string_class);
-  if argnum = 1 then
+  with callinfo^ do
     begin
-      if soargs^[0]^.IsType(so_string_class) then
+      SelfCheck(soself,so_string_class);
+      if argnum = 1 then
         begin
-          check_so_shortbuf(so_string_length(soargs^[0]) + so_string_length(soself));
-          Result := so_string_init_ucfs(ucfs_concat(PSO_String(soself)^.pstr,
-                                                    PSO_String(soargs^[0])^.pstr));
+          if soargs^[0]^.IsType(so_string_class) then
+            begin
+              check_so_shortbuf(so_string_length(soargs^[0]) + so_string_length(soself));
+              Result := so_string_init_ucfs(ucfs_concat(PSO_String(soself)^.pstr,
+                                                        PSO_String(soargs^[0])^.pstr));
+            end
+          else
+            Result := init_invargtype_error(soself,soargs^[0],1,name);
         end
       else
-        Result := init_invargtype_error(soself,soargs^[0],1,mname);
-    end
-  else
-    Result := init_invargnum_error(soself,argnum,mname);
+        Result := init_invargnum_error(soself,argnum,name);
+    end;
 end;
 
 {String::GetIndex(integer) -> string}
-function _String_GetIndex_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function _String_GetIndex_(callinfo: PMethodCallInfo): PSOInstance;
 begin
-  SelfCheck(soself,so_string_class);
-  if argnum = 1 then
+  with callinfo^ do
     begin
-      {check for integer arg}
-      if soargs^[0]^.IsType(so_integer_class) then
+      SelfCheck(soself,so_string_class);
+      if argnum = 1 then
         begin
-          {check integer arg is in range}
-          if so_integer_fits(soargs^[0]) and
-             ((so_integer_get(soargs^[0],true) > 0) or
-              (so_integer_get(soargs^[0],true) <= so_string_length(soself))) then
+          {check for integer arg}
+          if soargs^[0]^.IsType(so_integer_class) then
             begin
-              {and access, return character as new string}
-              Result := so_string_init_ucfs( ucfs_copy(PSO_String(soself)^.pstr,
-                                             so_integer_get(soargs^[0],true),1));
+              {check integer arg is in range}
+              if so_integer_fits(soargs^[0]) and
+                 ((so_integer_get(soargs^[0],true) > 0) or
+                  (so_integer_get(soargs^[0],true) <= so_string_length(soself))) then
+                begin
+                  {and access, return character as new string}
+                  Result := so_string_init_ucfs( ucfs_copy(PSO_String(soself)^.pstr,
+                                                 so_integer_get(soargs^[0],true),1));
+                end
+              else
+                Result := init_range_error(soself,soargs^[0],1,name);
             end
           else
-            Result := init_range_error(soself,soargs^[0],1,mname);
+            Result := init_invargtype_error(soself,soargs^[0],1,name);
         end
       else
-        Result := init_invargtype_error(soself,soargs^[0],1,mname);
-    end
-  else
-    Result := init_invargnum_error(soself,argnum,mname);
+        Result := init_invargnum_error(soself,argnum,name);
+    end;
 end;
 
 {String::SetIndex(integer,string) -> string (setter)}
-function _String_SetIndex_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function _String_SetIndex_( callinfo: PMethodCallInfo ): PSOInstance;
 var p: VMInt;
     uc: TUCFS32Char;
     ps: PUCFS32String;
 begin
-  SelfCheck(soself,so_string_class);
-  if argnum = 2 then
+  with callinfo^ do
     begin
-      {check first arg is integer}
-      if soargs^[0]^.IsType(so_integer_class) then
+      SelfCheck(soself,so_string_class);
+      if argnum = 2 then
         begin
-          {check integer is in range}
-          if so_integer_fits(soargs^[0]) and
-             ((so_integer_get(soargs^[0],true) > 0) or
-              (so_integer_get(soargs^[0],true) <= so_string_length(soself))) then
+          {check first arg is integer}
+          if soargs^[0]^.IsType(so_integer_class) then
             begin
-              {check second arg is string}
-              if soargs^[1]^.IsType(so_string_class) then
+              {check integer is in range}
+              if so_integer_fits(soargs^[0]) and
+                 ((so_integer_get(soargs^[0],true) > 0) or
+                  (so_integer_get(soargs^[0],true) <= so_string_length(soself))) then
                 begin
-                  {check second arg is string of length 1}
-                  if so_string_length(soargs^[1]) = 1 then
+                  {check second arg is string}
+                  if soargs^[1]^.IsType(so_string_class) then
                     begin
-                      {check for modify locks on string}
-                      if not soself^.GetLocked then
+                      {check second arg is string of length 1}
+                      if so_string_length(soargs^[1]) = 1 then
                         begin
-                          p := so_integer_get(soargs^[0],true);
-                          uc := ucfs_getc(PSO_String(soargs^[1])^.pstr,p);
-                          {try setting}
-                          if not ucfs_setc_check(PSO_String(soself)^.pstr,p,uc) then
+                          {check for modify locks on string}
+                          if not soself^.GetLocked then
                             begin
-                              {size missmatch, need to expand the string to
-                               uc's size}
-                              ps := ucfs_copy(PSO_String(soself)^.pstr,1,
-                                              ucfs_length(PSO_String(soself)^.pstr),
-                                              ucfs_u32c_bytelen(uc));
-                              ucfs_release(PSO_String(soself)^.pstr);
-                              PSO_String(soself)^.pstr := ps;
-                              ucfs_setc(PSO_String(soself)^.pstr,p,uc);
-                            end;
-                          Result := soargs^[1];
-                          Result^.IncRef;
+                              p := so_integer_get(soargs^[0],true);
+                              uc := ucfs_getc(PSO_String(soargs^[1])^.pstr,p);
+                              {try setting}
+                              if not ucfs_setc_check(PSO_String(soself)^.pstr,p,uc) then
+                                begin
+                                  {size missmatch, need to expand the string to
+                                   uc's size}
+                                  ps := ucfs_copy(PSO_String(soself)^.pstr,1,
+                                                  ucfs_length(PSO_String(soself)^.pstr),
+                                                  ucfs_u32c_bytelen(uc));
+                                  ucfs_release(PSO_String(soself)^.pstr);
+                                  PSO_String(soself)^.pstr := ps;
+                                  ucfs_setc(PSO_String(soself)^.pstr,p,uc);
+                                end;
+                              Result := soargs^[1];
+                              Result^.IncRef;
+                            end
+                          else
+                            Result := init_lockmod(soself,name);
                         end
                       else
-                        Result := init_lockmod(soself,mname);
+                        Result := init_invargvalue_error(soself,soargs^[1],2,name);
                     end
                   else
-                    Result := init_invargvalue_error(soself,soargs^[1],2,mname);
+                    Result := init_invargtype_error(soself,soargs^[1],2,name);
                 end
               else
-                Result := init_invargtype_error(soself,soargs^[1],2,mname);
+                Result := init_range_error(soself,soargs^[0],1,name);
             end
           else
-            Result := init_range_error(soself,soargs^[0],1,mname);
-        end
-      else
-        Result := init_invargtype_error(soself,soargs^[0],1,mname);
+            Result := init_invargtype_error(soself,soargs^[0],1,name);
+        end;
     end;
 end;
 
@@ -269,11 +281,14 @@ begin
 end;
 
 {String::Length() -> integer}
-function _String_Length_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function _String_Length_( callinfo: PMethodCallInfo ): PSOInstance;
 begin
-  if argnum = 0 then
-    Result := so_integer_init(ucfs_length(PSO_String(soself)^.pstr))
-  else
-    Result := init_invargnum_error(soself,argnum,mname);
+  with callinfo^ do
+    begin
+      if argnum = 0 then
+        Result := so_integer_init(ucfs_length(PSO_String(soself)^.pstr))
+      else
+        Result := init_invargnum_error(soself,argnum,name);
+    end;
 end;
 

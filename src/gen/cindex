@@ -1,0 +1,29 @@
+
+  constr.add('dm_setmember','SETMEMBER');
+  constr.add('dm_getmember','GETMEMBER');
+  
+  constr.add('dm_setindex','SETINDEX');
+  constr.add('dm_getindex','GETINDEX');
+  
+  constr.add('dm_add','ADD');
+  constr.add('dm_sub','SUB');
+  constr.add('dm_mul','MUL');
+  constr.add('dm_div','OP_DIV');
+  constr.add('dm_mod','OP_MOD');
+
+  constr.add('dm_shl','OP_SHL');
+  constr.add('dm_shr','OP_SHR');
+  constr.add('dm_rol','OP_ROL');
+  constr.add('dm_ror','OP_ROR');
+
+  constr.add('dm_and','OP_AND');
+  constr.add('dm_or','OP_OR');
+  constr.add('dm_xor','OP_XOR');
+
+  constr.add('dm_neg','OP_NEG');
+  constr.add('dm_abs','OP_ABS');
+  constr.add('dm_not','OP_NOT');
+
+  constr.add('dm_call','CALL');
+  constr.add('dm_create','CREATE');
+

@@ -26,7 +26,7 @@ unit socore;
 
 interface
 
-uses SysUtils, commontl, corealg, eomsg, gens;
+uses SysUtils, commontl, eomsg, gens, ucfs;
 
 type
   TSOCompareResult = (
@@ -47,9 +47,31 @@ type
   TInstanceCompareProc = function( soself, rightop: PSOInstance ): TSOCompareResult;
   TInstanceStrProc = function( soself: PSOInstance ): String;
 
-  TSOMethodHandlerOverride = function( hashk: MachineWord; const name: String; soself: PSOInstance ): PSOInstance;
-  TSOMethodHandler = function( hashk: MachineWord; const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
-  TSOMethodHandlerPure = function( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+  PMethodCallInfo = ^TMethodCallInfo;
+  TMethodCallInfo = record
+    hashk: MachineWord;
+    name: PUCFS32String;
+    soself: PSOInstance;
+    soargs: PSOMethodVarArgs;
+    argnum: VMInt;
+  end;
+
+  PMethodOverrideCallInfo = ^TMethodOverrideCallInfo;
+  TMethodOverrideCallInfo = record
+    hashk: MachineWord;
+    name: PUCFS32String;
+    soself: PSOInstance;
+  end;
+
+  PAttributeInfo = ^TAttributeInfo;
+  TAttributeInfo = record
+    name: PUCFS32String;
+    soself: PSOInstance;
+    setter: PSOInstance;
+  end;
+
+  TSOMethodHandlerOverride = function( callinfo: PMethodOverrideCallInfo ): PSOInstance;
+  TSOMethodHandler = function( callinfo: PMethodCallInfo ): PSOInstance;
 
   PSOTypeCls = ^TSOTypeCls;
   {DOC>> Scripting Objects Base Type Interface}
@@ -146,54 +168,6 @@ type
       procedure IncLocks; inline;
       procedure DecLocks; inline;
   end;
-
-const
-    DEFAULT_METHOD_SetMember = 'SETMEMBER';
-    DEFAULT_METHOD_GetMember = 'GETMEMBER';
-    DEFAULT_METHOD_SetIndex = 'SETINDEX';
-    DEFAULT_METHOD_GetIndex = 'GETINDEX';
-    DEFAULT_METHOD_BinOpAdd = 'ADD';
-    DEFAULT_METHOD_BinOpSub = 'SUB';
-    DEFAULT_METHOD_BinOpMul = 'MUL';
-    DEFAULT_METHOD_BinOpDiv = 'OP_DIV';
-    DEFAULT_METHOD_BinOpMod = 'OP_MOD';
-    DEFAULT_METHOD_BinOpShl = 'OP_SHL';
-    DEFAULT_METHOD_BinOpShr = 'OP_SHR';
-    DEFAULT_METHOD_BinOpRol = 'OP_ROL';
-    DEFAULT_METHOD_BinOpRor = 'OP_ROR';
-    DEFAULT_METHOD_BinOpAnd = 'OP_AND';
-    DEFAULT_METHOD_BinOpOr = 'OP_OR';
-    DEFAULT_METHOD_BinOpXor = 'OP_XOR';
-    DEFAULT_METHOD_UnOpNeg = 'NEG';
-    DEFAULT_METHOD_UnOpAbs = 'ABS';
-    DEFAULT_METHOD_UnOpNot = 'OP_NOT';
-    DEFAULT_METHOD_DirectCall = 'CALL';
-
-    SPECIAL_METHOD_Create = 'CREATE';
-
-var
-    DEFAULT_METHOD_SetMember_Hash: MachineWord;
-    DEFAULT_METHOD_GetMember_Hash: MachineWord;
-    DEFAULT_METHOD_SetIndex_Hash: MachineWord;
-    DEFAULT_METHOD_GetIndex_Hash: MachineWord;
-    DEFAULT_METHOD_BinOpAdd_Hash: MachineWord;
-    DEFAULT_METHOD_BinOpSub_Hash: MachineWord;
-    DEFAULT_METHOD_BinOpMul_Hash: MachineWord;
-    DEFAULT_METHOD_BinOpDiv_Hash: MachineWord;
-    DEFAULT_METHOD_BinOpMod_Hash: MachineWord;
-    DEFAULT_METHOD_BinOpShl_Hash: MachineWord;
-    DEFAULT_METHOD_BinOpShr_Hash: MachineWord;
-    DEFAULT_METHOD_BinOpRol_Hash: MachineWord;
-    DEFAULT_METHOD_BinOpRor_Hash: MachineWord;
-    DEFAULT_METHOD_BinOpAnd_Hash: MachineWord;
-    DEFAULT_METHOD_BinOpOr_Hash: MachineWord;
-    DEFAULT_METHOD_BinOpXor_Hash: MachineWord;
-    DEFAULT_METHOD_UnOpNeg_Hash: MachineWord;
-    DEFAULT_METHOD_UnOpAbs_Hash: MachineWord;
-    DEFAULT_METHOD_UnOpNot_Hash: MachineWord;
-    DEFAULT_METHOD_DirectCall_Hash: MachineWord;
-
-    SPECIAL_METHOD_Create_Hash: MachineWord;
 
 (******************************************************************************
  GC/Create/Destroy Interface
@@ -478,29 +452,6 @@ begin
   ASSERT( instance^.refcnt > 0 );
   ASSERT( instance^.IsType(fromtype) );
 end;
-
-initialization
-  DEFAULT_METHOD_SetMember_Hash := mas3hash_sigma_s(DEFAULT_METHOD_SetMember);
-  DEFAULT_METHOD_GetMember_Hash := mas3hash_sigma_s(DEFAULT_METHOD_GetMember);
-  DEFAULT_METHOD_SetIndex_Hash := mas3hash_sigma_s(DEFAULT_METHOD_SetIndex);
-  DEFAULT_METHOD_GetIndex_Hash := mas3hash_sigma_s(DEFAULT_METHOD_GetIndex);
-  DEFAULT_METHOD_BinOpAdd_Hash := mas3hash_sigma_s(DEFAULT_METHOD_BinOpAdd);
-  DEFAULT_METHOD_BinOpSub_Hash := mas3hash_sigma_s(DEFAULT_METHOD_BinOpSub);
-  DEFAULT_METHOD_BinOpMul_Hash := mas3hash_sigma_s(DEFAULT_METHOD_BinOpMul);
-  DEFAULT_METHOD_BinOpDiv_Hash := mas3hash_sigma_s(DEFAULT_METHOD_BinOpDiv);
-  DEFAULT_METHOD_BinOpMod_Hash := mas3hash_sigma_s(DEFAULT_METHOD_BinOpMod);
-  DEFAULT_METHOD_BinOpShl_Hash := mas3hash_sigma_s(DEFAULT_METHOD_BinOpShl);
-  DEFAULT_METHOD_BinOpShr_Hash := mas3hash_sigma_s(DEFAULT_METHOD_BinOpShr);
-  DEFAULT_METHOD_BinOpRol_Hash := mas3hash_sigma_s(DEFAULT_METHOD_BinOpRol);
-  DEFAULT_METHOD_BinOpRor_Hash := mas3hash_sigma_s(DEFAULT_METHOD_BinOpRor);
-  DEFAULT_METHOD_BinOpAnd_Hash := mas3hash_sigma_s(DEFAULT_METHOD_BinOpAnd);
-  DEFAULT_METHOD_BinOpOr_Hash := mas3hash_sigma_s(DEFAULT_METHOD_BinOpOr);
-  DEFAULT_METHOD_BinOpXor_Hash := mas3hash_sigma_s(DEFAULT_METHOD_BinOpXor);
-  DEFAULT_METHOD_UnOpNeg_Hash := mas3hash_sigma_s(DEFAULT_METHOD_UnOpNeg);
-  DEFAULT_METHOD_UnOpAbs_Hash := mas3hash_sigma_s(DEFAULT_METHOD_UnOpAbs);
-  DEFAULT_METHOD_UnOpNot_Hash := mas3hash_sigma_s(DEFAULT_METHOD_UnOpNot);
-  DEFAULT_METHOD_DirectCall_Hash := mas3hash_sigma_s(DEFAULT_METHOD_DirectCall);
-  SPECIAL_METHOD_Create_Hash := mas3hash_sigma_s(SPECIAL_METHOD_Create);
 
 end.
 

@@ -1,0 +1,10 @@
+
+  resourcestr.add('cl_arg_limit','Hit SO Call Argument Limit');
+  resourcestr.add('cl_sbuf_limit','Hit SO Shortbuffer Limit');
+  resourcestr.add('cl_colitem_limit','Hit SO Collection Limit');
+  resourcestr.add('cl_objtrace_limit','Hit SO Object Limit');
+  resourcestr.add('cl_tplstack_limit','Hit SO Inclusion/Call Limit');
+  resourcestr.add('cl_objstack_limit','Hit SO Stack Limit');
+  resourcestr.add('cl_crecurse_limit','Hit Compiler Recursion Depth Limit');
+
+  resourcestr.add('cl_bcloader_limit','Hit Bytecode Loader Limit');

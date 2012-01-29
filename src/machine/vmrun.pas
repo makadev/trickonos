@@ -27,7 +27,7 @@ interface
 
 uses
   SysUtils, commontl, eomsg, vmstate, ccache, fpath, compload, opcode,
-  solnull, socore, corealg;
+  solnull, socore, cons, corealg, ucfs;
 
 
 type
@@ -676,65 +676,71 @@ end;
      checks. Thats all, no magic.
  ******************************************************************************)
 
-procedure do_so_method_call( hashkey: MachineWord; const name: String; args: Integer);
+procedure do_so_method_call( hashkey: MachineWord; mname: PUCFS32String; args: Integer);
 { Do a named method call. }
-var res,fres,mres: PSOInstance;
+var res,fres,mres,obj: PSOInstance;
+    objcls: PSOTypeCls;
+    ci: TMethodCallInfo;
+    coi: TMethodOverrideCallInfo;
 begin
-  {check for override, some SO_Function Object, which will be used as
-   handler for given method call}
-  if not Assigned(runtimestack_get(args)^.GetTypeCls^.MethodCallOverride) then
+  obj := runtimestack_get(args);
+  objcls := obj^.GetTypeCls;
+
+  {check for method override}
+  if not Assigned(objcls^.MethodCallOverride) then
     res := nil
   else
-    res := runtimestack_get(args)^.GetTypeCls^.MethodCallOverride(hashkey,
-             name, runtimestack_get(args));
-
+    begin
+      with coi do
+        begin
+          hashk := hashkey;
+          name := mname;
+          soself := obj;
+        end;
+      res := objcls^.MethodCallOverride(@coi);
+    end;
 
   if not Assigned(res) then
     begin
-      if Assigned(runtimestack_get(args)^.GetTypeCls^.MethodCall) then
+      {call method handler on objcls}
+      mres := nil;
+      if Assigned(objcls^.MethodCall) then
         begin
-          {no named method override -> call object direct}
-          if args > 0 then
-            mres := runtimestack_get(args)^.GetTypeCls^.MethodCall(hashkey,name,
-              runtimestack_get(args),runtimestack_getargf(args-1),args)
-          else
-            mres := runtimestack_get(args)^.GetTypeCls^.MethodCall(hashkey,name,
-              runtimestack_get(args),nil,args);
-          if Assigned(mres) then
+          with ci do
             begin
-              {check for error, this may be interesting when
-               errorhandling is introduced someday -> stack modification
-               after call may introduce problems then}
-              if mres^.GetTypeCls <> so_error_class then
-                begin
-                  runtimestack_push(mres);
-                  runtimestack_moved(0,args+1);
-                  runtimestack_pop(args+1);
-                end
+              hashk := hashkey;
+              name := mname;
+              soself := obj;
+              if args > 0 then
+                soargs := runtimestack_getargf(args-1)
               else
-                begin
-                  runtimestack_push(mres);
-                end;
-            end
-          else
-            begin
-              {obj returned nil -> default error}
-              runtimestack_push(init_operation_error(runtimestack_get(args),name));
+                soargs := nil;
+              argnum := args;
             end;
+          mres := objcls^.MethodCall(@ci)
+        end;
+      {check (method handler exists or) method result}
+      if Assigned(mres) then
+        begin
+          {clear frame, push result}
+          runtimestack_push(mres);
+          runtimestack_moved(0,args+1);
+          runtimestack_pop(args+1);
         end
       else
         begin
-          {object doesnt have method call interface -> error}
-          runtimestack_push(init_operation_error(runtimestack_get(args),name));
+          {no method or handling -> default error}
+          runtimestack_push(init_operation_error(obj,mname));
         end;
     end
   else
     begin
       {methodcalloverride returned something, check if its an
-        -> function object for call
-        -> instance object on creation}
+        -> function object for call (needs setup and call)
+        -> instance object on creation (needs check for constructor)}
       ASSERT( (res^.GetTypeCls = so_function_class) or
               (res^.GetTypeCls = so_instance_class) );
+      {check for instance -> constructor call}
       if res^.IsType(so_instance_class) then
         begin
           {check for constructor call}
@@ -764,16 +770,27 @@ begin
               else
                 begin
                   {args given, but no constructor -> fail}
-                  runtimestack_push(init_invargnum_error(res,args,SPECIAL_METHOD_Create));
+                  runtimestack_push(init_invargnum_error(res,args,ci_us(ci_dm_create,false)));
                 end;
               exit;
             end;
         end;
+
+      {now we have either function object or constructor (also function) -> setup call}
+      with ci do
+        begin
+          hashk := DEFAULT_METHOD_DirectCall_Hash;
+          name := ci_us(ci_dm_call,false);
+          soself := res;
+          soargs := nil; // <- function object resets fp so args is invalid anyway
+          argnum := args;
+        end;
       ASSERT( res^.IsType(so_function_class) );
-      ASSERT( Assigned(res^.GetTypeCls^.MethodCall) ); // function type needs methodcall
+      ASSERT( Assigned(res^.GetTypeCls^.MethodCall) ); // -> function type needs methodcall
+
       {setup the call}
-      fres := res^.GetTypeCls^.MethodCall(DEFAULT_METHOD_DirectCall_Hash,
-        DEFAULT_METHOD_DirectCall,res,nil,args);
+      fres := res^.GetTypeCls^.MethodCall(@ci);
+
       res^.DecRef; // <- deref, since function object increfed with MethodCallOverride
       if Assigned(fres) then
         begin
@@ -789,9 +806,9 @@ procedure vmop_object_operation_unary;
 {call unary operation on so object}
 begin
   case TInsSOUnaryOp(template_ip_operand) of
-    sounop_abs: do_so_method_call(DEFAULT_METHOD_UnOpAbs_Hash,DEFAULT_METHOD_UnOpAbs,0);
-    sounop_neg: do_so_method_call(DEFAULT_METHOD_UnOpNeg_Hash,DEFAULT_METHOD_UnOpNeg,0);
-    sounop_not: do_so_method_call(DEFAULT_METHOD_UnOpNot_Hash,DEFAULT_METHOD_UnOpNot,0);
+    sounop_abs: do_so_method_call(DEFAULT_METHOD_UnOpAbs_Hash,ci_us(ci_dm_abs,false),0);
+    sounop_neg: do_so_method_call(DEFAULT_METHOD_UnOpNeg_Hash,ci_us(ci_dm_neg,false),0);
+    sounop_not: do_so_method_call(DEFAULT_METHOD_UnOpNot_Hash,ci_us(ci_dm_not,false),0);
     else
       put_internalerror(2011122060);
   end;
@@ -801,18 +818,18 @@ procedure vmop_object_operation_binary;
 {call binary operation on so object}
 begin
   case TInsSOBinaryOp(template_ip_operand) of
-    sobinop_add: do_so_method_call(DEFAULT_METHOD_BinOpAdd_Hash,DEFAULT_METHOD_BinOpAdd,1);
-    sobinop_sub: do_so_method_call(DEFAULT_METHOD_BinOpSub_Hash,DEFAULT_METHOD_BinOpSub,1);
-    sobinop_mul: do_so_method_call(DEFAULT_METHOD_BinOpMul_Hash,DEFAULT_METHOD_BinOpMul,1);
-    sobinop_div: do_so_method_call(DEFAULT_METHOD_BinOpDiv_Hash,DEFAULT_METHOD_BinOpDiv,1);
-    sobinop_mod: do_so_method_call(DEFAULT_METHOD_BinOpMod_Hash,DEFAULT_METHOD_BinOpMod,1);
-    sobinop_shl: do_so_method_call(DEFAULT_METHOD_BinOpShl_Hash,DEFAULT_METHOD_BinOpShl,1);
-    sobinop_shr: do_so_method_call(DEFAULT_METHOD_BinOpShr_Hash,DEFAULT_METHOD_BinOpShr,1);
-    sobinop_rol: do_so_method_call(DEFAULT_METHOD_BinOpRol_Hash,DEFAULT_METHOD_BinOpRol,1);
-    sobinop_ror: do_so_method_call(DEFAULT_METHOD_BinOpRor_Hash,DEFAULT_METHOD_BinOpRor,1);
-    sobinop_and: do_so_method_call(DEFAULT_METHOD_BinOpAnd_Hash,DEFAULT_METHOD_BinOpAnd,1);
-    sobinop_or: do_so_method_call(DEFAULT_METHOD_BinOpOr_Hash,DEFAULT_METHOD_BinOpOr,1);
-    sobinop_xor: do_so_method_call(DEFAULT_METHOD_BinOpXor_Hash,DEFAULT_METHOD_BinOpXor,1);
+    sobinop_add: do_so_method_call(DEFAULT_METHOD_BinOpAdd_Hash,ci_us(ci_dm_add,false),1);
+    sobinop_sub: do_so_method_call(DEFAULT_METHOD_BinOpSub_Hash,ci_us(ci_dm_sub,false),1);
+    sobinop_mul: do_so_method_call(DEFAULT_METHOD_BinOpMul_Hash,ci_us(ci_dm_mul,false),1);
+    sobinop_div: do_so_method_call(DEFAULT_METHOD_BinOpDiv_Hash,ci_us(ci_dm_div,false),1);
+    sobinop_mod: do_so_method_call(DEFAULT_METHOD_BinOpMod_Hash,ci_us(ci_dm_mod,false),1);
+    sobinop_shl: do_so_method_call(DEFAULT_METHOD_BinOpShl_Hash,ci_us(ci_dm_shl,false),1);
+    sobinop_shr: do_so_method_call(DEFAULT_METHOD_BinOpShr_Hash,ci_us(ci_dm_shr,false),1);
+    sobinop_rol: do_so_method_call(DEFAULT_METHOD_BinOpRol_Hash,ci_us(ci_dm_rol,false),1);
+    sobinop_ror: do_so_method_call(DEFAULT_METHOD_BinOpRor_Hash,ci_us(ci_dm_ror,false),1);
+    sobinop_and: do_so_method_call(DEFAULT_METHOD_BinOpAnd_Hash,ci_us(ci_dm_and,false),1);
+    sobinop_or: do_so_method_call(DEFAULT_METHOD_BinOpOr_Hash,ci_us(ci_dm_or,false),1);
+    sobinop_xor: do_so_method_call(DEFAULT_METHOD_BinOpXor_Hash,ci_us(ci_dm_xor,false),1);
     else
       put_internalerror(2011122061);
   end;
@@ -827,23 +844,23 @@ begin
          and switch}
         runtimestack_push(so_string_init_a7(template_stabentry(template_ip_operand)));
         runtimestack_switch(0,1);
-        do_so_method_call(DEFAULT_METHOD_SetMember_Hash,DEFAULT_METHOD_SetMember,2);
+        do_so_method_call(DEFAULT_METHOD_SetMember_Hash,ci_us(ci_dm_setmember,false),2);
       end;
     isc_o_getm_stab:
       begin
         {push stab entry}
         runtimestack_push(so_string_init_a7(template_stabentry(template_ip_operand)));
-        do_so_method_call(DEFAULT_METHOD_GetMember_Hash,DEFAULT_METHOD_GetMember,1);
+        do_so_method_call(DEFAULT_METHOD_GetMember_Hash,ci_us(ci_dm_getmember,false),1);
       end;
-    isc_o_seti_ign: do_so_method_call(DEFAULT_METHOD_SetIndex_Hash,DEFAULT_METHOD_SetIndex,2);
-    isc_o_geti_ign: do_so_method_call(DEFAULT_METHOD_GetIndex_Hash,DEFAULT_METHOD_GetIndex,1);
+    isc_o_seti_ign: do_so_method_call(DEFAULT_METHOD_SetIndex_Hash,ci_us(ci_dm_setindex,false),2);
+    isc_o_geti_ign: do_so_method_call(DEFAULT_METHOD_GetIndex_Hash,ci_us(ci_dm_getindex,false),1);
     else
       put_internalerror(2011120970);
   end;
 end;
 
 procedure vmop_m_calltranslate;
-var name: String;
+var name: PUCFS32String;
     args: VMInt;
 begin
   case template_ip_opcode of
@@ -853,17 +870,18 @@ begin
          interface}
         ASSERT( runtimestack_get(0)^.GetTypeCls = so_string_class ); // invalid stack layout
         check_so_maxargs(template_ip_operand);
-        name := so_string_get_a7(runtimestack_get(0));
+        {$WARNING this should come from stab somehow}
+        name := so_string_get_ucfs(runtimestack_get(0));
+        so_string_set_ucfs(runtimestack_get(0),nil,false);
         runtimestack_pop(1);
-        ASSERT(Length(name) > 0);
-        ASSERT(Upcase(name)=name);
-        {$WARNING hold hash in stab/additional table, load and hash ondemand}
-        do_so_method_call(mas3hash_sigma_s(name),name,template_ip_operand);
+        ASSERT(ucfs_length(name) > 0);
+        do_so_method_call(mas3hash_sigma(name),name,template_ip_operand);
+        ucfs_release(name);
       end;
     isc_o_callcall_nrops:
       begin
         check_so_maxargs(template_ip_operand);
-        do_so_method_call(DEFAULT_METHOD_DirectCall_Hash,DEFAULT_METHOD_DirectCall,template_ip_operand);
+        do_so_method_call(DEFAULT_METHOD_DirectCall_Hash,ci_us(ci_dm_call,false),template_ip_operand);
       end;
     else
       put_internalerror(2011121110);

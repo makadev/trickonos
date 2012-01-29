@@ -26,7 +26,7 @@
 var
   TMethodTrie_List: THashTrie;
 
-procedure so_list_addmethod( const mname: String; methh: TSOMethodHandlerPure );
+procedure so_list_addmethod( const mname: String; methh: TSOMethodHandler );
 begin
   if TMethodTrie_List.Add(UpCase(mname),methh) <> nil then
     put_internalerror(12012204);
@@ -117,15 +117,18 @@ begin
     Result := socmp_NotComparable;
 end;
 
-function socls_List_MethodCall( hashk: MachineWord; const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function socls_List_MethodCall( callinfo: PMethodCallInfo ): PSOInstance;
 {generic, lookup method and call}
-var m: TSOMethodHandlerPure;
+var m: TSOMethodHandler;
 begin
-  m := TSOMethodHandlerPure( TMethodTrie_List.LookupByHash(hashk,mname) );
-  if Assigned(m) then
-    Result := m( mname, soself, soargs, argnum )
-  else
-    Result := nil;
+  with callinfo^ do
+    begin
+      m := TSOMethodHandler( TMethodTrie_List.LookupByHash(hashk,name) );
+      if Assigned(m) then
+        Result := m( callinfo )
+      else
+        Result := nil;
+    end;
 end;
 
 (*******************************************************************************
@@ -137,17 +140,16 @@ type
     private
       FLstElem: PSOListElement;
     public
-      function Next( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
-      function Current( const aname: String; soself: PSOInstance; setter: PSOInstance ): PSOInstance;
+      function Next( callinfo: PMethodCallInfo ): PSOInstance;
+      function Current( attrinfo: PAttributeInfo ): PSOInstance;
       constructor Create; override;
       destructor Destroy; override;
   end;
 
 { TSOList_IOListIterator }
 
-function TSOList_IOListIterator.Next(const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
+function TSOList_IOListIterator.Next( callinfo: PMethodCallInfo ): PSOInstance;
 begin
-  ASSERT(mname=Upcase(C_STDCALLM_ITER__NEXT));
   ASSERT(Length(FReferings) = 1);
   if Assigned(FLstElem) then
     begin
@@ -170,16 +172,15 @@ begin
     end;
 end;
 
-function TSOList_IOListIterator.Current(const aname: String; soself: PSOInstance; setter: PSOInstance): PSOInstance;
+function TSOList_IOListIterator.Current( attrinfo: PAttributeInfo ): PSOInstance;
 {current value, check iterator, check lock on list, return list value
   also allows setting}
 begin
-  ASSERT(aname=Upcase(C_STDMEMBR_LISTITER__CURRENT));
   Result := nil;
   if Assigned(FLstElem) then
     begin
       ASSERT(PSO_List(FReferings[0])^.GetLocked);
-      if not Assigned(setter) then
+      if not Assigned(attrinfo^.setter) then
         begin
           {getter, return value and incref}
           Result := FLstElem^.elem;
@@ -190,10 +191,10 @@ begin
           {setter, decref/remove val, set setter, incref twice for
            return value and for list entry}
           FLstElem^.elem^.DecRef;
-          FLstElem^.elem := setter;
-          setter^.IncRef;
-          setter^.IncRef;
-          Result := setter;
+          FLstElem^.elem := attrinfo^.setter;
+          Result := attrinfo^.setter;
+          Result^.IncRef;
+          Result^.IncRef;
         end;
     end;
 end;
@@ -308,40 +309,49 @@ begin
 end;
 
 {LIST::Length()}
-function _List_Length_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function _List_Length_(callinfo: PMethodCallInfo): PSOInstance;
 begin
-  if argnum = 0 then
+  with callinfo^ do
     begin
-      Result := so_integer_init(PSO_List(soself)^.count);
-    end
-  else
-    Result := init_invargnum_error(soself,argnum,mname);
+      if argnum = 0 then
+        begin
+          Result := so_integer_init(PSO_List(soself)^.count);
+        end
+      else
+        Result := init_invargnum_error(soself,argnum,name);
+    end;
 end;
 
 {LIST::Append(<arg>+) -- modifying -> check im-locks}
-function _List_Append_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function _List_Append_(callinfo: PMethodCallInfo): PSOInstance;
 begin
-  if argnum > 0 then
+  with callinfo^ do
     begin
-      if not soself^.GetLocked then
+      if argnum > 0 then
         begin
-          check_so_maxcollection( PSO_List(soself)^.count + argnum );
-          Result := internal_list_append(soself,soargs,argnum);
+          if not soself^.GetLocked then
+            begin
+              check_so_maxcollection( PSO_List(soself)^.count + argnum );
+              Result := internal_list_append(soself,soargs,argnum);
+            end
+          else
+            Result := init_lockmod(soself,name);
         end
       else
-        Result := init_lockmod(soself,mname);
-    end
-  else
-    Result := init_invargnum_error(soself,argnum,mname);
+        Result := init_invargnum_error(soself,argnum,name);
+    end;
 end;
 
 {LIST::Iterator() -> iterator object}
-function _List_Iterator_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function _List_Iterator_(callinfo: PMethodCallInfo): PSOInstance;
 begin
-  if argnum = 0 then
+  with callinfo^ do
     begin
-      Result := so_create_internalobject_bound(C_SOTYPE_IO_LISTITER_NAME,TSOList_IOListIterator,soself);
-    end
-  else
-    Result := init_invargnum_error(soself,argnum,mname);
+      if argnum = 0 then
+        begin
+          Result := so_create_internalobject_bound(C_SOTYPE_IO_LISTITER_NAME,TSOList_IOListIterator,soself);
+        end
+      else
+        Result := init_invargnum_error(soself,argnum,name);
+    end;
 end;

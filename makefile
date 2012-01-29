@@ -11,7 +11,7 @@ PROJECTFILE = tcci.lpr
 
 ## pathes
 UNIT_PATH = util compiler machine sobject ext ext/subsys ext/methods
-INC_PATH = 
+INC_PATH = gen
 DOC_PATH = apidoc
 OBJ_PATH = lib
 BIN_PATH = bin
@@ -173,6 +173,10 @@ docdebug: makedocpathes
 
 makedocpathes:
 	-$(MKDIR) $(DOC_PATH)
+
+# message/constant index generation
+regenindex:
+	$(MAKE) -C $(SRC_PATH) regenindex
 
 ## cleaning
 

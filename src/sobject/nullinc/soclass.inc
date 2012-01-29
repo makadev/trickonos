@@ -26,10 +26,10 @@
 var
   TMethodTrie_Class: THashTrie;
 
-procedure so_class_addmethod( const mname: String; methh: TSOMethodHandlerPure );
+procedure so_class_addmethod( const mname: String; methh: TSOMethodHandler );
 begin
-  ASSERT( Upcase(mname) <> SPECIAL_METHOD_Create );     // reserved for instancing
-  ASSERT( Upcase(mname) <> DEFAULT_METHOD_DirectCall ); // reserved for instancing
+  ASSERT( Upcase(mname) <> ci_str(ci_dm_create) );     // reserved for instancing
+  ASSERT( Upcase(mname) <> ci_str(ci_dm_call) ); // reserved for instancing
   if TMethodTrie_Class.Add(UpCase(mname),methh) <> nil then
     put_internalerror(12012301);
 end;
@@ -66,31 +66,37 @@ begin
   PSO_Class(instance)^.methodtab.ForEach(@hashtrie_gcenum,tracer);
 end;
 
-function socls_Class_MethodCall( hashk: MachineWord; const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function socls_Class_MethodCall( callinfo: PMethodCallInfo ): PSOInstance;
 {generic, lookup method and call}
-var m: TSOMethodHandlerPure;
+var m: TSOMethodHandler;
 begin
-  m := TSOMethodHandlerPure( TMethodTrie_Class.LookupByHash(hashk,mname) );
-  if Assigned(m) then
-    Result := m( mname, soself, soargs, argnum )
-  else
-    Result := nil;
+  with callinfo^ do
+    begin
+      m := TSOMethodHandler( TMethodTrie_Class.LookupByHash(hashk,name) );
+      if Assigned(m) then
+        Result := m( callinfo )
+      else
+        Result := nil;
+    end;
 end;
 
-function socls_Class_MethodCallOverride( hashk: MachineWord; const name: String; soself: PSOInstance ): PSOInstance;
+function socls_Class_MethodCallOverride( callinfo: PMethodOverrideCallInfo ): PSOInstance;
 {same trick as for function objects.
  MethodCallOverride returns an instance, which is checked by the vm.
  The vm sets up the actual constructor call.}
 begin
-  if ((hashk = SPECIAL_METHOD_Create_Hash) and
-      (name = SPECIAL_METHOD_Create)) or
-     ((hashk = DEFAULT_METHOD_DirectCall_Hash) and
-      (name = DEFAULT_METHOD_DirectCall)) then
+  with callinfo^ do
     begin
-      Result := so_instance_create(soself);
-    end
-  else
-    Result := nil;
+      if ((hashk = SPECIAL_METHOD_Create_Hash) and
+          (ucfs_compare(name,ci_us(ci_dm_create,false))=0)) or
+         ((hashk = DEFAULT_METHOD_DirectCall_Hash) and
+          (ucfs_compare(name,ci_us(ci_dm_call,false))=0)) then
+        begin
+          Result := so_instance_create(soself);
+        end
+      else
+        Result := nil;
+    end;
 end;
 
 function socls_Class_Compare( soself, rightop: PSOInstance ): TSOCompareResult;
@@ -130,7 +136,7 @@ end;
 function so_class_getconstructor(cls: PSOInstance): PSOInstance;
 begin
   SelfCheck(cls,so_class_class);
-  Result := PSO_Class(cls)^.methodtab.LookupByHash(SPECIAL_METHOD_Create_Hash,SPECIAL_METHOD_Create);
+  Result := PSO_Class(cls)^.methodtab.LookupByHash(SPECIAL_METHOD_Create_Hash,ci_str(ci_dm_create));
   if Assigned(Result) then
     Result^.IncRef;
 end;
@@ -142,7 +148,7 @@ end;
 var
   TMethodTrie_InstanceDefaults: THashTrie;
 
-procedure so_instance_addmethod( const mname: String; methh: TSOMethodHandlerPure );
+procedure so_instance_addmethod( const mname: String; methh: TSOMethodHandler );
 {defaults, since incode overridable}
 begin
   if TMethodTrie_InstanceDefaults.Add(UpCase(mname),methh) <> nil then
@@ -178,78 +184,90 @@ begin
   PSO_ClsInstance(instance)^.attrtab.ForEach(@hashtrie_gcenum,tracer);
 end;
 
-function socls_ClsInstance_MethodCall( hashk: MachineWord; const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function socls_ClsInstance_MethodCall( callinfo: PMethodCallInfo ): PSOInstance;
 {generic, lookup method and call}
-var m: TSOMethodHandlerPure;
+var m: TSOMethodHandler;
 begin
-  m := TSOMethodHandlerPure( TMethodTrie_InstanceDefaults.LookupByHash(hashk,mname) );
-  if Assigned(m) then
-    Result := m( mname, soself, soargs, argnum )
-  else
-    Result := nil;
+  with callinfo^ do
+    begin
+      m := TSOMethodHandler( TMethodTrie_InstanceDefaults.LookupByHash(hashk,name) );
+      if Assigned(m) then
+        Result := m( callinfo )
+      else
+        Result := nil;
+    end;
 end;
 
-function socls_ClsInstance_MethodCallOverride( hashk: MachineWord; const name: String; soself: PSOInstance ): PSOInstance;
+function socls_ClsInstance_MethodCallOverride( callinfo: PMethodOverrideCallInfo ): PSOInstance;
 {simple stub, get method from class}
 begin
-  SelfCheck(soself,so_instance_class);
-  Result := PSOInstance( PSO_ClsInstance(soself)^.cls^.methodtab.LookupByHash(hashk,name) );
-  if Assigned(Result) then
-    Result^.IncRef; // incref, default convention since vmrun will decref after setup
+  with callinfo^ do
+    begin
+      SelfCheck(soself,so_instance_class);
+      Result := PSOInstance( PSO_ClsInstance(soself)^.cls^.methodtab.LookupByHash(hashk,name) );
+      if Assigned(Result) then
+        Result^.IncRef; // incref, default convention since vmrun will decref after setup
+    end;
 end;
 
 {<generic Instance>::SetMember(string,value) -> value
   -- same as environmental set, setting so_nil means deletion and NOT setting an attribute nil}
-function _ClsInstance_SetMember_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function _ClsInstance_SetMember_(callinfo:PMethodCallInfo): PSOInstance;
 {lookupadd, incref, return}
 var oldval: PSOInstance;
 begin
-  SelfCheck(soself,so_instance_class);
-  if argnum = 2 then
+  with callinfo^ do
     begin
-      if soargs^[0]^.IsType(so_string_class) then
+      SelfCheck(soself,so_instance_class);
+      if argnum = 2 then
         begin
-          {no lock checks, programmer must be aware}
-          check_so_maxcollection(PSO_ClsInstance(soself)^.attrtab.GetCount+1);
-          if soargs^[1] <> so_nil then
+          if soargs^[0]^.IsType(so_string_class) then
             begin
-              soargs^[1]^.IncRef; // << entry in table
-              soargs^[1]^.IncRef; // << incref again for result
-              oldval := PSOInstance(PSO_ClsInstance(soself)^.attrtab.Add(so_string_get_utf8(soargs^[0]),soargs^[1]));
+              {no lock checks, programmer must be aware}
+              check_so_maxcollection(PSO_ClsInstance(soself)^.attrtab.GetCount+1);
+              if soargs^[1] <> so_nil then
+                begin
+                  soargs^[1]^.IncRef; // << entry in table
+                  soargs^[1]^.IncRef; // << incref again for result
+                  oldval := PSOInstance(PSO_ClsInstance(soself)^.attrtab.Add(so_string_get_utf8(soargs^[0]),soargs^[1]));
+                end
+              else
+                oldval := PSOInstance(PSO_ClsInstance(soself)^.attrtab.Delete(so_string_get_utf8(soargs^[0])));
+              if Assigned(oldval) then
+                oldval^.DecRef;
+              Result := soargs^[1];
             end
           else
-            oldval := PSOInstance(PSO_ClsInstance(soself)^.attrtab.Delete(so_string_get_utf8(soargs^[0])));
-          if Assigned(oldval) then
-            oldval^.DecRef;
-          Result := soargs^[1];
+            Result := init_invargtype_error(soself,soargs^[0],1,name);
         end
       else
-        Result := init_invargtype_error(soself,soargs^[0],1,mname);
-    end
-  else
-    Result := init_invargnum_error(soself,argnum,mname);
+        Result := init_invargnum_error(soself,argnum,name);
+    end;
 end;
 
 {<generic Instance::GetMember(string) -> value}
-function _ClsInstance_GetMember_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function _ClsInstance_GetMember_(callinfo:PMethodCallInfo): PSOInstance;
 {lookup, incref, return}
 begin
-  SelfCheck(soself,so_instance_class);
-  if argnum = 1 then
+  with callinfo^ do
     begin
-      if soargs^[0]^.IsType(so_string_class) then
+      SelfCheck(soself,so_instance_class);
+      if argnum = 1 then
         begin
-          Result := PSO_ClsInstance(soself)^.attrtab.Lookup(so_string_get_utf8(soargs^[0]));
-          if Assigned(Result) then
-            Result^.IncRef
+          if soargs^[0]^.IsType(so_string_class) then
+            begin
+              Result := PSO_ClsInstance(soself)^.attrtab.Lookup(so_string_get_utf8(soargs^[0]));
+              if Assigned(Result) then
+                Result^.IncRef
+              else
+                Result := so_nil;
+            end
           else
-            Result := so_nil;
+            Result := init_invargtype_error(soself,soargs^[0],1,name);
         end
       else
-        Result := init_invargtype_error(soself,soargs^[0],1,mname);
-    end
-  else
-    Result := init_invargnum_error(soself,argnum,mname);
+        Result := init_invargnum_error(soself,argnum,name);
+    end;
 end;
 
 function so_instance_create( cls: PSOInstance ): PSOInstance;

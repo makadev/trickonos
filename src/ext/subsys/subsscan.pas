@@ -73,22 +73,22 @@ type
     protected
       procedure SetupOn(AScanStream: TScannerStream);
 
-      function MethNextChar( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
-      function MethLookAhead( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
-      function MethLookAheadChar( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
-      function MethLookAheadOrd( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
-      function MethFastForward( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+      function MethNextChar( callinfo:PMethodCallInfo ): PSOInstance;
+      function MethLookAhead( callinfo:PMethodCallInfo ): PSOInstance;
+      function MethLookAheadChar( callinfo:PMethodCallInfo ): PSOInstance;
+      function MethLookAheadOrd( callinfo:PMethodCallInfo ): PSOInstance;
+      function MethFastForward( callinfo:PMethodCallInfo ): PSOInstance;
 
-      function AttrCurrentChar( const aname: String; soself: PSOInstance; setter: PSOInstance ): PSOInstance;
-      function AttrCurrentOrd( const aname: String; soself: PSOInstance; setter: PSOInstance ): PSOInstance;
+      function AttrCurrentChar( attrinfo: PAttributeInfo ): PSOInstance;
+      function AttrCurrentOrd( attrinfo: PAttributeInfo ): PSOInstance;
 
-      function AttrNewLineSkip( const aname: String; soself: PSOInstance; setter: PSOInstance ): PSOInstance;
-      function AttrNewLineHit( const aname: String; soself: PSOInstance; setter: PSOInstance ): PSOInstance;
-      function AttrNewLineStyle( const aname: String; soself: PSOInstance; setter: PSOInstance ): PSOInstance;
+      function AttrNewLineSkip( attrinfo: PAttributeInfo ): PSOInstance;
+      function AttrNewLineHit( attrinfo: PAttributeInfo ): PSOInstance;
+      function AttrNewLineStyle( attrinfo: PAttributeInfo ): PSOInstance;
 
-      function AttrCurrentPos( const aname: String; soself: PSOInstance; setter: PSOInstance ): PSOInstance;
-      function AttrCurrentLine( const aname: String; soself: PSOInstance; setter: PSOInstance ): PSOInstance;
-      function AttrCurrentCol( const aname: String; soself: PSOInstance; setter: PSOInstance ): PSOInstance;
+      function AttrCurrentPos( attrinfo: PAttributeInfo ): PSOInstance;
+      function AttrCurrentLine( attrinfo: PAttributeInfo ): PSOInstance;
+      function AttrCurrentCol( attrinfo: PAttributeInfo ): PSOInstance;
     public
       constructor Create; override;
       destructor Destroy; override;
@@ -105,7 +105,7 @@ type
     protected
       procedure OnSubSystemLoad; override;
     public
-      function ScanStreamCon( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+      function ScanStreamCon( callinfo: PMethodCallInfo ): PSOInstance;
   end;
 
 procedure InitAndRegister;
@@ -125,10 +125,9 @@ begin
   FScanStream := AScanStream;
 end;
 
-function TScanStreamIO.MethNextChar(const mname: String; soself: PSOInstance;
-  soargs: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
+function TScanStreamIO.MethNextChar(callinfo:PMethodCallInfo): PSOInstance;
 begin
-  if argnum = 0 then
+  if callinfo^.argnum = 0 then
     begin
       if FScanStream.NextChar then
         Result := so_true
@@ -139,70 +138,77 @@ begin
     Result := nil;
 end;
 
-function TScanStreamIO.MethLookAhead(const mname: String; soself: PSOInstance;
-  soargs: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
+function TScanStreamIO.MethLookAhead(callinfo:PMethodCallInfo): PSOInstance;
 begin
-  if (argnum = 1) and
-     (soargs^[0]^.IsType(so_integer_class)) then
+  with callinfo^ do
     begin
-      if FScanStream.LookAhead(so_integer_get(soargs^[0],true)) then
-        Result := so_true
+      if (argnum = 1) and
+         (soargs^[0]^.IsType(so_integer_class)) then
+        begin
+          if FScanStream.LookAhead(so_integer_get(soargs^[0],true)) then
+            Result := so_true
+          else
+            Result := so_false;
+        end
       else
-        Result := so_false;
-    end
-  else
-    Result := nil;
+        Result := nil;
+    end;
 end;
 
-function TScanStreamIO.MethLookAheadChar(const mname: String;
-  soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
+function TScanStreamIO.MethLookAheadChar(callinfo:PMethodCallInfo): PSOInstance;
 begin
-  if (argnum = 1) and
-     (soargs^[0]^.IsType(so_integer_class)) then
+  with callinfo^ do
     begin
-      if FScanStream.LookAhead(so_integer_get(soargs^[0],true)) then
-        Result := so_string_init_char(FScanStream.LookAheadChar(so_integer_get(soargs^[0],true)))
+      if (argnum = 1) and
+         (soargs^[0]^.IsType(so_integer_class)) then
+        begin
+          if FScanStream.LookAhead(so_integer_get(soargs^[0],true)) then
+            Result := so_string_init_char(FScanStream.LookAheadChar(so_integer_get(soargs^[0],true)))
+          else
+            Result := so_nil;
+        end
       else
-        Result := so_nil;
-    end
-  else
-    Result := nil;
+        Result := nil;
+    end;
 end;
 
-function TScanStreamIO.MethLookAheadOrd(const mname: String;
-  soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
+function TScanStreamIO.MethLookAheadOrd(callinfo:PMethodCallInfo): PSOInstance;
 begin
-  if (argnum = 1) and
-     (soargs^[0]^.IsType(so_integer_class)) then
+  with callinfo^ do
     begin
-      if FScanStream.LookAhead(so_integer_get(soargs^[0],true)) then
-        Result := so_integer_init(Ord(FScanStream.LookAheadChar(so_integer_get(soargs^[0],true))))
+      if (argnum = 1) and
+         (soargs^[0]^.IsType(so_integer_class)) then
+        begin
+          if FScanStream.LookAhead(so_integer_get(soargs^[0],true)) then
+            Result := so_integer_init(Ord(FScanStream.LookAheadChar(so_integer_get(soargs^[0],true))))
+          else
+            Result := so_nil;
+        end
       else
-        Result := so_nil;
-    end
-  else
-    Result := nil;
+        Result := nil;
+    end;
 end;
 
-function TScanStreamIO.MethFastForward(const mname: String;
-  soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
+function TScanStreamIO.MethFastForward(callinfo:PMethodCallInfo): PSOInstance;
 begin
-  if (argnum = 1) and
-     (soargs^[0]^.IsType(so_integer_class)) then
+  with callinfo^ do
     begin
-      if FScanStream.FastForward(so_integer_get(soargs^[0],true)) then
-        Result := so_true
+      if (argnum = 1) and
+         (soargs^[0]^.IsType(so_integer_class)) then
+        begin
+          if FScanStream.FastForward(so_integer_get(soargs^[0],true)) then
+            Result := so_true
+          else
+            Result := so_false;
+        end
       else
-        Result := so_false;
-    end
-  else
-    Result := nil;
+        Result := nil;
+    end;
 end;
 
-function TScanStreamIO.AttrCurrentChar(const aname: String;
-  soself: PSOInstance; setter: PSOInstance): PSOInstance;
+function TScanStreamIO.AttrCurrentChar(attrinfo:PAttributeInfo): PSOInstance;
 begin
-  if not Assigned(setter) then
+  if not Assigned(attrinfo^.setter) then
     begin
       if FScanStream.LookAhead(0) then
         Result := so_string_init_char(FScanStream.CurrentChar)
@@ -213,10 +219,9 @@ begin
     Result := nil;
 end;
 
-function TScanStreamIO.AttrCurrentOrd(const aname: String; soself: PSOInstance;
-  setter: PSOInstance): PSOInstance;
+function TScanStreamIO.AttrCurrentOrd(attrinfo:PAttributeInfo): PSOInstance;
 begin
-  if not Assigned(setter) then
+  if not Assigned(attrinfo^.setter) then
     begin
       if FScanStream.LookAhead(0) then
         Result := so_integer_init(Ord(FScanStream.CurrentChar))
@@ -227,10 +232,9 @@ begin
     Result := nil;
 end;
 
-function TScanStreamIO.AttrNewLineSkip(const aname: String;
-  soself: PSOInstance; setter: PSOInstance): PSOInstance;
+function TScanStreamIO.AttrNewLineSkip(attrinfo:PAttributeInfo): PSOInstance;
 begin
-  if not Assigned(setter) then
+  if not Assigned(attrinfo^.setter) then
     begin
       if FScanStream.NewLineSkip then
         Result := so_true
@@ -254,54 +258,52 @@ begin
   end;
 end;
 
-function TScanStreamIO.AttrNewLineHit(const aname: String; soself: PSOInstance;
-  setter: PSOInstance): PSOInstance;
+function TScanStreamIO.AttrNewLineHit(attrinfo:PAttributeInfo): PSOInstance;
 begin
-  if not Assigned(setter) then
+  if not Assigned(attrinfo^.setter) then
     Result := so_string_init_utf8(nlmtostring(FScanStream.NewLineHit))
   else
     Result := nil;
 end;
 
-function TScanStreamIO.AttrNewLineStyle(const aname: String;
-  soself: PSOInstance; setter: PSOInstance): PSOInstance;
+function TScanStreamIO.AttrNewLineStyle(attrinfo:PAttributeInfo): PSOInstance;
 begin
-  if not Assigned(setter) then
+  with attrinfo^ do
     begin
-      Result := so_string_init_utf8(nlmtostring(FScanStream.NewLineMode));
-    end
-  else
-    begin
-      Result := nil;
-      if setter^.IsType(so_string_class) then
+      if not Assigned(setter) then
         begin
-          if Length(so_string_get_utf8(setter)) <= 7 then
+          Result := so_string_init_utf8(nlmtostring(FScanStream.NewLineMode));
+        end
+      else
+        begin
+          Result := nil;
+          if setter^.IsType(so_string_class) then
             begin
-              if so_string_get_utf8(setter) = 'none' then
+              if ucfs_compare_a7(so_string_get_ucfs(setter),'none') = 0 then
                 begin
                   FScanStream.NewLineMode := nlmNone;
                   Result := setter;
                   Result^.IncRef;
                 end
-              else if so_string_get_utf8(setter) = 'windows' then
+              else if ucfs_compare_a7(so_string_get_ucfs(setter),'windows') = 0 then
                 begin
                   FScanStream.NewLineMode := nlmWindows;
                   Result := setter;
                   Result^.IncRef;
                 end
-              else if so_string_get_utf8(setter) = 'unix' then
+              else if ucfs_compare_a7(so_string_get_ucfs(setter),'unix') = 0 then
                 begin
                   FScanStream.NewLineMode := nlmUnix;
                   Result := setter;
                   Result^.IncRef;
                 end
-              else if so_string_get_utf8(setter) = 'mac' then
+              else if ucfs_compare_a7(so_string_get_ucfs(setter),'mac') = 0 then
                 begin
                   FScanStream.NewLineMode := nlmMac;
                   Result := setter;
                   Result^.IncRef;
                 end
-              else if so_string_get_utf8(setter) = 'mixed' then
+              else if ucfs_compare_a7(so_string_get_ucfs(setter),'mixed') = 0 then
                 begin
                   FScanStream.NewLineMode := nlmMixed;
                   Result := setter;
@@ -312,28 +314,25 @@ begin
     end;
 end;
 
-function TScanStreamIO.AttrCurrentPos(const aname: String; soself: PSOInstance;
-  setter: PSOInstance): PSOInstance;
+function TScanStreamIO.AttrCurrentPos(attrinfo:PAttributeInfo): PSOInstance;
 begin
-  if not Assigned(setter) then
+  if not Assigned(attrinfo^.setter) then
     Result := so_integer_init(FScanStream.CurrentPos)
   else
     Result := nil;
 end;
 
-function TScanStreamIO.AttrCurrentLine(const aname: String;
-  soself: PSOInstance; setter: PSOInstance): PSOInstance;
+function TScanStreamIO.AttrCurrentLine(attrinfo:PAttributeInfo): PSOInstance;
 begin
-  if not Assigned(setter) then
+  if not Assigned(attrinfo^.setter) then
     Result := so_integer_init(FScanStream.CurrentLine)
   else
     Result := nil;
 end;
 
-function TScanStreamIO.AttrCurrentCol(const aname: String; soself: PSOInstance;
-  setter: PSOInstance): PSOInstance;
+function TScanStreamIO.AttrCurrentCol(attrinfo:PAttributeInfo): PSOInstance;
 begin
-  if not Assigned(setter) then
+  if not Assigned(attrinfo^.setter) then
     Result := so_integer_init(FScanStream.CurrentCol)
   else
     Result := nil;
@@ -378,79 +377,91 @@ begin
   RegisterMethod('STRINGSCANSTREAM',@ScanStreamCon);
 end;
 
-function TSubSysScan.ScanStreamCon(const mname: String; soself: PSOInstance;
-  soargs: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
+function TSubSysScan.ScanStreamCon(callinfo: PMethodCallInfo): PSOInstance;
 var LAChars: VMInt;
     fname: String;
+    tmps: PUCFS32String;
     memblock: TMemoryBlock;
     scstream: TScannerStream;
     readerstream: TCharReaderStream;
 begin
-  if (argnum >= 1) and
-     (argnum <= 2) then
+  with callinfo^ do
     begin
-      LAChars := 1;
-      {check params n stuff}
-      if soargs^[0]^.IsType(so_string_class) then
+      if (argnum >= 1) and
+         (argnum <= 2) then
         begin
-          if (argnum = 2) and
-             (soargs^[1]^.IsType(so_integer_class)) then
+          LAChars := 1;
+          {check params n stuff}
+          if soargs^[0]^.IsType(so_string_class) then
             begin
-              LAChars := so_integer_get(soargs^[1],true);
-              if (LAChars <= 0) or
-                 (LAChars > 1024) then
+              if (argnum = 2) and
+                 (soargs^[1]^.IsType(so_integer_class)) then
                 begin
-                  Result := init_invargvalue_error(soself,soargs^[1],2,mname);
+                  LAChars := so_integer_get(soargs^[1],true);
+                  if (LAChars <= 0) or
+                     (LAChars > 1024) then
+                    begin
+                      Result := init_invargvalue_error(soself,soargs^[1],2,name);
+                      Exit(Result);
+                    end;
+                end
+              else  if (argnum = 2) then
+                begin
+                  Result := init_invargtype_error(soself,soargs^[1],2,name);
                   Exit(Result);
                 end;
             end
-          else  if (argnum = 2) then
-            begin
-              Result := init_invargtype_error(soself,soargs^[1],2,mname);
-              Exit(Result);
-            end;
-        end
-      else
-        Result := init_invargtype_error(soself,soargs^[0],1,mname);
+          else
+            Result := init_invargtype_error(soself,soargs^[0],1,name);
 
-      readerstream := nil;
-      {checked, create the reader stream}
-      if (Upcase(mname) = 'FILESCANSTREAM') or
-         (Upcase(mname) = 'MEMORYSCANSTREAM') then
-        begin
-          fname := fpath_rel_to_abs(so_string_get_utf8(soargs^[0]));
-          put_debug('open file for input: '+fname);
-          if (Length(fname) <= 0) or
-             (not FileExists(fname)) then
-            Exit(so_nil);
-          if Upcase(mname) = 'MEMORYSCANSTREAM' then
+          readerstream := nil;
+          {checked, create the reader stream}
+          if (ucfs_compare_a7(name,'FILESCANSTREAM')=0) or
+             (ucfs_compare_a7(name,'MEMORYSCANSTREAM')=0) then
             begin
-              memblock := TMemoryBlock.Create;
-              if memblock.ReadFromFile(ucfs_utf8us(fname)) then
-                readerstream := TMemoryBlockReaderStream.Create(so_string_get_ucfs(soargs^[0]),memblock)
+              fname := fpath_rel_to_abs(so_string_get_utf8(soargs^[0]));
+              put_debug('open file for input: '+fname);
+              if (Length(fname) <= 0) or
+                 (not FileExists(fname)) then
+                Exit(so_nil);
+              if ucfs_compare_a7(name,'MEMORYSCANSTREAM')=0 then
+                begin
+                  memblock := TMemoryBlock.Create;
+                  tmps := ucfs_utf8us(fname);
+                  if memblock.ReadFromFile(tmps) then
+                    begin
+                      ucfs_release(tmps);
+                      readerstream := TMemoryBlockReaderStream.Create(so_string_get_ucfs(soargs^[0]),memblock);
+                    end
+                  else
+                    begin
+                      ucfs_release(tmps);
+                      memblock.Free;
+                      Exit(so_nil);
+                    end;
+                end
               else
                 begin
-                  memblock.Free;
-                  Exit(so_nil);
+                  tmps := ucfs_utf8us(fname);
+                  readerstream := TFileReaderStream.Create(so_string_get_ucfs(soargs^[0]), tmps);
+                  ucfs_release(tmps);
                 end;
             end
           else
-            readerstream := TFileReaderStream.Create(so_string_get_ucfs(soargs^[0]), ucfs_utf8us(fname));
+            readerstream := TStringReaderStream.Create(nil,so_string_get_ucfs(soargs^[0]));
+
+          {create the scanner stream}
+          scstream := TScannerStream.Create(LAChars,readerstream);
+
+          {create IO}
+          Result := so_create_internalobject('ScannerStream',TScanStreamIO);
+          TScanStreamIO(so_internalobject_get(Result)).SetupOn(scstream);
+
+          {done}
         end
       else
-        readerstream := TStringReaderStream.Create(nil,so_string_get_ucfs(soargs^[0]));
-
-      {create the scanner stream}
-      scstream := TScannerStream.Create(LAChars,readerstream);
-
-      {create IO}
-      Result := so_create_internalobject('ScannerStream',TScanStreamIO);
-      TScanStreamIO(so_internalobject_get(Result)).SetupOn(scstream);
-
-      {done}
-    end
-  else
-    Result := init_invargnum_error(soself,argnum,mname);
+        Result := init_invargnum_error(soself,argnum,name);
+    end;
 end;
 
 end.

@@ -26,7 +26,7 @@
 var
   TMethodTrie_Boolean: THashTrie;
 
-procedure so_boolean_addmethod( const mname: String; methh: TSOMethodHandlerPure );
+procedure so_boolean_addmethod( const mname: String; methh: TSOMethodHandler );
 begin
   if TMethodTrie_Boolean.Add(UpCase(mname),methh) <> nil then
     put_internalerror(12012201);
@@ -41,85 +41,100 @@ begin
   Result := C_SOTYPE_BOOLEAN_NAME;
 end;
 
-function socls_Boolean_MethodCall( hashk: MachineWord; const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function socls_Boolean_MethodCall( callinfo: PMethodCallInfo ): PSOInstance;
 {generic, lookup method and call}
-var m: TSOMethodHandlerPure;
+var m: TSOMethodHandler;
 begin
-  m := TSOMethodHandlerPure( TMethodTrie_Boolean.LookupByHash(hashk,mname) );
-  if Assigned(m) then
-    Result := m( mname, soself, soargs, argnum )
-  else
-    Result := nil;
+  with callinfo^ do
+    begin
+      m := TSOMethodHandler( TMethodTrie_Boolean.LookupByHash(hashk,name) );
+      if Assigned(m) then
+        Result := m( callinfo )
+      else
+        Result := nil;
+    end;
 end;
 
-function _Boolean_And_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function _Boolean_And_( callinfo: PMethodCallInfo ): PSOInstance;
 {if true, return other, else return false}
 begin
-  SelfCheck(soself,so_boolean_class);
-  if argnum = 1 then
+  with callinfo^ do
     begin
-      if soself = so_true then
-        Result := soargs^[0]
+      SelfCheck(soself,so_boolean_class);
+      if argnum = 1 then
+        begin
+          if soself = so_true then
+            Result := soargs^[0]
+          else
+            Result := soself;
+          // rightop may not be bool
+          Result^.IncRef;
+        end
       else
-        Result := soself;
-      // rightop may not be bool
-      Result^.IncRef;
-    end
-  else
-    Result := init_invargnum_error(soself,argnum,mname);
+        Result := init_invargnum_error(soself,argnum,name);
+    end;
 end;
 
-function _Boolean_Or_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function _Boolean_Or_( callinfo: PMethodCallInfo ): PSOInstance;
 {if false return other, else return self}
 begin
-  SelfCheck(soself,so_boolean_class);
-  if argnum = 1 then
+  with callinfo^ do
     begin
-      if soself = so_true then
-        Result := soself
+      SelfCheck(soself,so_boolean_class);
+      if argnum = 1 then
+        begin
+          if soself = so_true then
+            Result := soself
+          else
+            Result := soargs^[0];
+          // rightop may not be bool
+          Result^.IncRef;
+        end
       else
-        Result := soargs^[0];
-      // rightop may not be bool
-      Result^.IncRef;
-    end
-  else
-    Result := init_invargnum_error(soself,argnum,mname);
+        Result := init_invargnum_error(soself,argnum,name);
+    end;
 end;
 
-function _Boolean_Xor_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function _Boolean_Xor_( callinfo: PMethodCallInfo ): PSOInstance;
 {xor is not part of the object logic, simply operates on boolean
   -> x.xor(x) = false, x.xor(not x) = true
   -> x.xor(object) -> fail}
 begin
-  SelfCheck(soself,so_boolean_class);
-  if argnum = 1 then
+  with callinfo^ do
     begin
-      if soargs^[0]^.IsType(so_boolean_class) then
+      SelfCheck(soself,so_boolean_class);
+      if argnum = 1 then
         begin
-          if soself = soargs^[0] then
+          if soargs^[0]^.IsType(so_boolean_class) then
+            begin
+              if soself = soargs^[0] then
+                Result := so_false
+              else
+                Result := so_true;
+            end
+          else
+            Result := init_invargtype_error(soself,soargs^[0],1,name);
+        end
+      else
+        Result := init_invargnum_error(soself,argnum,name);
+    end;
+end;
+
+function _Boolean_Not_( callinfo: PMethodCallInfo ): PSOInstance;
+{Return true/false}
+begin
+  with callinfo^ do
+    begin
+      SelfCheck(soself,so_boolean_class);
+      if argnum = 0 then
+        begin
+          if soself = so_true then
             Result := so_false
           else
             Result := so_true;
         end
       else
-        Result := init_invargtype_error(soself,soargs^[0],1,mname);
-    end
-  else
-    Result := init_invargnum_error(soself,argnum,mname);
-end;
-
-function _Boolean_Not_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
-{Return true/false}
-begin
-  SelfCheck(soself,so_boolean_class);
-  if argnum = 0 then
-    begin
-      if soself = so_true then
-        Result := so_false
-      else
-        Result := so_true;
-    end
-  else
-    Result := init_invargnum_error(soself,argnum,mname);
+        Result := init_invargnum_error(soself,argnum,name);
+    end;
 end;
 

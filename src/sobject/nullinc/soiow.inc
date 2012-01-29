@@ -41,16 +41,19 @@ begin
   PSO_IO(instance)^.ioo.GCTrace(tracer);
 end;
 
-function socls_IO_MethodCall(hashk: MachineWord; const name: String; soself: PSOInstance; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
+function socls_IO_MethodCall( callinfo: PMethodCallInfo ): PSOInstance;
 begin
-  SelfCheck(soself,so_io_class);
-  check_so_maxargs(argnum);
-  Result := PSO_IO(soself)^.ioo.DispatchMethodCall(hashk,name,soself,args,argnum);
+  with callinfo^ do
+    begin
+      SelfCheck(soself,so_io_class);
+      check_so_maxargs(argnum);
+      Result := PSO_IO(soself)^.ioo.DispatchMethodCall(callinfo);
+    end;
 end;
 
-function socls_IO_MethodCallOverride( hashk: MachineWord; const name: String; soself: PSOInstance ): PSOInstance;
+function socls_IO_MethodCallOverride( callinfo: PMethodOverrideCallInfo ): PSOInstance;
 begin
-  SelfCheck(soself,so_io_class);
+  SelfCheck(callinfo^.soself,so_io_class);
   Result := nil;
 end;
 
@@ -66,48 +69,62 @@ end;
 
 { TInternalObject }
 
-function TInternalObject.DispatchMethodCall(hashk: MachineWord; const name: String; soself: PSOInstance; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
+function TInternalObject.DispatchMethodCall( callinfo: PMethodCallInfo ): PSOInstance;
 var methhe: PSSDMethEntry;
+    attrinfo: TAttributeInfo;
 begin
-  methhe := PSSDMethEntry(FDispTab.MethProc.LookupByHash(hashk,name));
-  if Assigned(methhe) then
+  with callinfo^ do
     begin
-      Result := methhe^(name,soself,args,argnum);
-      if not Assigned(Result) then
-        Result := init_object_meth_error( soself, name );
-    end
-  else
-    begin
-      {directly check getmember/setmember and dispatch, this allows overriding the
-       getmember/setmember with MethodCall}
-      Result := nil;
-      if (hashk = DEFAULT_METHOD_GetMember_Hash) and
-         (name = DEFAULT_METHOD_GetMember) and
-         (argnum = 1) then
+      methhe := PSSDMethEntry(FDispTab.MethProc.LookupByHash(hashk,name));
+      if Assigned(methhe) then
         begin
-          if args^[0]^.IsType(so_string_class) then
-            Result := DispatchAttr(so_string_get_utf8(args^[0]),soself,nil);
+          Result := methhe^(callinfo);
+          if not Assigned(Result) then
+            Result := init_object_meth_error( soself, name );
         end
-      else if (hashk = DEFAULT_METHOD_SetMember_Hash) and
-              (name = DEFAULT_METHOD_SetMember) and
-              (argnum = 2) then
+      else
         begin
-          if args^[0]^.IsType(so_string_class) then
-            Result := DispatchAttr(so_string_get_utf8(args^[0]),soself,args^[1]);
+          {directly check getmember/setmember and dispatch, this allows overriding the
+           getmember/setmember with MethodCall}
+          Result := nil;
+          if (hashk = DEFAULT_METHOD_GetMember_Hash) and
+             (ucfs_compare(name,ci_us(ci_dm_getmember,false))=0) and
+             (argnum = 1) then
+            begin
+              if soargs^[0]^.IsType(so_string_class) then
+                begin
+                  attrinfo.name := so_string_get_ucfs(soargs^[0]);
+                  attrinfo.soself := soself;
+                  attrinfo.setter := nil;
+                  Result := DispatchAttr(@attrinfo);
+                end;
+            end
+          else if (hashk = DEFAULT_METHOD_SetMember_Hash) and
+                  (ucfs_compare(name,ci_us(ci_dm_setmember,false))=0) and
+                  (argnum = 2) then
+            begin
+              if soargs^[0]^.IsType(so_string_class) then
+                begin
+                  attrinfo.name := so_string_get_ucfs(soargs^[0]);
+                  attrinfo.soself := soself;
+                  attrinfo.setter := soargs^[1];
+                  Result := DispatchAttr(@attrinfo);
+                end;
+            end;
         end;
     end;
 end;
 
-function TInternalObject.DispatchAttr(const aname: String; soself: PSOInstance; setter: PSOInstance): PSOInstance;
+function TInternalObject.DispatchAttr( attrinfo: PAttributeInfo ): PSOInstance;
 {dispatch SetMember/GetMember call to attr handler method}
 var attrhe: PSSDAttrEntry;
 begin
-  attrhe := PSSDAttrEntry(FDispTab.AttrProc.Lookup(aname));
+  attrhe := PSSDAttrEntry(FDispTab.AttrProc.Lookup(attrinfo^.name));
   if Assigned(attrhe) then
     begin
-      Result := attrhe^(aname,soself,setter);
+      Result := attrhe^(attrinfo);
       if not Assigned(Result) then
-        Result := init_object_attr_error( soself, aname );
+        Result := init_object_attr_error( attrinfo^.soself, attrinfo^.name );
     end
   else
     Result := nil;

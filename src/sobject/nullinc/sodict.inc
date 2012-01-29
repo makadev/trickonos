@@ -26,7 +26,7 @@
 var
   TMethodTrie_Dict: THashTrie;
 
-procedure so_dict_addmethod( const mname: String; methh: TSOMethodHandlerPure );
+procedure so_dict_addmethod( const mname: String; methh: TSOMethodHandler );
 begin
   if TMethodTrie_Dict.Add(UpCase(mname),methh) <> nil then
     put_internalerror(12012205);
@@ -91,67 +91,76 @@ begin
   PSO_Dict(instance)^.dict.Done;
 end;
 
-function socls_Dict_MethodCall( hashk: MachineWord; const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function socls_Dict_MethodCall( callinfo: PMethodCallInfo ): PSOInstance;
 {generic, lookup method and call}
-var m: TSOMethodHandlerPure;
+var m: TSOMethodHandler;
 begin
-  m := TSOMethodHandlerPure( TMethodTrie_Dict.Lookup(mname) );
-  if Assigned(m) then
-    Result := m( mname, soself, soargs, argnum )
-  else
-    Result := nil;
+  with callinfo^ do
+    begin
+      m := TSOMethodHandler( TMethodTrie_Dict.LookupByHash(hashk,name) );
+      if Assigned(m) then
+        Result := m( callinfo )
+      else
+        Result := nil;
+    end;
 end;
 
 {Dict::SetMember(string,value) / Dict::SetIndex(string,value) -> value}
-function _Dict_SetMember_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function _Dict_SetMember_(callinfo: PMethodCallInfo): PSOInstance;
 {lookupadd, incref, return}
 var oldval: PSOInstance;
 begin
-  SelfCheck(soself,so_dict_class);
-  if argnum = 2 then
+  with callinfo^ do
     begin
-      if soargs^[0]^.IsType(so_string_class) then
+      SelfCheck(soself,so_dict_class);
+      if argnum = 2 then
         begin
-          if not soself^.GetLocked then
+          if soargs^[0]^.IsType(so_string_class) then
             begin
-              check_so_maxcollection(PSO_Dict(soself)^.dict.GetCount+1);
-              soargs^[1]^.IncRef; // << entry in table
-              soargs^[1]^.IncRef; // << incref again for result
-              oldval := PSOInstance(PSO_Dict(soself)^.dict.Add(so_string_get_utf8(soargs^[0]),soargs^[1]));
-              if Assigned(oldval) then
-                oldval^.DecRef;
-              Result := soargs^[1];
+              if not soself^.GetLocked then
+                begin
+                  check_so_maxcollection(PSO_Dict(soself)^.dict.GetCount+1);
+                  soargs^[1]^.IncRef; // << entry in table
+                  soargs^[1]^.IncRef; // << incref again for result
+                  oldval := PSOInstance(PSO_Dict(soself)^.dict.Add(so_string_get_utf8(soargs^[0]),soargs^[1]));
+                  if Assigned(oldval) then
+                    oldval^.DecRef;
+                  Result := soargs^[1];
+                end
+              else
+                Result := init_lockmod(soself,name);
             end
           else
-            Result := init_lockmod(soself,mname);
+            Result := init_invargtype_error(soself,soargs^[0],1,name);
         end
       else
-        Result := init_invargtype_error(soself,soargs^[0],1,mname);
-    end
-  else
-    Result := init_invargnum_error(soself,argnum,mname);
+        Result := init_invargnum_error(soself,argnum,name);
+    end;
 end;
 
 {Dict::GetMember(string) / Dict::GetIndex(string) -> value}
-function _Dict_GetMember_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function _Dict_GetMember_(callinfo: PMethodCallInfo): PSOInstance;
 {lookup, incref, return}
 begin
-  SelfCheck(soself,so_dict_class);
-  if argnum = 1 then
+  with callinfo^ do
     begin
-      if soargs^[0]^.IsType(so_string_class) then
+      SelfCheck(soself,so_dict_class);
+      if argnum = 1 then
         begin
-          Result := PSO_Dict(soself)^.dict.Lookup(so_string_get_utf8(soargs^[0]));
-          if Assigned(Result) then
-            Result^.IncRef
+          if soargs^[0]^.IsType(so_string_class) then
+            begin
+              Result := PSO_Dict(soself)^.dict.Lookup(so_string_get_utf8(soargs^[0]));
+              if Assigned(Result) then
+                Result^.IncRef
+              else
+                Result := so_nil;
+            end
           else
-            Result := so_nil;
+            Result := init_invargtype_error(soself,soargs^[0],1,name);
         end
       else
-        Result := init_invargtype_error(soself,soargs^[0],1,mname);
-    end
-  else
-    Result := init_invargnum_error(soself,argnum,mname);
+        Result := init_invargnum_error(soself,argnum,name);
+    end;
 end;
 
 (*******************************************************************************
@@ -163,19 +172,18 @@ type
     private
        FHTIter: THashTrieIterator;
     public
-      function Next( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
-      function CurrentKey( const aname: String; soself: PSOInstance; setter: PSOInstance ): PSOInstance;
-      function CurrentValue( const aname: String; soself: PSOInstance; setter: PSOInstance ): PSOInstance;
+      function Next( callinfo: PMethodCallInfo ): PSOInstance;
+      function CurrentKey( attrinfo: PAttributeInfo ): PSOInstance;
+      function CurrentValue( attrinfo: PAttributeInfo ): PSOInstance;
       constructor Create; override;
       destructor Destroy; override;
   end;
 
 { TSOList_IOListIterator }
 
-function TSODict_IODictIterator.Next(const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
+function TSODict_IODictIterator.Next( callinfo: PMethodCallInfo ): PSOInstance;
 {next, initialize to first element and lock dict, otherwise clear iterator and unlock}
 begin
-  ASSERT(mname=Upcase(C_STDCALLM_ITER__NEXT));
   ASSERT(Length(FReferings) = 1);
   if not hashtrie_iterator_done(FHTIter) then
     begin
@@ -201,14 +209,13 @@ begin
     end;
 end;
 
-function TSODict_IODictIterator.CurrentKey(const aname: String; soself: PSOInstance; setter: PSOInstance): PSOInstance;
+function TSODict_IODictIterator.CurrentKey(attrinfo: PAttributeInfo): PSOInstance;
 {currentkey, check locks/iterator, return key as sostring
  no setting allowed!}
 begin
-  ASSERT(aname=Upcase(C_STDMEMBR_DICTITER__CURRENTKEY));
   if not hashtrie_iterator_done(FHTIter) then
     begin
-      if not Assigned(setter) then
+      if not Assigned(attrinfo^.setter) then
         begin
           ASSERT(PSO_Dict(FReferings[0])^.GetLocked);
           Result := so_string_init_ucfs(ucfs_copy(FHTIter.currcoll^.colstring));
@@ -220,16 +227,15 @@ begin
     Result := nil;
 end;
 
-function TSODict_IODictIterator.CurrentValue(const aname: String; soself: PSOInstance; setter: PSOInstance): PSOInstance;
+function TSODict_IODictIterator.CurrentValue(attrinfo: PAttributeInfo): PSOInstance;
 {currentValue, check locks/iterator, return value and incref
   may also allow setter}
 begin
-  ASSERT(aname=Upcase(C_STDMEMBR_DICTITER__CURRENTVALUE));
   Result := nil;
   if not hashtrie_iterator_done(FHTIter) then
     begin
       ASSERT(PSO_Dict(FReferings[0])^.GetLocked);
-      if not Assigned(setter) then
+      if not Assigned(attrinfo^.setter) then
         begin
           {get value, incref}
           Result := PSOInstance(FHTIter.currcoll^.data);
@@ -241,8 +247,8 @@ begin
            for replace and return}
           Result := PSOInstance(FHTIter.currcoll^.data);
           Result^.DecRef;
-          FHTIter.currcoll^.data := setter;
-          Result := setter;
+          FHTIter.currcoll^.data := attrinfo^.setter;
+          Result := attrinfo^.setter;
           Result^.IncRef;
           Result^.IncRef;
         end;
@@ -301,46 +307,55 @@ begin
 end;
 
 {DICT::Count()}
-function _Dict_Count_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function _Dict_Count_(callinfo: PMethodCallInfo): PSOInstance;
 begin
-  if argnum = 0 then
+  with callinfo^ do
     begin
-      Result := so_integer_init(PSO_Dict(soself)^.dict.GetCount);
-    end
-  else
-    Result := init_invargnum_error(soself,argnum,mname);
+      if argnum = 0 then
+        begin
+          Result := so_integer_init(PSO_Dict(soself)^.dict.GetCount);
+        end
+      else
+        Result := init_invargnum_error(soself,argnum,name);
+    end;
 end;
 
 {DICT::Delete(<string>)}
-function _Dict_Delete_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function _Dict_Delete_(callinfo: PMethodCallInfo): PSOInstance;
 begin
-  if argnum = 1 then
+  with callinfo^ do
     begin
-      if soargs^[0]^.IsType(so_string_class) then
+      if argnum = 1 then
         begin
-          if not soself^.GetLocked then
+          if soargs^[0]^.IsType(so_string_class) then
             begin
-              Result := PSO_Dict(soself)^.dict.Delete(so_string_get_utf8(soargs^[0]));
-              if not Assigned(Result) then
-                Result := so_nil;
+              if not soself^.GetLocked then
+                begin
+                  Result := PSO_Dict(soself)^.dict.Delete(so_string_get_utf8(soargs^[0]));
+                  if not Assigned(Result) then
+                    Result := so_nil;
+                end
+              else
+                Result := init_lockmod(soself,name);
             end
           else
-            Result := init_lockmod(soself,mname);
+            Result := init_invargtype_error(soself,soargs^[0],1,name);
         end
       else
-        Result := init_invargtype_error(soself,soargs^[0],1,mname);
-    end
-  else
-    Result := init_invargnum_error(soself,argnum,mname);
+        Result := init_invargnum_error(soself,argnum,name);
+    end;
 end;
 
 {DICT::Iterator() -> iterator object}
-function _Dict_Iterator_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function _Dict_Iterator_(callinfo: PMethodCallInfo): PSOInstance;
 begin
-  if argnum = 0 then
+  with callinfo^ do
     begin
-      Result := so_create_internalobject_bound(C_SOTYPE_IO_DICTITER_NAME,TSODict_IODictIterator,soself);
-    end
-  else
-    Result := init_invargnum_error(soself,argnum,mname);
+      if argnum = 0 then
+        begin
+          Result := so_create_internalobject_bound(C_SOTYPE_IO_DICTITER_NAME,TSODict_IODictIterator,soself);
+        end
+      else
+        Result := init_invargnum_error(soself,argnum,name);
+    end;
 end;

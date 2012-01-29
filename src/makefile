@@ -18,3 +18,6 @@ vgdebug:
 
 vgrelease:
 	$(FPC) $(FILEFLAGS) $(FPCFLAGS) $(VGRELEASE_FLAGS) $(PROJECTFILE)
+
+regenindex:
+	$(MAKE) -C gen regenindex

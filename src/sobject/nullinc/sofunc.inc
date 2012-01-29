@@ -47,31 +47,32 @@ begin
   Result := C_SOTYPE_FUNCTION_NAME;
 end;
 
-function socls_Function_MethodCall( hashk: MachineWord; const name: String; soself: PSOInstance; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
+function socls_Function_MethodCall( callinfo: PMethodCallInfo ): PSOInstance;
 var vararglist: PSOInstance;
 begin
-  SelfCheck(soself,so_function_class);
-  Result := nil;
-  if (hashk = DEFAULT_METHOD_DirectCall_Hash) and
-     (name = DEFAULT_METHOD_DirectCall) then
+  with callinfo^ do
     begin
-      {function setup}
-      // check nrargs, pack varargs ..
-      if (PSO_Function(soself)^.fun.argf <= argnum) and
-         ((PSO_Function(soself)^.fun.argn >= argnum) or
-          PSO_Function(soself)^.fun.canvarargs) then
+      SelfCheck(soself,so_function_class);
+      Result := nil;
+      if (hashk = DEFAULT_METHOD_DirectCall_Hash) and
+         (ucfs_compare(name,ci_us(ci_dm_call,false))=0) then
         begin
-          // push code addr
-          templatestack_push(PSO_Function(soself)^.fun.code,
-                             PSO_Function(soself)^.fun.ip,true);
-
-          // fix framepointer
-          templatestack_fix_framepointer(
-            runtimestack_relptr(argnum)-1);
-
-          if PSO_Function(soself)^.fun.canvarargs then
+          {function setup}
+          // check nrargs, pack varargs ..
+          if (PSO_Function(soself)^.fun.argf <= argnum) and
+             ((PSO_Function(soself)^.fun.argn >= argnum) or
+              PSO_Function(soself)^.fun.canvarargs) then
             begin
-              if argnum >= PSO_Function(soself)^.fun.argn then
+              // push code addr
+              templatestack_push(PSO_Function(soself)^.fun.code,
+                                 PSO_Function(soself)^.fun.ip,true);
+
+              // fix framepointer
+              templatestack_fix_framepointer(
+                runtimestack_relptr(argnum)-1);
+
+              if (PSO_Function(soself)^.fun.canvarargs and
+                  (argnum >= PSO_Function(soself)^.fun.argn)) then
                 begin
                   {pack varargs into a list}
                   vararglist := so_list_append(so_list_init,
@@ -84,33 +85,36 @@ begin
                   {fix argnum}
                   argnum := PSO_Function(soself)^.fun.argn;
                 end;
+              {fix ip (jump offset), correct position in functions jumptable}
+              template_ip_setrel(PSO_Function(soself)^.fun.argn - argnum,true);
+            end
+          else
+            begin
+              Result := so_error_init('Invalid Nr of Arguments for Call to '+so_function_codelnstr(soself));
+              Exit(Result);
             end;
-          {fix ip (jump offset), correct position in functions jumptable}
-          template_ip_setrel(PSO_Function(soself)^.fun.argn - argnum,true);
-        end
-      else
-        begin
-          Result := so_error_init('Invalid Nr of Arguments for Call to '+so_function_codelnstr(soself));
-          Exit(Result);
-        end;
 
-      // grow frame
-      runtimestack_framegrow(PSO_Function(soself)^.fun.slotn-argnum);
+          // grow frame
+          runtimestack_framegrow(PSO_Function(soself)^.fun.slotn-argnum);
+        end;
     end;
 end;
 
-function socls_Function_MethodCallOverride( hashk: MachineWord; const name: String;soself: PSOInstance): PSOInstance;
+function socls_Function_MethodCallOverride( callinfo: PMethodOverrideCallInfo ): PSOInstance;
 begin
-  SelfCheck(soself,so_function_class);
-  if (hashk = DEFAULT_METHOD_DirectCall_Hash) and
-     (name = DEFAULT_METHOD_DirectCall) then
+  with callinfo^ do
     begin
-      {return self on call}
-      Result := soself;
-      Result^.IncRef;
-    end
-  else
-    Result := nil;
+      SelfCheck(soself,so_function_class);
+      if (hashk = DEFAULT_METHOD_DirectCall_Hash) and
+         (ucfs_compare(name,ci_us(ci_dm_call,false))=0) then
+        begin
+          {return self on call}
+          Result := soself;
+          Result^.IncRef;
+        end
+      else
+        Result := nil;
+    end;
 end;
 
 function socls_Function_Compare(soself, rightop: PSOInstance): TSOCompareResult;

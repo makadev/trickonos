@@ -1,0 +1,27 @@
+
+  class constant
+    
+    function create;
+    begin
+      self.con := {};
+      self.con_check := {};
+    end;
+  
+    function add(idxn,str);
+    var uidx;
+    begin
+      ASSERT idxn is string;
+      ASSERT str is string;
+      uidx := idxn.upcase();
+      ASSERT self.con_check[uidx] = nil; // no duplicate names
+      self.con[idxn] := str;
+    end;
+    
+    function addupcase(ixdn,str);
+      self.add(idxn.upcase(),str);
+    end;
+  
+  end;
+
+  constr := constant();
+  resourcestr := constant();

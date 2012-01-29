@@ -41,59 +41,72 @@ begin
   PSO_SubsystemFW(instance)^.disptab.AttrProc.Done;
 end;
 
-function SubSys_FW_Attr_Dispatch(const name: String; soself: PSOInstance; setter: PSOInstance ): PSOInstance; inline;
+function SubSys_FW_Attr_Dispatch( attrinfo: PAttributeInfo ): PSOInstance; inline;
 {Get/SetMember (member select) broker,
   lookup registered method for certain attribute name and call it
   or generate default error}
 var attrh: TSSDAttributHandlerP;
 begin
-  SelfCheck(soself,so_subsys_fw_class);
-  attrh := TSSDAttributHandlerP(PSO_SubsystemFW(soself)^.disptab.AttrProc.Lookup(name));
-  if Assigned(attrh) then
+  with attrinfo^ do
     begin
-      Result := attrh(name,soself,setter);
-      if not Assigned(Result) then
-        Result := init_subsys_attr_error( soself, name );
-    end
-  else
-    Result := init_subsys_attr_error(soself,name);
+      SelfCheck(soself,so_subsys_fw_class);
+      attrh := TSSDAttributHandlerP(PSO_SubsystemFW(soself)^.disptab.AttrProc.Lookup(name));
+      if Assigned(attrh) then
+        begin
+          Result := attrh(attrinfo);
+          if not Assigned(Result) then
+            Result := init_subsys_attr_error( soself, name );
+        end
+      else
+        Result := init_subsys_attr_error(soself,name);
+    end;
 end;
 
-function socls_SubSys_Fw_MethodCall(hashk: MachineWord; const name: String; soself: PSOInstance; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
+function socls_SubSys_Fw_MethodCall( callinfo: PMethodCallInfo ): PSOInstance;
 {MethodCall broker,
   lookup registered method for certain attribute methodname and call it
   or return nil which generates default error}
 var methh: TSSDMethodHandlerP;
+    attrinfo: TAttributeInfo;
 begin
-  SelfCheck(soself,so_subsys_fw_class);
-  methh := TSSDMethodHandlerP(PSO_SubsystemFW(soself)^.disptab.MethProc.LookupByHash(hashk,name));
-  if Assigned(methh) then
+  with callinfo^ do
     begin
-      check_so_maxargs(argnum);
-      Result := methh(name,soself,args,argnum);
-      if not Assigned(Result) then
-        Result := init_subsys_meth_error( soself, name );
-    end
-  else
-    begin
-      {directly check getmember/setmember and dispatch, this allows overriding the
-       getmember/setmember with MethodCall}
-      if (hashk = DEFAULT_METHOD_GetMember_Hash) and
-         (name = DEFAULT_METHOD_GetMember) and
-         (argnum = 1) and
-         (args^[0]^.IsType(so_string_class)) then
+      SelfCheck(soself,so_subsys_fw_class);
+      methh := TSSDMethodHandlerP(PSO_SubsystemFW(soself)^.disptab.MethProc.LookupByHash(hashk,name));
+      if Assigned(methh) then
         begin
-          Result := SubSys_FW_Attr_Dispatch(so_string_get_utf8(args^[0]),soself,nil);
-        end
-      else if (hashk = DEFAULT_METHOD_SetMember_Hash) and
-              (name = DEFAULT_METHOD_SetMember) and
-              (argnum = 2) and
-              (args^[0]^.IsType(so_string_class)) then
-        begin
-          Result := SubSys_FW_Attr_Dispatch(so_string_get_utf8(args^[0]),soself,args^[1]);
+          check_so_maxargs(argnum);
+          Result := methh(callinfo);
+          if not Assigned(Result) then
+            Result := init_subsys_meth_error( soself, name );
         end
       else
-        Result := init_subsys_meth_error(soself,name);
+        begin
+          {directly check getmember/setmember and dispatch, this allows overriding the
+           getmember/setmember with MethodCall}
+          if (hashk = DEFAULT_METHOD_GetMember_Hash) and
+             (ucfs_compare(name,ci_us(ci_dm_getmember,false))=0) and
+             (argnum = 1) and
+             (soargs^[0]^.IsType(so_string_class)) then
+            begin
+              attrinfo.name := so_string_get_ucfs(soargs^[0]);
+              attrinfo.soself := soself;
+              attrinfo.setter := nil;
+              Result := SubSys_FW_Attr_Dispatch(@attrinfo);
+            end
+          else if (hashk = DEFAULT_METHOD_SetMember_Hash) and
+                  (ucfs_compare(name,ci_us(ci_dm_setmember,false))=0) and
+                  (argnum = 2) and
+                  (soargs^[0]^.IsType(so_string_class)) then
+            begin
+              attrinfo.name := so_string_get_ucfs(soargs^[0]);
+              attrinfo.soself := soself;
+              attrinfo.setter := soargs^[1];
+              Result := SubSys_FW_Attr_Dispatch(@attrinfo);
+            end
+          else
+            Result := init_subsys_meth_error(soself,name);
+        end;
     end;
 end;
 
@@ -154,55 +167,68 @@ begin
   PSO_SubsystemOW(instance)^.ssdisp.Free;
 end;
 
-function SubSys_OW_Attr_Dispatch(const name: String; soself, setter: PSOInstance): PSOInstance; inline;
+function SubSys_OW_Attr_Dispatch(attrinfo:PAttributeInfo): PSOInstance; inline;
 {Attribute to Attr Handler dispatcher}
 var attrhe: PSSDAttrEntry;
 begin
-  SelfCheck(soself,so_subsys_ow_class);
-  attrhe := PSSDAttrEntry(PSO_SubsystemOW(soself)^.ssdisp.FDispTab.AttrProc.Lookup(name));
-  if Assigned(attrhe) then
+  with attrinfo^ do
     begin
-      Result := attrhe^(name,soself,setter);
-      if not Assigned(Result) then
-        Result := init_subsys_attr_error( soself, name);
-    end
-  else
-    Result := init_subsys_attr_error( soself, name);
-end;
-
-function socls_SubSys_OW_MethodCall( hashk: MachineWord; const name: String; soself: PSOInstance; args: PSOMethodVarArgs; argnum: VMInt): PSOInstance;
-{MethodCall dispatcher}
-var methhe: PSSDMethEntry;
-begin
-  SelfCheck(soself,so_subsys_ow_class);
-  methhe := PSSDMethEntry(PSO_SubsystemOW(soself)^.ssdisp.FDispTab.MethProc.LookupByHash(hashk,name));
-  if Assigned(methhe) then
-    begin
-      check_so_maxargs(argnum);
-      Result := methhe^(name,soself,args,argnum);
-      if not Assigned(Result) then
-        Result := init_subsys_meth_error( soself, name );
-    end
-  else
-    begin
-      {directly check getmember/setmember and dispatch, this allows overriding the
-       getmember/setmember with MethodCall}
-      if (hashk = DEFAULT_METHOD_GetMember_Hash) and
-         (name = DEFAULT_METHOD_GetMember) and
-         (argnum = 1) and
-         (args^[0]^.IsType(so_string_class)) then
+      SelfCheck(soself,so_subsys_ow_class);
+      attrhe := PSSDAttrEntry(PSO_SubsystemOW(soself)^.ssdisp.FDispTab.AttrProc.Lookup(name));
+      if Assigned(attrhe) then
         begin
-          Result := SubSys_OW_Attr_Dispatch(so_string_get_utf8(args^[0]),soself,nil);
-        end
-      else if (hashk = DEFAULT_METHOD_SetMember_Hash) and
-              (name = DEFAULT_METHOD_SetMember) and
-              (argnum = 2) and
-              (args^[0]^.IsType(so_string_class)) then
-        begin
-          Result := SubSys_OW_Attr_Dispatch(so_string_get_utf8(args^[0]),soself,args^[1]);
+          Result := attrhe^(attrinfo);
+          if not Assigned(Result) then
+            Result := init_subsys_attr_error( soself, name);
         end
       else
-        Result := init_subsys_meth_error(soself,name);
+        Result := init_subsys_attr_error( soself, name);
+    end;
+end;
+
+function socls_SubSys_OW_MethodCall( callinfo: PMethodCallInfo ): PSOInstance;
+{MethodCall dispatcher}
+var methhe: PSSDMethEntry;
+    attrinfo: TAttributeInfo;
+begin
+  with callinfo^ do
+    begin
+      SelfCheck(soself,so_subsys_ow_class);
+      methhe := PSSDMethEntry(PSO_SubsystemOW(soself)^.ssdisp.FDispTab.MethProc.LookupByHash(hashk,name));
+      if Assigned(methhe) then
+        begin
+          check_so_maxargs(argnum);
+          Result := methhe^(callinfo);
+          if not Assigned(Result) then
+            Result := init_subsys_meth_error( soself, name );
+        end
+      else
+        begin
+          {directly check getmember/setmember and dispatch, this allows overriding the
+           getmember/setmember with MethodCall}
+          if (hashk = DEFAULT_METHOD_GetMember_Hash) and
+             (ucfs_compare(name,ci_us(ci_dm_getmember,false))=0) and
+             (argnum = 1) and
+             (soargs^[0]^.IsType(so_string_class)) then
+            begin
+              attrinfo.name := so_string_get_ucfs(soargs^[0]);
+              attrinfo.soself := soself;
+              attrinfo.setter := nil;
+              Result := SubSys_OW_Attr_Dispatch(@attrinfo);
+            end
+          else if (hashk = DEFAULT_METHOD_SetMember_Hash) and
+                  (ucfs_compare(name,ci_us(ci_dm_setmember,false))=0) and
+                  (argnum = 2) and
+                  (soargs^[0]^.IsType(so_string_class)) then
+            begin
+              attrinfo.name := so_string_get_ucfs(soargs^[0]);
+              attrinfo.soself := soself;
+              attrinfo.setter := soargs^[1];
+              Result := SubSys_OW_Attr_Dispatch(@attrinfo);
+            end
+          else
+            Result := init_subsys_meth_error(soself,name);
+        end;
     end;
 end;
 
@@ -275,7 +301,7 @@ end;
 var
   TMethodTrie_System: THashTrie;
 
-procedure so_system_addmethod( const mname: String; methh: TSOMethodHandlerPure );
+procedure so_system_addmethod( const mname: String; methh: TSOMethodHandler );
 begin
   if TMethodTrie_System.Add(UpCase(mname),methh) <> nil then
     put_internalerror(12012206);
@@ -331,35 +357,41 @@ begin
   Result := C_SOTYPE_SYSTEM_NAME;
 end;
 
-function socls_System_MethodCall( hashk: MachineWord; const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function socls_System_MethodCall( callinfo: PMethodCallInfo ): PSOInstance;
 {generic, lookup method and call}
-var m: TSOMethodHandlerPure;
+var m: TSOMethodHandler;
 begin
-  SelfCheck(soself,so_system_class);
-  m := TSOMethodHandlerPure( TMethodTrie_System.Lookup(mname) );
-  if Assigned(m) then
-    Result := m( mname, soself, soargs, argnum )
-  else
-    Result := nil;
+  with callinfo^ do
+    begin
+      SelfCheck(soself,so_system_class);
+      m := TSOMethodHandler( TMethodTrie_System.LookupByHash(hashk,name) );
+      if Assigned(m) then
+        Result := m( callinfo )
+      else
+        Result := nil;
+    end;
 end;
 
 {System::GetMember(string) -> subsystem}
-function _System_GetMember_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function _System_GetMember_(callinfo: PMethodCallInfo): PSOInstance;
 var ssentry: PSubsystemEntry;
     f: PSO_SubsystemFW;
     o: PSO_SubsystemOW;
-    name: String;
+    subsysname: PUCFS32String;
 begin
-  SelfCheck(soself,so_system_class);
-  ASSERT(mname = DEFAULT_METHOD_GetMember);
-  if (argnum = 1) and
-     (soargs^[0]^.IsType(so_string_class)) then
+  with callinfo^ do
     begin
-      name := so_string_get_utf8(soargs^[0]);
-    end
-  else
-    Exit(nil);
-  ssentry := PSubsystemEntry(PSO_System(soself)^.subsysteme.Lookup(name));
+      SelfCheck(soself,so_system_class);
+      if (argnum = 1) and
+         (soargs^[0]^.IsType(so_string_class)) then
+        begin
+          subsysname := so_string_get_ucfs(soargs^[0]);
+        end
+      else
+        Exit(nil);
+      ssentry := PSubsystemEntry(PSO_System(soself)^.subsysteme.Lookup(subsysname));
+    end;
+
   if Assigned(ssentry) then
     begin
       if not Assigned(ssentry^.ssinstance) then
@@ -368,7 +400,7 @@ begin
           if ssentry^.oopwrapper then
             begin
               o := PSO_SubsystemOW(socore.InitInstance(so_subsys_ow_class));
-              o^.typename := name;
+              o^.typename := ucfs_to_string(subsysname);
               o^.ssdisp := nil;
               try
                 o^.ssdisp := ssentry^.dispcls.Create;
@@ -377,7 +409,7 @@ begin
                   raise;
                 on e:Exception do
                   begin
-                    put_debug(C_SOTYPE_SUBSYSTEM_NAME+' '+name+' Load Exception: ' + e.Message);
+                    put_debug(C_SOTYPE_SUBSYSTEM_NAME+' '+ucfs_to_string(subsysname)+' Load Exception: ' + e.Message);
                     o := nil;
                   end;
               end;
@@ -390,7 +422,7 @@ begin
                       raise;
                     on e: Exception do
                       begin
-                        put_debug(C_SOTYPE_SUBSYSTEM_NAME+' '+name+' Load Exception: ' + e.Message);
+                        put_debug(C_SOTYPE_SUBSYSTEM_NAME+' '+ucfs_to_string(subsysname)+' Load Exception: ' + e.Message);
                         o := nil;
                       end;
                   end;
@@ -398,12 +430,12 @@ begin
               if Assigned(o) then
                 ssentry^.ssinstance := o
               else
-                put_critical(C_SOTYPE_SUBSYSTEM_NAME+' '+name+' Startup failed');
+                put_critical(C_SOTYPE_SUBSYSTEM_NAME+' '+ucfs_to_string(subsysname)+' Startup failed');
             end
           else
             begin
               f := PSO_SubsystemFW(socore.InitInstance(so_subsys_fw_class));
-              f^.typename := name;
+              f^.typename := ucfs_to_string(subsysname);
               f^.disptab.AttrProc.Init(0,2);
               f^.disptab.MethProc.Init(0,2);
               try
@@ -413,14 +445,14 @@ begin
                   raise;
                 on e:Exception do
                   begin
-                    put_debug(C_SOTYPE_SUBSYSTEM_NAME+' '+name+' Load Exception: ' + e.Message);
+                    put_debug(C_SOTYPE_SUBSYSTEM_NAME+' '+ucfs_to_string(subsysname)+' Load Exception: ' + e.Message);
                     f := nil;
                   end;
               end;
               if Assigned(f) then
                 ssentry^.ssinstance := f
               else
-                put_critical(C_SOTYPE_SUBSYSTEM_NAME+' '+name+' Startup failed');
+                put_critical(C_SOTYPE_SUBSYSTEM_NAME+' '+ucfs_to_string(subsysname)+' Startup failed');
               f^.unload := ssentry^.unload;
             end;
         end;
@@ -428,26 +460,28 @@ begin
       Result^.IncRef; // for passing
     end
   else
-    Result := so_error_init('No such '+C_SOTYPE_SUBSYSTEM_NAME+': '+name);
+    Result := so_error_init('No such '+C_SOTYPE_SUBSYSTEM_NAME+': '+ucfs_to_string(subsysname));
 end;
 
 {System::SetMember(string,value) -> value (only used for freeable subsystems)}
-function _System_SetMember_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function _System_SetMember_(callinfo:PMethodCallInfo): PSOInstance;
 var ssentry: PSubsystemEntry;
     i: PSOInstance;
-    name: String;
+    subsysname: PUCFS32String;
 begin
-  SelfCheck(soself,so_system_class);
-  ASSERT(mname = DEFAULT_METHOD_SetMember);
-  if (argnum = 2) and
-     (soargs^[0]^.IsType(so_string_class)) then
+  with callinfo^ do
     begin
-      name := so_string_get_utf8(soargs^[0]);
-    end
-  else
-    Exit(nil);
-  ssentry := PSubsystemEntry(PSO_System(soself)^.subsysteme.Lookup(name));
-  if soargs^[1]^.IsType(so_none_class) then
+      SelfCheck(soself,so_system_class);
+      if (argnum = 2) and
+         (soargs^[0]^.IsType(so_string_class)) then
+        begin
+          subsysname := so_string_get_ucfs(soargs^[0]);
+        end
+      else
+        Exit(nil);
+      ssentry := PSubsystemEntry(PSO_System(soself)^.subsysteme.Lookup(subsysname));
+    end;
+  if callinfo^.soargs^[1]^.IsType(so_none_class) then
     begin
       if Assigned(ssentry) then
         begin
@@ -467,18 +501,18 @@ begin
                       // another subsystem of same type which does stuff agains the
                       // others instance knowledge
                       // special instances must be solved differently
-                      Result := so_error_init(C_SOTYPE_SUBSYSTEM_NAME+' '+name+' is still in use');
+                      Result := so_error_init(C_SOTYPE_SUBSYSTEM_NAME+' '+ucfs_to_string(subsysname)+' is still in use');
                     end;
                 end
               else
-                Result := so_error_init(C_SOTYPE_SUBSYSTEM_NAME+' '+name+' does not allow unloading');
+                Result := so_error_init(C_SOTYPE_SUBSYSTEM_NAME+' '+ucfs_to_string(subsysname)+' does not allow unloading');
             end;
         end
       else
-        Result := so_error_init('No such '+C_SOTYPE_SUBSYSTEM_NAME+': '+name);
+        Result := so_error_init('No such '+C_SOTYPE_SUBSYSTEM_NAME+': '+ucfs_to_string(subsysname));
     end
   else
-    Result := init_invargtype_error(soself,soargs^[1],1,DEFAULT_METHOD_SetMember);
+    Result := init_invargtype_error(callinfo^.soself,callinfo^.soargs^[1],1,callinfo^.name);
 end;
 
 (*******************************************************************************
@@ -486,105 +520,124 @@ end;
  ******************************************************************************)
 
 {SYSTEM::Instances()}
-function _System_GCInstances_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function _System_GCInstances_(callinfo:PMethodCallInfo): PSOInstance;
 begin
-  if argnum = 0 then
+  with callinfo^ do
     begin
-      Result := so_integer_init( TracedInstances );
-    end
-  else
-    Result := init_invargnum_error(soself,argnum,mname);
+      if argnum = 0 then
+        Result := so_integer_init( TracedInstances )
+      else
+        Result := init_invargnum_error(soself,argnum,name);
+    end;
 end;
 
 {SYSTEM::GCollect()}
-function _System_GC_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function _System_GC_(callinfo:PMethodCallInfo): PSOInstance;
 begin
-  if argnum = 0 then
+  with callinfo^ do
     begin
-      GarbageCollect;
-      Result := so_nil;
-    end
-  else
-    Result := init_invargnum_error(soself,argnum,mname);
-end;
-
-{SYSTEM::Dummy()}
-function _System_DummyObject_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
-begin
-  if argnum = 0 then
-    Result := so_dummy_instance
-  else
-    Result := init_invargnum_error(soself,argnum,mname);
-end;
-
-{SYSTEM::TypeOf(<any>)}
-function _System_TypeOf_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
-begin
-  if argnum = 1 then
-    Result := so_string_init_utf8(soargs^[0]^.GetTypeCls^.TypeQuery(soargs^[0]))
-  else
-    Result := init_invargnum_error(soself,argnum,mname);
-end;
-
-{SYSTEM::Marker(str,str) -> nil (dynamic marker switching)}
-function _System_Marker_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
-begin
-  if argnum = 2 then
-    begin
-      if soargs^[0]^.IsType(so_string_class) then
+      if argnum = 0 then
         begin
-          if soargs^[1]^.IsType(so_string_class) then
-            begin
-              cscan.cscan_setcodemarker(so_string_get_ucfs(soargs^[0]),so_string_get_ucfs(soargs^[1]));
-              Result := so_nil;
-            end
-          else
-            Result := init_invargtype_error(soself,soargs^[1],2,mname);
-        end
-      else
-        Result := init_invargtype_error(soself,soargs^[0],1,mname);
-    end
-  else
-    Result := init_invargnum_error(soself,argnum,mname);
-end;
-
-{SYSTEM::ECCMarker(str,str) -> nil (dynamic ecc comment marker switching)}
-function _System_ECCMarker_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
-begin
-  if argnum = 2 then
-    begin
-      if soargs^[0]^.IsType(so_string_class) then
-        begin
-          if soargs^[1]^.IsType(so_string_class) then
-            begin
-              cscan.cscan_seteccmarker(so_string_get_ucfs(soargs^[0]),so_string_get_ucfs(soargs^[1]));
-              Result := so_nil;
-            end
-          else
-            Result := init_invargtype_error(soself,soargs^[1],2,mname);
-        end
-      else
-        Result := init_invargtype_error(soself,soargs^[0],1,mname);
-    end
-  else
-    Result := init_invargnum_error(soself,argnum,mname);
-end;
-
-{SYSTEM::LNMarker(str) -> nil (dynamic ln comment marker switching)}
-function _System_LNMarker_( const mname: String; soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
-begin
-  if argnum = 1 then
-    begin
-      if soargs^[0]^.IsType(so_string_class) then
-        begin
-          cscan.cscan_setlcmarker(so_string_get_ucfs(soargs^[0]));
+          GarbageCollect;
           Result := so_nil;
         end
       else
-        Result := init_invargtype_error(soself,soargs^[0],1,mname);
-    end
-  else
-    Result := init_invargnum_error(soself,argnum,mname);
+        Result := init_invargnum_error(soself,argnum,name);
+    end;
+end;
+
+{SYSTEM::Dummy()}
+function _System_DummyObject_(callinfo:PMethodCallInfo): PSOInstance;
+begin
+  with callinfo^ do
+    begin
+      if argnum = 0 then
+        Result := so_dummy_instance
+      else
+        Result := init_invargnum_error(soself,argnum,name);
+    end;
+end;
+
+{SYSTEM::TypeOf(<any>)}
+function _System_TypeOf_(callinfo:PMethodCallInfo): PSOInstance;
+begin
+  with callinfo^ do
+    begin
+      if argnum = 1 then
+        Result := so_string_init_utf8(soargs^[0]^.GetTypeCls^.TypeQuery(soargs^[0]))
+      else
+        Result := init_invargnum_error(soself,argnum,name);
+    end;
+end;
+
+{SYSTEM::Marker(str,str) -> nil (dynamic marker switching)}
+function _System_Marker_(callinfo:PMethodCallInfo): PSOInstance;
+begin
+  with callinfo^ do
+    begin
+      if argnum = 2 then
+        begin
+          if soargs^[0]^.IsType(so_string_class) then
+            begin
+              if soargs^[1]^.IsType(so_string_class) then
+                begin
+                  cscan.cscan_setcodemarker(so_string_get_ucfs(soargs^[0]),so_string_get_ucfs(soargs^[1]));
+                  Result := so_nil;
+                end
+              else
+                Result := init_invargtype_error(soself,soargs^[1],2,name);
+            end
+          else
+            Result := init_invargtype_error(soself,soargs^[0],1,name);
+        end
+      else
+        Result := init_invargnum_error(soself,argnum,name);
+    end;
+end;
+
+{SYSTEM::ECCMarker(str,str) -> nil (dynamic ecc comment marker switching)}
+function _System_ECCMarker_(callinfo:PMethodCallInfo): PSOInstance;
+begin
+  with callinfo^ do
+    begin
+      if argnum = 2 then
+        begin
+          if soargs^[0]^.IsType(so_string_class) then
+            begin
+              if soargs^[1]^.IsType(so_string_class) then
+                begin
+                  cscan.cscan_seteccmarker(so_string_get_ucfs(soargs^[0]),so_string_get_ucfs(soargs^[1]));
+                  Result := so_nil;
+                end
+              else
+                Result := init_invargtype_error(soself,soargs^[1],2,name);
+            end
+          else
+            Result := init_invargtype_error(soself,soargs^[0],1,name);
+        end
+      else
+        Result := init_invargnum_error(soself,argnum,name);
+    end;
+end;
+
+{SYSTEM::LNMarker(str) -> nil (dynamic ln comment marker switching)}
+function _System_LNMarker_(callinfo:PMethodCallInfo): PSOInstance;
+begin
+  with callinfo^ do
+    begin
+      if argnum = 1 then
+        begin
+          if soargs^[0]^.IsType(so_string_class) then
+            begin
+              cscan.cscan_setlcmarker(so_string_get_ucfs(soargs^[0]));
+              Result := so_nil;
+            end
+          else
+            Result := init_invargtype_error(soself,soargs^[0],1,name);
+        end
+      else
+        Result := init_invargnum_error(soself,argnum,name);
+    end;
 end;
 
 (*******************************************************************************

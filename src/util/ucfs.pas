@@ -120,7 +120,7 @@ procedure ucfs_setc( ps: PUCFS32String; p: VMInt; uc: TUCFS32Char ); inline;
        -> ps must be <> nil (nonempty)}
 function ucfs_getc( ps: PUCFS32String; p: VMInt ): TUCFS32Char;
 {DOC>> get length of strings in characters}
-function ucfs_length( ps: PUCFS32String ): VMInt;
+function ucfs_length( ps: PUCFS32String ): VMInt; inline;
 {DOC>> get byte length (length for 1 character in bytes)}
 function ucfs_charsize( ps: PUCFS32String ): VMInt; inline;
 {DOC>> convert ansi utf8 string into utf8string. @returns position of
@@ -157,6 +157,8 @@ function ucfs_copy( ps: PUCFS32String; b: VMInt = 0 ): PUCFS32String; inline;
 function ucfs_concat( psl, psr: PUCFS32String ): PUCFS32String;
 {DOC>> qlex compare}
 function ucfs_compare( psl, psr: PUCFS32String ): VMInt;
+{DOC>> qlex compare directly with ascii 7b string}
+function ucfs_compare_a7( psl: PUCFS32String; const s: String ): VMInt;
 {DOC>> check if substring pss matches ps at pos p..p+len-1}
 function ucfs_submatch( ps, pss: PUCFS32String; p, len: VMInt ): Boolean;
 {DOC>> move src/sub string pss into psdest at pos destp..destp+srclen-1
@@ -173,6 +175,25 @@ uses eomsg;
 (*******************************************************************************
  * UCF String OPS
  ******************************************************************************)
+
+function ucfs_compare_a7(psl: PUCFS32String; const s: String): VMInt;
+var l, i: VMInt;
+begin
+  l := ucfs_length(psl);
+  Result := l - Length(s);
+  if (Result = 0) and
+     (l > 0) then
+    begin
+      i := 1;
+      while (i <= l) and
+            (Result = 0) do
+        begin
+          ASSERT(Ord(s[i]) <= $7F);
+          Result := ucfs_getc(psl,i) - Ord(s[i]);
+          Inc(i,1);
+        end;
+    end;
+end;
 
 function ucfs_submatch( ps, pss: PUCFS32String; p, len: VMInt ): Boolean;
 var i: VMInt;
@@ -228,20 +249,25 @@ end;
 function ucfs_compare( psl, psr: PUCFS32String ): VMInt;
 var l, i: VMInt;
 begin
-  l := ucfs_length(psl);
-  Result := l - ucfs_length(psr);
-  if (Result = 0) and
-     (l > 0) then
+  if psl<>psr then
     begin
-      i := 1;
-      while (i <= l) and
-            (Result = 0) do
+      l := ucfs_length(psl);
+      Result := l - ucfs_length(psr);
+      if (Result = 0) and
+         (l > 0) then
         begin
-          // u32c has 31 bit max -> wont overflow (if uc32c is correct)
-          Result := ucfs_getc(psl,i) - ucfs_getc(psr,i);
-          Inc(i,1);
+          i := 1;
+          while (i <= l) and
+                (Result = 0) do
+            begin
+              // u32c has 31 bit max -> wont overflow (if uc32c is correct)
+              Result := ucfs_getc(psl,i) - ucfs_getc(psr,i);
+              Inc(i,1);
+            end;
         end;
-    end;
+    end
+  else
+    Result := 0;
 end;
 
 function ucfs_concat( psl, psr: PUCFS32String ): PUCFS32String;

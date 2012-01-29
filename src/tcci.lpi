@@ -252,7 +252,7 @@
       <Filename Value="tctpl"/>
     </Target>
     <SearchPaths>
-      <IncludeFiles Value="$(ProjOutDir);util/ffpa;sobject;sobject/nullinc"/>
+      <IncludeFiles Value="$(ProjOutDir);gen;util/ffpa;sobject;sobject/nullinc"/>
       <OtherUnitFiles Value="compiler;ext;ext/subsys;machine;sobject;util;ext/methods"/>
       <UnitOutputDirectory Value="../lib"/>
     </SearchPaths>
