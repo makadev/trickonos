@@ -243,8 +243,8 @@ end;
 
 constructor TStringReaderStream.Create(AID, AReadString: PUCFS32String);
 begin
-  FID := ucfs_copy(AID,1,ucfs_length(AID));
-  FReadString := ucfs_copy(AReadString,1,ucfs_length(AReadString));
+  FID := ucfs_incref(AID);
+  FReadString := ucfs_incref(AReadString);
   FPos := 0;
   FChar := -1;
 end;
@@ -315,6 +315,8 @@ end;
 constructor TMemoryBlock.Create(AChunkSize: Integer);
 begin
   SetLength(FChunkTable,0);
+  if AChunkSize <= 16 then
+    AChunkSize := 16;
   FChunkSize := AChunkSize;
   FSize := 0;
 end;
@@ -392,10 +394,16 @@ end;
 constructor TMemoryBlockReaderStream.Create(AID: PUCFS32String;
   AMemBlock: TMemoryBlock; ABlockOwner: Boolean);
 begin
-  FID := ucfs_copy(AID,1,ucfs_length(AID));
+  FID := ucfs_incref(AID);
   FMemBlock := AMemBlock;
   FBlockOwner := ABlockOwner;
   FSRead := 0;
+  {check/strip BOM}
+  if (FMemBlock.Size >= 3) and
+     (FMemBlock.Read(0) = $EF) and
+     (FMemBlock.Read(1) = $BB) and
+     (FMemBlock.Read(2) = $BF) then
+    FSRead := 3;
 end;
 
 destructor TMemoryBlockReaderStream.Destroy;
@@ -618,8 +626,10 @@ constructor TFileReaderStream.Create(AID, AFileName: PUCFS32String; ABufMax: Int
 var u8s: String;
 begin
   inherited Create;
-  FID := ucfs_copy(AID,1,ucfs_length(AID));
-  FFileName := ucfs_copy(AFileName,1,ucfs_length(AFileName));
+  FID := ucfs_incref(AID);
+  FFileName := ucfs_incref(AFileName);
+  if ABufMax < 16 then
+    ABufMax := 16;
   SetLength( FBuffer, ABufMax );
   FBufMax := ABufMax;
   FBufSize := 0;
@@ -632,6 +642,12 @@ begin
       BufferNext;
       FOpen := FBufSize >= 0;
       FBufPos := -1;
+      {check/strip BOM}
+      if (FBufSize >= 3) and
+         (FBuffer[0] = $EF) and
+         (FBuffer[1] = $BB) and
+         (FBuffer[2] = $BF) then
+        FBufPos := 2;
     end
   else
     FOpen := false;

@@ -194,7 +194,7 @@ const
     PreDestructor: @socls_IO_PreDestructor;
     GCEnumerator: @socls_IO_GCEnumerator;
     MethodCall: @socls_IO_MethodCall;
-    MethodCallOverride: @socls_IO_MethodCallOverride;
+    MethodCallOverride: nil { @socls_IO_MethodCallOverride };
     Compare: @DefaultCompare;
     TypeQuery: @socls_IO_TypeQuery
   );

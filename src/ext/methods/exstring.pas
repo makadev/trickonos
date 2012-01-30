@@ -56,7 +56,7 @@ begin
     begin
       if argnum = 0 then
         begin
-          us := so_string_get_ucfs(soself);
+          us := so_string_get_ucfs(soself,false);
           s := 1;
           l := ucfs_length(us);
           {strip right}
@@ -70,7 +70,14 @@ begin
               Inc(s,1);
               Dec(l,1);
             end;
-          Result := so_string_init_ucfs(ucfs_copy(us,s,l));
+          if (s = 1) and
+             (l = ucfs_length(us)) then
+            begin
+              Result := soself;
+              Result^.IncRef;
+            end
+          else
+            Result := so_string_init_ucfs(ucfs_cpy(us,s,l),false);
         end
       else
         Result := init_invargnum_error(soself,argnum,name);
@@ -87,7 +94,7 @@ begin
     begin
       if argnum = 0 then
         begin
-          us := so_string_get_ucfs(soself);
+          us := so_string_get_ucfs(soself,false);
           s := 1;
           l := ucfs_length(us);
           {strip left}
@@ -97,7 +104,14 @@ begin
               Inc(s,1);
               Dec(l,1);
             end;
-          Result := so_string_init_ucfs(ucfs_copy(us,s,l));
+          if (s = 1) and
+             (l = ucfs_length(us)) then
+            begin
+              Result := soself;
+              Result^.IncRef;
+            end
+          else
+            Result := so_string_init_ucfs(ucfs_cpy(us,s,l),false);
         end
       else
         Result := init_invargnum_error(soself,argnum,name);
@@ -114,13 +128,19 @@ begin
     begin
       if argnum = 0 then
         begin
-          us := so_string_get_ucfs(soself);
+          us := so_string_get_ucfs(soself,false);
           l := ucfs_length(us);
           {strip right}
           while (l > 0) and
                 (ucfs_getc(us,l) = 32) do
             Dec(l,1);
-          Result := so_string_init_ucfs(ucfs_copy(us,1,l));
+          if l = ucfs_length(us) then
+            begin
+              Result := soself;
+              Result^.IncRef;
+            end
+          else
+            Result := so_string_init_ucfs(ucfs_cpy(us,1,l),false);
         end
       else
         Result := init_invargnum_error(soself,argnum,name);
@@ -136,13 +156,12 @@ var h,sh: MachineInt;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_string_class);
       if argnum = 1 then
         begin
           if soargs^[0]^.IsType(so_string_class) then
             begin
-              tmps := so_string_get_ucfs(soself);
-              tmpsplits := so_string_get_ucfs(soargs^[0]);
+              tmps := so_string_get_ucfs(soself,false);
+              tmpsplits := so_string_get_ucfs(soargs^[0],false);
               Result := so_list_init;
               if (ucfs_length(tmpsplits) < ucfs_length(tmps)) and
                  (ucfs_length(tmpsplits) > 0) then
@@ -180,7 +199,7 @@ begin
                             if ucfs_submatch(tmps,tmpsplits,j,ucfs_length(tmpsplits)) then
                               begin
                                 {real match, copy (l+1)..(j-1), add to list}
-                                pins := so_string_init_ucfs(ucfs_copy(tmps,l+1,j-(l+1)));
+                                pins := so_string_init_ucfs(ucfs_cpy(tmps,l+1,j-(l+1)),false);
                                 Result := so_list_append(Result,@pins,1);
                                 Result^.DecRef;
                                 {update last match/new end}
@@ -228,7 +247,7 @@ begin
                             begin
                               if ucfs_submatch(tmps,tmpsplits,i,ucfs_length(tmpsplits)) then
                                 begin
-                                  pins := so_string_init_ucfs(ucfs_copy(tmps,l+1,i-(l+1)));
+                                  pins := so_string_init_ucfs(ucfs_cpy(tmps,l+1,i-(l+1)),false);
                                   Result := so_list_append(Result,@pins,1);
                                   Result^.DecRef;
                                   i := i+ucfs_length(tmpsplits);
@@ -242,7 +261,7 @@ begin
                 {cp leftof (l+1)..Length}
                 if (ucfs_length(tmps)-l) > 0 then
                   begin
-                    pins := so_string_init_ucfs(ucfs_copy(tmps,l+1,ucfs_length(tmps)-l));
+                    pins := so_string_init_ucfs(ucfs_cpy(tmps,l+1,ucfs_length(tmps)-l),false);
                     Result := so_list_append(Result,@pins,1);
                     Result^.DecRef;
                   end
@@ -272,10 +291,8 @@ begin
                 begin
                   {splitstr < str or splitstr=''
                    -> return string since they cant match}
-                  pins := so_string_init_ucfs(ucfs_copy(tmps,1,ucfs_length(tmps)));
+                  pins := soself;
                   Result := so_list_append(Result,@pins,1);
-                  // fix refcount since append increfs again
-                  Result^.DecRef;
                 end;
             end
           else
@@ -294,10 +311,9 @@ var i,j,blen,clen,rlen: VMInt;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_string_class);
       Result := nil;
-      blen := ucfs_charsize(so_string_get_ucfs(soself));
-      clen := ucfs_length(so_string_get_ucfs(soself));
+      blen := ucfs_charsize(so_string_get_ucfs(soself,false));
+      clen := ucfs_length(so_string_get_ucfs(soself,false));
       rlen := 0;
       if argnum = 1 then
         begin
@@ -313,7 +329,7 @@ begin
                       repeat
                          if so_list_iter_getval(p)^.IsType(so_string_class) then
                            begin
-                             tmps := so_string_get_ucfs(so_list_iter_getval(p));
+                             tmps := so_string_get_ucfs(so_list_iter_getval(p),false);
                              if blen < ucfs_charsize(tmps) then
                                blen := ucfs_charsize(tmps);
                              rlen := rlen+ucfs_length(tmps);
@@ -334,19 +350,19 @@ begin
                   p := nil;
                   if so_list_iter_next(soargs^[0],p) then
                     begin
-                      ctmp := so_string_get_ucfs(so_list_iter_getval(p));
+                      ctmp := so_string_get_ucfs(so_list_iter_getval(p),false);
                       ucfs_submove(ctmp,tmps,1,ucfs_length(ctmp));
                       j := ucfs_length(ctmp)+1;
                       while so_list_iter_next(soargs^[0],p) do
                         begin
-                          ucfs_submove(so_string_get_ucfs(soself),tmps,j,clen);
+                          ucfs_submove(so_string_get_ucfs(soself,false),tmps,j,clen);
                           Inc(j,clen);
-                          ctmp := so_string_get_ucfs(so_list_iter_getval(p));
+                          ctmp := so_string_get_ucfs(so_list_iter_getval(p),false);
                           ucfs_submove(ctmp,tmps,j,ucfs_length(ctmp));
                           Inc(j,ucfs_length(ctmp));
                         end;
                     end;
-                  Result := so_string_init_ucfs(tmps);
+                  Result := so_string_init_ucfs(tmps,false);
                 end
               else
                 {joined with nothing}
@@ -354,9 +370,10 @@ begin
             end
           else if soargs^[0]^.IsType(so_string_class) then
             begin
-              {only one string, nothing to join}
-              Result := so_string_init_ucfs(ucfs_copy(so_string_get_ucfs(soargs^[0]),1,
-                                            ucfs_length(so_string_get_ucfs(soargs^[0]))));
+              {only one string, nothing to join
+                -> pass back this one}
+              Result := soargs^[0];
+              Result^.IncRef;
             end;
         end
       else if argnum > 1 then
@@ -366,7 +383,7 @@ begin
             begin
               if soargs^[i]^.IsType(so_string_class) then
                 begin
-                  tmps := so_string_get_ucfs(soargs^[i]);
+                  tmps := so_string_get_ucfs(soargs^[i],false);
                   if blen < ucfs_charsize(tmps) then
                     blen := ucfs_charsize(tmps);
                   rlen := rlen+ucfs_length(tmps);
@@ -386,16 +403,16 @@ begin
           j := 1;
           for i := 0 to argnum-1 do
             begin
-              ucfs_submove(so_string_get_ucfs(soargs^[i]),tmps,j,
-                ucfs_length(so_string_get_ucfs(soargs^[i])));
-              Inc(j,ucfs_length(so_string_get_ucfs(soargs^[i])));
+              ucfs_submove(so_string_get_ucfs(soargs^[i],false),tmps,j,
+                ucfs_length(so_string_get_ucfs(soargs^[i],false)));
+              Inc(j,ucfs_length(so_string_get_ucfs(soargs^[i],false)));
               if i < (argnum-1) then
                 begin
-                  ucfs_submove(so_string_get_ucfs(soself),tmps,j,clen);
+                  ucfs_submove(so_string_get_ucfs(soself,false),tmps,j,clen);
                   Inc(j,clen);
                 end;
             end;
-          Result := so_string_init_ucfs(tmps);
+          Result := so_string_init_ucfs(tmps,false);
         end
       else
         begin
@@ -415,9 +432,10 @@ begin
     begin
       if argnum = 0 then
         begin
-          us := so_string_get_ucfs(soself);
-          us := ucfs_copy(us,1,ucfs_length(us));
-          Result := so_string_init_ucfs(us);
+          {$WARNING optimize, check f copy is needed (s.Upcase() = s)}
+          us := so_string_get_ucfs(soself,false);
+          us := ucfs_cpy(us,1,ucfs_length(us));
+          Result := so_string_init_ucfs(us,false);
           for i := 1 to ucfs_length(us) do
             begin
               uc := ucfs_getc(us,i);
@@ -444,9 +462,10 @@ begin
     begin
       if argnum = 0 then
         begin
-          us := so_string_get_ucfs(soself);
-          us := ucfs_copy(us,1,ucfs_length(us));
-          Result := so_string_init_ucfs(us);
+          {$WARNING optimize, check if copy is needed (s.Lowercase() = s)}
+          us := so_string_get_ucfs(soself,false);
+          us := ucfs_cpy(us,1,ucfs_length(us));
+          Result := so_string_init_ucfs(us,false);
           for i := 1 to ucfs_length(us) do
             begin
               uc := ucfs_getc(us,i);

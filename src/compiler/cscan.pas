@@ -212,8 +212,8 @@ begin
     put_critical('Intro/Outro Marker Length Missmatch');
   ucfs_release(IntroMarker);
   ucfs_release(OutroMarker);
-  IntroMarker := ucfs_copy(introMark,1,ucfs_length(introMark));
-  OutroMarker := ucfs_copy(outroMark,1,ucfs_length(outroMark));
+  IntroMarker := ucfs_incref(introMark);
+  OutroMarker := ucfs_incref(outroMark);
 end;
 
 function cscan_codeintro: PUCFS32String;
@@ -241,8 +241,8 @@ begin
     put_critical('Encapsulated Comment Marker Length Missmatch');
   ucfs_release(ECCIntro);
   ucfs_release(ECCOutro);
-  ECCIntro := ucfs_copy(intro,1,ucfs_length(intro));
-  ECCOutro := ucfs_copy(outro,1,ucfs_length(outro));
+  ECCIntro := ucfs_incref(intro);
+  ECCOutro := ucfs_incref(outro);
 end;
 
 procedure cscan_setlcmarker(starter: PUCFS32String);
@@ -250,7 +250,7 @@ begin
   if ucfs_length(starter) > Max_IntroOutro then
     put_critical('Line Comment Marker Length Missmatch');
   ucfs_release(LCMark);
-  LCMark := ucfs_copy(starter,1,ucfs_length(starter));
+  LCMark := ucfs_incref(starter);
 end;
 
 (******************************************************************************)
@@ -279,7 +279,7 @@ var
 function BufferCopy: PUCFS32String;
 begin
   if IBPtr > 0 then
-    Result := ucfs_copy(InternalBuffer,1,IBPtr)
+    Result := ucfs_cpy(InternalBuffer,1,IBPtr)
   else
     Result := nil;
 end;
@@ -288,9 +288,19 @@ procedure BufferChar( uc: TUCFS32Char );
 begin
   Inc(IBPtr,1);
   if IBPtr <= Max_ScanLimit then
-    ucfs_setc(InternalBuffer,IBPtr,uc)
+    begin
+      if uc < 0 then
+        put_critical_for(scanstream.CurrentLine,
+                         scanstream.CurrentCol,
+                         ucfs_to_utf8string(scanstream.StreamID),
+                         'Utf8 Decode Fault');
+      ucfs_setc(InternalBuffer,IBPtr,uc);
+    end
   else
-    put_critical('Token Size Limit reached (internal buffer limit)');
+    put_critical_for(scanstream.CurrentLine,
+                     scanstream.CurrentCol,
+                     ucfs_to_utf8string(scanstream.StreamID),
+                     'Token Size Limit reached (internal buffer limit)');
 end;
 
 function BufferdLen: VMInt;
@@ -379,6 +389,12 @@ begin
   Result.Column := scanstream.CurrentCol;
   BufferReset;
 
+  if CChar < 0 then
+    put_critical_for(scanstream.CurrentLine,
+                     scanstream.CurrentCol,
+                     ucfs_to_utf8string(scanstream.StreamID),
+                     'UTF8 Sequence Error');
+
   {check type}
   case CChar of
     {ID a-zA-Z_ (a-zA-Z0-9_)* }
@@ -394,7 +410,8 @@ begin
             CChar := ucfs_u32c_upcase(CChar);
             PatternAddCurrent;
           end;
-        Result.PatternSetU(BufferCopy);
+        {$INFO should be unified with info in ident}
+        Result.PatternSetU(BufferCopy,false);
         Result.TokenType := IdToSym(Result.Pattern);
       end;
     {INT [$,%,&] (:digset:)+}
@@ -458,7 +475,7 @@ begin
               end;
             end;
         end;
-        Result.PatternSetU(BufferCopy);
+        Result.PatternSetU(BufferCopy,false);
       end;
     {STRING_Q}
     C_Char_SQuote:
@@ -493,7 +510,7 @@ begin
           else
             Result.TokenType := SMES_String;
         until Result.TokenType = SMES_String;
-        Result.PatternSetU(BufferCopy);
+        Result.PatternSetU(BufferCopy,false);
       end;
     {STRING_E}
     C_Char_DQuote:
@@ -557,7 +574,7 @@ begin
                 end;
             end;
         until Result.TokenType = SMES_String;
-        Result.PatternSetU(BufferCopy);
+        Result.PatternSetU(BufferCopy,false);
       end;
     {MISC/MIXED}
     C_Char_Plus: Result.TokenType := SMES_Plus;
@@ -827,7 +844,7 @@ begin
             {hit line switch, eos or intromarker}
             Result := TScanRecord.Create;
             Result.TokenType := SMES_PUT;
-            Result.PatternSetU(BufferCopy);
+            Result.PatternSetU(BufferCopy,false);
             Result.Line := l;
             Result.Column := c;
             {since nextchar is used, the next char is already loaded except
@@ -860,11 +877,11 @@ initialization
   scandebug := false;
 {$endif}
   scanstream := nil;
-  ucfs_from_string('{?',IntroMarker);
-  ucfs_from_string('?}',OutroMarker);
-  ucfs_from_string('/*',ECCIntro);
-  ucfs_from_string('*/',ECCOutro);
-  ucfs_from_string('//',LCMark);
+  IntroMarker := ucfs_utf8us('{?');
+  OutroMarker := ucfs_utf8us('?}');
+  ECCIntro := ucfs_utf8us('/*');
+  ECCOutro := ucfs_utf8us('*/');
+  LCMark := ucfs_utf8us('//');
   InternalBuffer := nil;
 
 finalization

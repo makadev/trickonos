@@ -28,7 +28,7 @@ type
 
 function socls_None_TypeQuery( soself: PSOInstance ): String;
 begin
-  SelfCheck(soself,so_none_class);
+  {$IFDEF SELFCHECK}SelfCheck(soself,so_none_class);{$ENDIF}
   Result := C_SOTYPE_NONE_NAME;
 end;
 
@@ -36,7 +36,7 @@ function socls_None_MethodCall( callinfo: PMethodCallInfo ): PSOInstance;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_none_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_none_class);{$ENDIF}
       if (hashk = DEFAULT_METHOD_UnOpNot_Hash) and
          (ucfs_compare(name,ci_us(ci_dm_not,false))=0) then
         begin

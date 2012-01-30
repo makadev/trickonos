@@ -37,7 +37,7 @@ end;
 
 function socls_Error_TypeQuery(soself: PSOInstance): String;
 begin
-  SelfCheck(soself,so_error_class);
+  {$IFDEF SELFCHECK}SelfCheck(soself,so_error_class);{$ENDIF}
   Result := C_SOTYPE_ERROR_NAME;
 end;
 
@@ -53,7 +53,7 @@ end;
 
 function so_error_get(soerror: PSOInstance): String;
 begin
-  SelfCheck(soerror,so_error_class);
+  {$IFDEF SELFCHECK}SelfCheck(soerror,so_error_class);{$ENDIF}
   Result := PSO_Error(soerror)^.msg;
 end;
 

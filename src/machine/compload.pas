@@ -26,7 +26,7 @@ unit compload;
 interface
 
 uses SysUtils, Classes, commontl, eomsg, ccbase, cscan, csyms, ccstatn,
-     assembl, fpath, ccache, bytecode, opcode;
+     assembl, fpath, ccache, bytecode, opcode, ucfs;
 
 
 {file path relative load}
@@ -64,7 +64,7 @@ begin
   put_debug_for(-1,-1,'','  STAB('+c^.shortname+')');
   for i := 0 to High(c^.pbcode^.stab) do
     begin
-      WriteStr(sout,'    <',i,',"',c^.pbcode^.stab[i],'">');
+      WriteStr(sout,'    <',i,',"', ucfs_to_utf8string(c^.pbcode^.stab[i]),'">');
       put_debug_for(-1,-1,'',sout);
     end;
   put_debug_for(-1,-1,'','  CODE('+c^.shortname+')');

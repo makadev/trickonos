@@ -56,7 +56,7 @@ begin
   if not cpy then
     Result := _mi_us[i]
   else
-    Result := ucfs_copy(_mi_us[i]);
+    Result := ucfs_incref(_mi_us[i]);
 end;
 
 function ci_str( i: TConstant_Index ): String;
@@ -71,7 +71,7 @@ begin
   if not cpy then
     Result := _ci_us[i]
   else
-    Result := ucfs_copy(_ci_us[i]);
+    Result := ucfs_incref(_ci_us[i]);
 end;
 
 procedure wipe_ci;

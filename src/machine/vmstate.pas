@@ -25,7 +25,8 @@ unit vmstate;
 
 interface
 
-uses SysUtils, commontl, eomsg, ccache, opcode, socore, solnull, fpath;
+uses SysUtils, commontl, eomsg, ccache, opcode, socore, solnull, fpath, ucfs,
+     cons;
 
 (**
    NOTE.
@@ -45,13 +46,13 @@ uses SysUtils, commontl, eomsg, ccache, opcode, socore, solnull, fpath;
   -> i will be increfed twice due to stack behaviour
      (one ref for set, one ref for result arg)
   -> fixref DecRefs once for nonexisting result if true}
-procedure globalenv_set( const s: String; i: PSOInstance; fixref: Boolean );
+procedure globalenv_set( s: PUCFS32String; i: PSOInstance; fixref: Boolean );
 {set in global env, setenv(s,TOS), no objstack modification
   -> effectively GlobalEnvSet(s,i,true)}
-procedure globalenv_set_tos( const s: String ); inline;
+procedure globalenv_set_tos( s: PUCFS32String ); inline;
 
 {load from global env, push on stack}
-procedure globalenv_load( const s: String ); inline;
+procedure globalenv_load( s: PUCFS32String ); inline;
 
 procedure init_globalenv;
 procedure fini_globalenv;
@@ -101,7 +102,7 @@ function template_ip: VMInt; inline;
 procedure template_ip_set( aip: VMInt );
 procedure template_ip_setrel( aip: VMInt; setjumpfix: Boolean ); inline;
 function template_ip_next: Boolean; inline;
-function template_stabentry( sidx: VMInt ): String;
+function template_stabentry( sidx: VMInt; incref: Boolean ): PUCFS32String;
 
 function template_ip_opcode: TInsOpcodeCode; inline;
 function template_ip_operand: VMInt; inline;
@@ -154,10 +155,10 @@ uses appstart;
 var
   rtenv: PSOInstance;
 
-procedure globalenv_set(const s: String; i: PSOInstance; fixref: Boolean);
+procedure globalenv_set(s: PUCFS32String; i: PSOInstance; fixref: Boolean);
 var j: PSOInstance;
 begin
-  if s <> 'SYSTEM' then
+  if ucfs_compare(s,ci_us(ci_name_system,false)) <> 0 then
     begin
       j := so_rtenv_set_member(rtenv,s,i,fixref);
       if i <> j then
@@ -171,13 +172,13 @@ begin
     put_critical('System Object is Protected - stop');
 end;
 
-procedure globalenv_set_tos(const s: String);
+procedure globalenv_set_tos(s: PUCFS32String);
 begin
   //WriteLn(StdErr,'envset ',s);
   globalenv_set(s,runtimestack_get(0),true);
 end;
 
-procedure globalenv_load(const s: String);
+procedure globalenv_load(s: PUCFS32String);
 begin
   //WriteLn(StdErr,'evnload ',s);
   runtimestack_push(so_rtenv_get_member(rtenv,s));
@@ -186,7 +187,7 @@ end;
 procedure init_globalenv;
 begin
   rtenv := InitInstance(so_rtenv_class);
-  so_rtenv_set_member(rtenv,'SYSTEM',so_system,true); // dont care about refs, system is immortal
+  so_rtenv_set_member(rtenv,ci_us(ci_name_system,false),so_system,true); // dont care about refs, system is immortal
 end;
 
 procedure fini_globalenv;
@@ -364,13 +365,20 @@ begin
     end;
 end;
 
-function template_stabentry(sidx: VMInt): String;
+function template_stabentry(sidx: VMInt; incref: Boolean): PUCFS32String;
 begin
   if (sidx >= 0) and
      (sidx <= High(templatestack_tos^.pbcode^.stab)) then
-    Result := templatestack_tos^.pbcode^.stab[sidx]
+    begin
+      Result := templatestack_tos^.pbcode^.stab[sidx];
+      if incref then
+        ucfs_incref(Result);
+    end
   else
-    put_internalerror(2011120521);
+    begin
+      Result := nil;
+      put_internalerror(2011120521);
+    end;
 end;
 
 function template_ip_opcode: TInsOpcodeCode;
@@ -589,14 +597,14 @@ begin
          (so_integer_get(soargs^[0],true) <= tpl_stackptr) then
         begin
           if so_integer_get(soargs^[0],true) <= 0 then
-            Result := so_string_init_a7('CURRENT')
+            Result := so_string_init_utf8('CURRENT')
           else
             begin
               if tpl_stack[tpl_stackptr-so_integer_get(soargs^[0],true)].code^.pbcode^.image[
                 tpl_stack[tpl_stackptr-so_integer_get(soargs^[0],true)].ip ].GetOpcode in CTPLIncludeOpcodes then
-                Result := so_string_init_a7('INCLUSION')
+                Result := so_string_init_utf8('INCLUSION')
               else
-                Result := so_string_init_a7('CALL');
+                Result := so_string_init_utf8('CALL');
             end;
         end
       else

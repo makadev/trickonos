@@ -49,7 +49,7 @@ var attrh: TSSDAttributHandlerP;
 begin
   with attrinfo^ do
     begin
-      SelfCheck(soself,so_subsys_fw_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_subsys_fw_class);{$ENDIF}
       attrh := TSSDAttributHandlerP(PSO_SubsystemFW(soself)^.disptab.AttrProc.Lookup(name));
       if Assigned(attrh) then
         begin
@@ -71,7 +71,7 @@ var methh: TSSDMethodHandlerP;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_subsys_fw_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_subsys_fw_class);{$ENDIF}
       methh := TSSDMethodHandlerP(PSO_SubsystemFW(soself)^.disptab.MethProc.LookupByHash(hashk,name));
       if Assigned(methh) then
         begin
@@ -89,7 +89,7 @@ begin
              (argnum = 1) and
              (soargs^[0]^.IsType(so_string_class)) then
             begin
-              attrinfo.name := so_string_get_ucfs(soargs^[0]);
+              attrinfo.name := so_string_get_ucfs(soargs^[0],false);
               attrinfo.soself := soself;
               attrinfo.setter := nil;
               Result := SubSys_FW_Attr_Dispatch(@attrinfo);
@@ -99,7 +99,7 @@ begin
                   (argnum = 2) and
                   (soargs^[0]^.IsType(so_string_class)) then
             begin
-              attrinfo.name := so_string_get_ucfs(soargs^[0]);
+              attrinfo.name := so_string_get_ucfs(soargs^[0],false);
               attrinfo.soself := soself;
               attrinfo.setter := soargs^[1];
               Result := SubSys_FW_Attr_Dispatch(@attrinfo);
@@ -112,6 +112,7 @@ end;
 
 function socls_SubSys_Fw_TypeQuery(soself: PSOInstance): String;
 begin
+  {$IFDEF SELFCHECK}SelfCheck(soself,so_subsys_fw_class);{$ENDIF}
   Result := C_SOTYPE_SUBSYS_BASENAME+PSO_SubsystemFW(soself)^.typename;
 end;
 
@@ -121,13 +122,13 @@ end;
 
 function subsysfw_get_data( soself: PSOInstance ): Pointer;
 begin
-  SelfCheck(soself,so_subsys_fw_class);
+  {$IFDEF SELFCHECK}SelfCheck(soself,so_subsys_fw_class);{$ENDIF}
   Result := PSO_SubsystemFW(soself)^.data;
 end;
 
 procedure subsysfw_set_data( soself: PSOInstance; data: Pointer );
 begin
-  SelfCheck(soself,so_subsys_fw_class);
+  {$IFDEF SELFCHECK}SelfCheck(soself,so_subsys_fw_class);{$ENDIF}
   PSO_SubsystemFW(soself)^.data := data;
 end;
 
@@ -173,7 +174,7 @@ var attrhe: PSSDAttrEntry;
 begin
   with attrinfo^ do
     begin
-      SelfCheck(soself,so_subsys_ow_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_subsys_ow_class);{$ENDIF}
       attrhe := PSSDAttrEntry(PSO_SubsystemOW(soself)^.ssdisp.FDispTab.AttrProc.Lookup(name));
       if Assigned(attrhe) then
         begin
@@ -193,7 +194,7 @@ var methhe: PSSDMethEntry;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_subsys_ow_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_subsys_ow_class);{$ENDIF}
       methhe := PSSDMethEntry(PSO_SubsystemOW(soself)^.ssdisp.FDispTab.MethProc.LookupByHash(hashk,name));
       if Assigned(methhe) then
         begin
@@ -211,7 +212,7 @@ begin
              (argnum = 1) and
              (soargs^[0]^.IsType(so_string_class)) then
             begin
-              attrinfo.name := so_string_get_ucfs(soargs^[0]);
+              attrinfo.name := so_string_get_ucfs(soargs^[0],false);
               attrinfo.soself := soself;
               attrinfo.setter := nil;
               Result := SubSys_OW_Attr_Dispatch(@attrinfo);
@@ -221,7 +222,7 @@ begin
                   (argnum = 2) and
                   (soargs^[0]^.IsType(so_string_class)) then
             begin
-              attrinfo.name := so_string_get_ucfs(soargs^[0]);
+              attrinfo.name := so_string_get_ucfs(soargs^[0],false);
               attrinfo.soself := soself;
               attrinfo.setter := soargs^[1];
               Result := SubSys_OW_Attr_Dispatch(@attrinfo);
@@ -234,6 +235,7 @@ end;
 
 function socls_SubSys_Ow_TypeQuery(soself: PSOInstance): String;
 begin
+  {$IFDEF SELFCHECK}SelfCheck(soself,so_subsys_ow_class);{$ENDIF}
   Result := C_SOTYPE_SUBSYS_BASENAME+PSO_SubsystemOW(soself)^.typename;
 end;
 
@@ -353,7 +355,7 @@ end;
 
 function socls_System_TypeQuery( soself: PSOInstance ): String;
 begin
-  SelfCheck(soself,so_system_class);
+  {$IFDEF SELFCHECK}SelfCheck(soself,so_system_class);{$ENDIF}
   Result := C_SOTYPE_SYSTEM_NAME;
 end;
 
@@ -363,7 +365,7 @@ var m: TSOMethodHandler;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_system_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_system_class);{$ENDIF}
       m := TSOMethodHandler( TMethodTrie_System.LookupByHash(hashk,name) );
       if Assigned(m) then
         Result := m( callinfo )
@@ -381,11 +383,11 @@ var ssentry: PSubsystemEntry;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_system_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_system_class);{$ENDIF}
       if (argnum = 1) and
          (soargs^[0]^.IsType(so_string_class)) then
         begin
-          subsysname := so_string_get_ucfs(soargs^[0]);
+          subsysname := so_string_get_ucfs(soargs^[0],false);
         end
       else
         Exit(nil);
@@ -400,7 +402,7 @@ begin
           if ssentry^.oopwrapper then
             begin
               o := PSO_SubsystemOW(socore.InitInstance(so_subsys_ow_class));
-              o^.typename := ucfs_to_string(subsysname);
+              o^.typename := ucfs_to_utf8string(subsysname);
               o^.ssdisp := nil;
               try
                 o^.ssdisp := ssentry^.dispcls.Create;
@@ -409,7 +411,7 @@ begin
                   raise;
                 on e:Exception do
                   begin
-                    put_debug(C_SOTYPE_SUBSYSTEM_NAME+' '+ucfs_to_string(subsysname)+' Load Exception: ' + e.Message);
+                    put_debug(C_SOTYPE_SUBSYSTEM_NAME+' '+ucfs_to_utf8string(subsysname)+' Load Exception: ' + e.Message);
                     o := nil;
                   end;
               end;
@@ -422,7 +424,7 @@ begin
                       raise;
                     on e: Exception do
                       begin
-                        put_debug(C_SOTYPE_SUBSYSTEM_NAME+' '+ucfs_to_string(subsysname)+' Load Exception: ' + e.Message);
+                        put_debug(C_SOTYPE_SUBSYSTEM_NAME+' '+ucfs_to_utf8string(subsysname)+' Load Exception: ' + e.Message);
                         o := nil;
                       end;
                   end;
@@ -430,12 +432,12 @@ begin
               if Assigned(o) then
                 ssentry^.ssinstance := o
               else
-                put_critical(C_SOTYPE_SUBSYSTEM_NAME+' '+ucfs_to_string(subsysname)+' Startup failed');
+                put_critical(C_SOTYPE_SUBSYSTEM_NAME+' '+ucfs_to_utf8string(subsysname)+' Startup failed');
             end
           else
             begin
               f := PSO_SubsystemFW(socore.InitInstance(so_subsys_fw_class));
-              f^.typename := ucfs_to_string(subsysname);
+              f^.typename := ucfs_to_utf8string(subsysname);
               f^.disptab.AttrProc.Init(0,2);
               f^.disptab.MethProc.Init(0,2);
               try
@@ -445,14 +447,14 @@ begin
                   raise;
                 on e:Exception do
                   begin
-                    put_debug(C_SOTYPE_SUBSYSTEM_NAME+' '+ucfs_to_string(subsysname)+' Load Exception: ' + e.Message);
+                    put_debug(C_SOTYPE_SUBSYSTEM_NAME+' '+ucfs_to_utf8string(subsysname)+' Load Exception: ' + e.Message);
                     f := nil;
                   end;
               end;
               if Assigned(f) then
                 ssentry^.ssinstance := f
               else
-                put_critical(C_SOTYPE_SUBSYSTEM_NAME+' '+ucfs_to_string(subsysname)+' Startup failed');
+                put_critical(C_SOTYPE_SUBSYSTEM_NAME+' '+ucfs_to_utf8string(subsysname)+' Startup failed');
               f^.unload := ssentry^.unload;
             end;
         end;
@@ -460,7 +462,7 @@ begin
       Result^.IncRef; // for passing
     end
   else
-    Result := so_error_init('No such '+C_SOTYPE_SUBSYSTEM_NAME+': '+ucfs_to_string(subsysname));
+    Result := so_error_init('No such '+C_SOTYPE_SUBSYSTEM_NAME+': '+ucfs_to_utf8string(subsysname));
 end;
 
 {System::SetMember(string,value) -> value (only used for freeable subsystems)}
@@ -471,11 +473,11 @@ var ssentry: PSubsystemEntry;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_system_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_system_class);{$ENDIF}
       if (argnum = 2) and
          (soargs^[0]^.IsType(so_string_class)) then
         begin
-          subsysname := so_string_get_ucfs(soargs^[0]);
+          subsysname := so_string_get_ucfs(soargs^[0],false);
         end
       else
         Exit(nil);
@@ -501,15 +503,15 @@ begin
                       // another subsystem of same type which does stuff agains the
                       // others instance knowledge
                       // special instances must be solved differently
-                      Result := so_error_init(C_SOTYPE_SUBSYSTEM_NAME+' '+ucfs_to_string(subsysname)+' is still in use');
+                      Result := so_error_init(C_SOTYPE_SUBSYSTEM_NAME+' '+ucfs_to_utf8string(subsysname)+' is still in use');
                     end;
                 end
               else
-                Result := so_error_init(C_SOTYPE_SUBSYSTEM_NAME+' '+ucfs_to_string(subsysname)+' does not allow unloading');
+                Result := so_error_init(C_SOTYPE_SUBSYSTEM_NAME+' '+ucfs_to_utf8string(subsysname)+' does not allow unloading');
             end;
         end
       else
-        Result := so_error_init('No such '+C_SOTYPE_SUBSYSTEM_NAME+': '+ucfs_to_string(subsysname));
+        Result := so_error_init('No such '+C_SOTYPE_SUBSYSTEM_NAME+': '+ucfs_to_utf8string(subsysname));
     end
   else
     Result := init_invargtype_error(callinfo^.soself,callinfo^.soargs^[1],1,callinfo^.name);
@@ -524,6 +526,7 @@ function _System_GCInstances_(callinfo:PMethodCallInfo): PSOInstance;
 begin
   with callinfo^ do
     begin
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_system_class);{$ENDIF}
       if argnum = 0 then
         Result := so_integer_init( TracedInstances )
       else
@@ -536,6 +539,7 @@ function _System_GC_(callinfo:PMethodCallInfo): PSOInstance;
 begin
   with callinfo^ do
     begin
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_system_class);{$ENDIF}
       if argnum = 0 then
         begin
           GarbageCollect;
@@ -551,6 +555,7 @@ function _System_DummyObject_(callinfo:PMethodCallInfo): PSOInstance;
 begin
   with callinfo^ do
     begin
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_system_class);{$ENDIF}
       if argnum = 0 then
         Result := so_dummy_instance
       else
@@ -563,6 +568,7 @@ function _System_TypeOf_(callinfo:PMethodCallInfo): PSOInstance;
 begin
   with callinfo^ do
     begin
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_system_class);{$ENDIF}
       if argnum = 1 then
         Result := so_string_init_utf8(soargs^[0]^.GetTypeCls^.TypeQuery(soargs^[0]))
       else
@@ -575,13 +581,14 @@ function _System_Marker_(callinfo:PMethodCallInfo): PSOInstance;
 begin
   with callinfo^ do
     begin
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_system_class);{$ENDIF}
       if argnum = 2 then
         begin
           if soargs^[0]^.IsType(so_string_class) then
             begin
               if soargs^[1]^.IsType(so_string_class) then
                 begin
-                  cscan.cscan_setcodemarker(so_string_get_ucfs(soargs^[0]),so_string_get_ucfs(soargs^[1]));
+                  cscan.cscan_setcodemarker(so_string_get_ucfs(soargs^[0],false),so_string_get_ucfs(soargs^[1],false));
                   Result := so_nil;
                 end
               else
@@ -600,13 +607,14 @@ function _System_ECCMarker_(callinfo:PMethodCallInfo): PSOInstance;
 begin
   with callinfo^ do
     begin
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_system_class);{$ENDIF}
       if argnum = 2 then
         begin
           if soargs^[0]^.IsType(so_string_class) then
             begin
               if soargs^[1]^.IsType(so_string_class) then
                 begin
-                  cscan.cscan_seteccmarker(so_string_get_ucfs(soargs^[0]),so_string_get_ucfs(soargs^[1]));
+                  cscan.cscan_seteccmarker(so_string_get_ucfs(soargs^[0],false),so_string_get_ucfs(soargs^[1],false));
                   Result := so_nil;
                 end
               else
@@ -625,11 +633,12 @@ function _System_LNMarker_(callinfo:PMethodCallInfo): PSOInstance;
 begin
   with callinfo^ do
     begin
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_system_class);{$ENDIF}
       if argnum = 1 then
         begin
           if soargs^[0]^.IsType(so_string_class) then
             begin
-              cscan.cscan_setlcmarker(so_string_get_ucfs(soargs^[0]));
+              cscan.cscan_setlcmarker(so_string_get_ucfs(soargs^[0],false));
               Result := so_nil;
             end
           else

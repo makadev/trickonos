@@ -38,6 +38,7 @@ type
 
 function socls_Boolean_TypeQuery( soself: PSOInstance ): String;
 begin
+  {$IFDEF SELFCHECK}SelfCheck(soself,so_boolean_class);{$ENDIF}
   Result := C_SOTYPE_BOOLEAN_NAME;
 end;
 
@@ -47,6 +48,7 @@ var m: TSOMethodHandler;
 begin
   with callinfo^ do
     begin
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_boolean_class);{$ENDIF}
       m := TSOMethodHandler( TMethodTrie_Boolean.LookupByHash(hashk,name) );
       if Assigned(m) then
         Result := m( callinfo )
@@ -60,7 +62,7 @@ function _Boolean_And_( callinfo: PMethodCallInfo ): PSOInstance;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_boolean_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_boolean_class);{$ENDIF}
       if argnum = 1 then
         begin
           if soself = so_true then
@@ -80,7 +82,7 @@ function _Boolean_Or_( callinfo: PMethodCallInfo ): PSOInstance;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_boolean_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_boolean_class);{$ENDIF}
       if argnum = 1 then
         begin
           if soself = so_true then
@@ -102,7 +104,7 @@ function _Boolean_Xor_( callinfo: PMethodCallInfo ): PSOInstance;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_boolean_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_boolean_class);{$ENDIF}
       if argnum = 1 then
         begin
           if soargs^[0]^.IsType(so_boolean_class) then
@@ -125,7 +127,7 @@ function _Boolean_Not_( callinfo: PMethodCallInfo ): PSOInstance;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_boolean_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_boolean_class);{$ENDIF}
       if argnum = 0 then
         begin
           if soself = so_true then

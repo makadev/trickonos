@@ -176,7 +176,9 @@ type
 function InitInstance( classptr: PSOTypeCls ): PSOInstance; inline;
 procedure GarbageCollect;
 function TracedInstances: VMInt; inline;
+{$IFDEF SELFCHECK}
 procedure SelfCheck(instance: PSOInstance; fromtype: PSOTypeCls); inline;
+{$ENDIF}
 
 (******************************************************************************
  Tracer/Class Register Init&Fin
@@ -406,10 +408,6 @@ begin
   Result := centry;
 end;
 
-procedure IncRef(soinstance: PSOInstance); inline;
-begin
-end;
-
 procedure TSOInstance.IncRef;
 {Increment the Reference Count}
 begin
@@ -446,12 +444,15 @@ begin
     put_internalerror(2011121730);
 end;
 
+{$IFDEF SELFCHECK}
 procedure SelfCheck(instance: PSOInstance; fromtype: PSOTypeCls);
 begin
+  {$ASSERTIONS ON}
   ASSERT( Assigned(instance) );
   ASSERT( instance^.refcnt > 0 );
   ASSERT( instance^.IsType(fromtype) );
 end;
+{$ENDIF}
 
 end.
 

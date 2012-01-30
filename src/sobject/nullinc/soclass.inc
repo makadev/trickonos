@@ -45,7 +45,7 @@ type
 
 function socls_Class_TypeQuery( soself: PSOInstance ): String;
 begin
-  SelfCheck(soself,so_class_class);
+  {$IFDEF SELFCHECK}SelfCheck(soself,so_class_class);{$ENDIF}
   Result := C_SOTYPE_CLASS_BASENAME + PSO_Class(soself)^.clsname;
 end;
 
@@ -72,6 +72,7 @@ var m: TSOMethodHandler;
 begin
   with callinfo^ do
     begin
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_class_class);{$ENDIF}
       m := TSOMethodHandler( TMethodTrie_Class.LookupByHash(hashk,name) );
       if Assigned(m) then
         Result := m( callinfo )
@@ -87,6 +88,7 @@ function socls_Class_MethodCallOverride( callinfo: PMethodOverrideCallInfo ): PS
 begin
   with callinfo^ do
     begin
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_class_class);{$ENDIF}
       if ((hashk = SPECIAL_METHOD_Create_Hash) and
           (ucfs_compare(name,ci_us(ci_dm_create,false))=0)) or
          ((hashk = DEFAULT_METHOD_DirectCall_Hash) and
@@ -101,7 +103,7 @@ end;
 
 function socls_Class_Compare( soself, rightop: PSOInstance ): TSOCompareResult;
 begin
-  SelfCheck(soself,so_class_class);
+  {$IFDEF SELFCHECK}SelfCheck(soself,so_class_class);{$ENDIF}
   Result := socmp_NotComparable;
   {compare classes by coderef/ip (name _should_ always be same when ip/coderef are matching)}
   if rightop^.IsType(so_class_class) and
@@ -121,12 +123,12 @@ begin
   PSO_Class(Result)^.ip := ip;
 end;
 
-procedure so_class_methodreg(cls, funobj: PSOInstance; const mname: String);
+procedure so_class_methodreg(cls, funobj: PSOInstance; mname: PUCFS32String);
 var oldmeth: PSOInstance;
 begin
-  SelfCheck(cls,so_class_class);
-  SelfCheck(funobj,so_function_class);
-  ASSERT( mname <> '' );
+  {$IFDEF SELFCHECK}SelfCheck(cls,so_class_class);{$ENDIF}
+  {$IFDEF SELFCHECK}SelfCheck(funobj,so_function_class);{$ENDIF}
+  ASSERT( ucfs_length(mname) > 0 );
   funobj^.IncRef;
   oldmeth := PSO_Class(cls)^.methodtab.Add(mname,funobj);
   if Assigned(oldmeth) then
@@ -135,8 +137,8 @@ end;
 
 function so_class_getconstructor(cls: PSOInstance): PSOInstance;
 begin
-  SelfCheck(cls,so_class_class);
-  Result := PSO_Class(cls)^.methodtab.LookupByHash(SPECIAL_METHOD_Create_Hash,ci_str(ci_dm_create));
+  {$IFDEF SELFCHECK}SelfCheck(cls,so_class_class);{$ENDIF}
+  Result := PSO_Class(cls)^.methodtab.LookupByHash(SPECIAL_METHOD_Create_Hash,ci_us(ci_dm_create,false));
   if Assigned(Result) then
     Result^.IncRef;
 end;
@@ -164,7 +166,7 @@ type
 
 function socls_ClsInstance_TypeQuery( soself: PSOInstance ): String;
 begin
-  SelfCheck(soself,so_instance_class);
+  {$IFDEF SELFCHECK}SelfCheck(soself,so_instance_class);{$ENDIF}
   Result := C_SOTYPE_INSTANCE_BASENAME + PSO_ClsInstance(soself)^.cls^.clsname;
 end;
 
@@ -190,6 +192,7 @@ var m: TSOMethodHandler;
 begin
   with callinfo^ do
     begin
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_instance_class);{$ENDIF}
       m := TSOMethodHandler( TMethodTrie_InstanceDefaults.LookupByHash(hashk,name) );
       if Assigned(m) then
         Result := m( callinfo )
@@ -203,7 +206,7 @@ function socls_ClsInstance_MethodCallOverride( callinfo: PMethodOverrideCallInfo
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_instance_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_instance_class);{$ENDIF}
       Result := PSOInstance( PSO_ClsInstance(soself)^.cls^.methodtab.LookupByHash(hashk,name) );
       if Assigned(Result) then
         Result^.IncRef; // incref, default convention since vmrun will decref after setup
@@ -218,7 +221,7 @@ var oldval: PSOInstance;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_instance_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_instance_class);{$ENDIF}
       if argnum = 2 then
         begin
           if soargs^[0]^.IsType(so_string_class) then
@@ -229,10 +232,10 @@ begin
                 begin
                   soargs^[1]^.IncRef; // << entry in table
                   soargs^[1]^.IncRef; // << incref again for result
-                  oldval := PSOInstance(PSO_ClsInstance(soself)^.attrtab.Add(so_string_get_utf8(soargs^[0]),soargs^[1]));
+                  oldval := PSOInstance(PSO_ClsInstance(soself)^.attrtab.Add(so_string_get_ucfs(soargs^[0],false),soargs^[1]));
                 end
               else
-                oldval := PSOInstance(PSO_ClsInstance(soself)^.attrtab.Delete(so_string_get_utf8(soargs^[0])));
+                oldval := PSOInstance(PSO_ClsInstance(soself)^.attrtab.Delete(so_string_get_ucfs(soargs^[0],false)));
               if Assigned(oldval) then
                 oldval^.DecRef;
               Result := soargs^[1];
@@ -251,12 +254,12 @@ function _ClsInstance_GetMember_(callinfo:PMethodCallInfo): PSOInstance;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_instance_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_instance_class);{$ENDIF}
       if argnum = 1 then
         begin
           if soargs^[0]^.IsType(so_string_class) then
             begin
-              Result := PSO_ClsInstance(soself)^.attrtab.Lookup(so_string_get_utf8(soargs^[0]));
+              Result := PSO_ClsInstance(soself)^.attrtab.Lookup(so_string_get_ucfs(soargs^[0],false));
               if Assigned(Result) then
                 Result^.IncRef
               else
@@ -272,7 +275,7 @@ end;
 
 function so_instance_create( cls: PSOInstance ): PSOInstance;
 begin
-  SelfCheck(cls,so_class_class);
+  {$IFDEF SELFCHECK}SelfCheck(cls,so_class_class);{$ENDIF}
   Result := InitInstance(so_instance_class);
   PSO_ClsInstance(Result)^.cls := PSO_Class(cls);
   cls^.IncRef;
@@ -280,7 +283,7 @@ end;
 
 function so_instance_getclass(instance: PSOInstance): PSOInstance;
 begin
-  SelfCheck(instance,so_instance_class);
+  {$IFDEF SELFCHECK}SelfCheck(instance,so_instance_class);{$ENDIF}
   Result := PSO_ClsInstance(instance)^.cls;
 end;
 

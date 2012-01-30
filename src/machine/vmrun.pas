@@ -216,7 +216,7 @@ end;
 procedure vmop_m_puts_stab;
 {load stab entry and output it}
 begin
-  Write(template_stabentry(template_ip_operand));
+  Write(ucfs_to_utf8string(template_stabentry(template_ip_operand,false)));
 end;
 
 procedure vmop_m_include;
@@ -235,7 +235,7 @@ begin
       end;
     isc_m_include_stab:
       begin
-        cref := LoadTemplate(mincl_include,template_stabentry(template_ip_operand));
+        cref := LoadTemplate(mincl_include,ucfs_to_utf8string(template_stabentry(template_ip_operand,false)));
       end;
     else
       put_internalerror(2011120703);
@@ -274,13 +274,13 @@ begin
         runtimestack_push(
           so_integer_init(
             StrToInt64(
-              template_stabentry(template_ip_operand))));
+              ucfs_to_utf8string(template_stabentry(template_ip_operand,false)))));
       end;
     isc_m_load_string_stab:
       begin
         runtimestack_push(
-          so_string_init_utf8(
-              template_stabentry(template_ip_operand)));
+          so_string_init_ucfs(
+            template_stabentry(template_ip_operand,true),false));
       end;
     isc_m_load_int_oper:
       begin
@@ -353,11 +353,11 @@ begin
   case template_ip_opcode of
     isc_m_getenv_stab:
       begin
-        globalenv_load(template_stabentry(template_ip_operand));
+        globalenv_load(template_stabentry(template_ip_operand,false));
       end;
     isc_m_setenv_stab:
       begin
-        globalenv_set_tos(template_stabentry(template_ip_operand));
+        globalenv_set_tos(template_stabentry(template_ip_operand,false));
       end;
     else
       put_internalerror(2011120704);
@@ -376,8 +376,8 @@ procedure vmop_object_typecheck;
 {hardcoded typecheck call, checks TOS against TOS.Cls.TypeQuery}
 begin
   {check typenames}
-  if Upcase(runtimestack_get(0)^.GetTypeCls^.TypeQuery(runtimestack_get(0))) =
-     template_stabentry(template_ip_operand) then
+  if ucfs_compare_a7(template_stabentry(template_ip_operand,false),
+      Upcase(runtimestack_get(0)^.GetTypeCls^.TypeQuery(runtimestack_get(0)))) = 0 then
     runtimestack_push(so_true)
   else
     runtimestack_push(so_false);
@@ -624,7 +624,7 @@ procedure vmop_class_create;
 {create class and push on tos}
 begin
   runtimestack_push(
-    so_class_create(template_stabentry(template_ip_operand),
+    so_class_create(ucfs_to_utf8string(template_stabentry(template_ip_operand,false)),
                     templatestack_tos,
                     template_ip));
 end;
@@ -639,7 +639,7 @@ begin
     begin
       so_class_methodreg(runtimestack_get(1),
                          runtimestack_get(0),
-                         template_stabentry(template_ip_operand));
+                         template_stabentry(template_ip_operand,false));
       runtimestack_pop(1);
     end
   else
@@ -842,14 +842,14 @@ begin
       begin
         {need fix, currently its: <caller,value>, we need <caller,name,value> -> push stab entry
          and switch}
-        runtimestack_push(so_string_init_a7(template_stabentry(template_ip_operand)));
+        runtimestack_push(so_string_init_ucfs(template_stabentry(template_ip_operand,true),false));
         runtimestack_switch(0,1);
         do_so_method_call(DEFAULT_METHOD_SetMember_Hash,ci_us(ci_dm_setmember,false),2);
       end;
     isc_o_getm_stab:
       begin
         {push stab entry}
-        runtimestack_push(so_string_init_a7(template_stabentry(template_ip_operand)));
+        runtimestack_push(so_string_init_ucfs(template_stabentry(template_ip_operand,true),false));
         do_so_method_call(DEFAULT_METHOD_GetMember_Hash,ci_us(ci_dm_getmember,false),1);
       end;
     isc_o_seti_ign: do_so_method_call(DEFAULT_METHOD_SetIndex_Hash,ci_us(ci_dm_setindex,false),2);
@@ -871,12 +871,19 @@ begin
         ASSERT( runtimestack_get(0)^.GetTypeCls = so_string_class ); // invalid stack layout
         check_so_maxargs(template_ip_operand);
         {$WARNING this should come from stab somehow}
-        name := so_string_get_ucfs(runtimestack_get(0));
-        so_string_set_ucfs(runtimestack_get(0),nil,false);
+        name := so_string_get_ucfs(runtimestack_get(0),true);
         runtimestack_pop(1);
         ASSERT(ucfs_length(name) > 0);
+{$IFDEF DEBUG}
+        try
+          do_so_method_call(mas3hash_sigma(name),name,template_ip_operand);
+        finally
+          ucfs_release(name);
+        end;
+{$ELSE}
         do_so_method_call(mas3hash_sigma(name),name,template_ip_operand);
         ucfs_release(name);
+{$ENDIF}
       end;
     isc_o_callcall_nrops:
       begin

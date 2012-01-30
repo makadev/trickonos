@@ -165,7 +165,7 @@ begin
 
     SMES_Int:
       begin
-        tmps := ucfs_to_string(TScanRecord(Occ[0]).Pattern);
+        tmps := ucfs_to_utf8string(TScanRecord(Occ[0]).Pattern);
         if StrToIntDef(tmps,-1) >= 0 then
           Assembly.InsOperand(Line,Column,isc_m_load_int_oper,StrToInt(tmps))
         else
@@ -181,19 +181,19 @@ begin
     SMES_IntBin:
       begin
         {$WARNING todo: q scan part, missing bin conv}
-        tmps := ucfs_to_string(TScanRecord(Occ[0]).Pattern);
+        tmps := ucfs_to_utf8string(TScanRecord(Occ[0]).Pattern);
         if StrToIntDef('%'+tmps,-1) >= 0 then
           Assembly.InsOperand(Line,Column,isc_m_load_int_oper,StrToInt('%'+tmps))
         else
           begin
-            put_error_for(Line,Column,ucfs_to_string(cscan_streamid),'Int > 31 bit currently not supported.');
+            put_error_for(Line,Column,ucfs_to_utf8string(cscan_streamid),'Int > 31 bit currently not supported.');
             Result := false;
           end;
         // Assembly.InsStabLoad(Line,Column,isc_m_load_int_stab,'%'+TScanRecord(Occ[0]).Pattern);
       end;
     SMES_IntHex:
       begin
-        tmps := ucfs_to_string(TScanRecord(Occ[0]).Pattern);
+        tmps := ucfs_to_utf8string(TScanRecord(Occ[0]).Pattern);
         if StrToIntDef('$'+tmps,-1) >= 0 then
           Assembly.InsOperand(Line,Column,isc_m_load_int_oper,StrToInt('$'+tmps))
         else
@@ -209,12 +209,12 @@ begin
     SMES_IntOct:
       begin
         {$WARNING todo: q scan part, missing oct conv (prob. extend string conv to variable radix)}
-        tmps := ucfs_to_string(TScanRecord(Occ[0]).Pattern);
+        tmps := ucfs_to_utf8string(TScanRecord(Occ[0]).Pattern);
         if StrToIntDef('&'+tmps,-1) >= 0 then
           Assembly.InsOperand(Line,Column,isc_m_load_int_oper,StrToInt('&'+tmps))
         else
           begin
-            put_error_for(Line,Column,ucfs_to_string(cscan_streamid),'Int > 31 bit currently not supported.');
+            put_error_for(Line,Column,ucfs_to_utf8string(cscan_streamid),'Int > 31 bit currently not supported.');
             Result := false;
           end;
         // Assembly.InsStabLoad(Line,Column,isc_m_load_int_stab,'&'+TScanRecord(Occ[0]).Pattern);
@@ -486,7 +486,7 @@ begin
   if not check_cc_maxargs(Count-1) then
     begin
       Result := false;
-      put_error_for(Line,Column,ucfs_to_string(cscan_streamid),'Call exceeds max. arg Limit.');
+      put_error_for(Line,Column,ucfs_to_utf8string(cscan_streamid),'Call exceeds max. arg Limit.');
     end;
   DecRec;
 end;
@@ -705,7 +705,7 @@ begin
     end
   else
     begin
-      put_error_for(Line, Column, ucfs_to_string(cscan_streamid), 'Invalid Assignment.');
+      put_error_for(Line, Column, ucfs_to_utf8string(cscan_streamid), 'Invalid Assignment.');
       Result := false;
     end;
   DecRec;

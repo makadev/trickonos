@@ -64,13 +64,27 @@ type
   
   TFSUBytes = array[ 0 .. CL_SO_MaxShortBuffer-1 ] of Byte;
   TFSUWords = array[ 0 .. CL_SO_MaxShortBuffer-1 ] of Word;
-  TFSULongs = array[ 0 .. CL_SO_MaxShortBuffer-1 ] of LongWord;
+  TFSULongs = array[ 0 .. CL_SO_MaxShortBuffer-1 ] of VMInt;
+
+  TUCFS32StringInfo = packed object
+    private
+      refcnt: VMWord;  // refcount
+      charlen: VMWord; // length in Chars
+      procedure init( cc: Byte; len: VMWord; initr: VMWord = 1 );
+    public
+      function getrefs: VMWord;
+      function getlen: VMWord;
+      function getcharsize: VMWord;
+      function getbufferlen: VMWord;
+  end;
   
   PUCFS32String = ^TUCFS32String;
   TUCFS32String = packed record
-    charlen: VMInt;   // length in Chars
-    bytelen: VMInt;   // length per Byte -> bytelen*charlen -> real length
-    chars: TFSUBytes; // <- dont access directly when bytelen > 0
+    info: TUCFS32StringInfo;
+    case Byte of
+      1: (bchars: TFSUBytes;);
+      2: (wchars: TFSUWords;);
+      3: (lchars: TFSULongs;);
   end;
 
 (*******************************************************************************
@@ -110,44 +124,45 @@ function ucfs_u32c_lowercase( uc: TUCFS32Char ): TUCFS32Char; inline;
  *   RULE 2: bare code, (only few checks, mostly asserts - so check stuff)
  ******************************************************************************)
 
-{DOC>> set character uc, at position p in ps, returns false if string
-       must be regrown
-       -> ps must be <> nil (nonempty)}
-function ucfs_setc_check( ps: PUCFS32String; p: VMInt; uc: TUCFS32Char ): Boolean;
-{DOC>> ucfs_setc_check wrapper (triggers IE on unhandled regrow) }
-procedure ucfs_setc( ps: PUCFS32String; p: VMInt; uc: TUCFS32Char ); inline;
+{DOC>> ucfs_setc_check + cow_check }
+procedure ucfs_setc( var ps: PUCFS32String; p: VMInt; uc: TUCFS32Char );
+
 {DOC>> get character at position p in ps
        -> ps must be <> nil (nonempty)}
 function ucfs_getc( ps: PUCFS32String; p: VMInt ): TUCFS32Char;
+
 {DOC>> get length of strings in characters}
 function ucfs_length( ps: PUCFS32String ): VMInt; inline;
 {DOC>> get byte length (length for 1 character in bytes)}
 function ucfs_charsize( ps: PUCFS32String ): VMInt; inline;
+
 {DOC>> convert ansi utf8 string into utf8string. @returns position of
        wrong utf8 code in s or -1 if conversion was successfull
        lows may be 1,2 or 4 - the lowest character size for conversion}
 function ucfs_from_utf8string( const s: String; out ps: PUCFS32String; lows: VMInt = 1 ): VMInt;
 {DOC>> ucfs_from_utf8string, triggers IE on fault}
 function ucfs_utf8us( const s: String; lows: VMInt = 1 ): PUCFS32String;
-{DOC>> convert ansi ascii 7bit string into utf8 string. @returns position of wrong
-       character or -1 if conversion was successfull.}
-function ucfs_from_string( const s: String; out ps: PUCFS32String; lows: VMInt = 1 ): VMInt;
-{DOC>> ucfs_from_string, triggers IE on fault}
-function ucfs_a7us( const s: String; lows: VMInt = 1 ): PUCFS32String;
 {DOC>> convert ucfstring into utf8 encoded string}
 function ucfs_to_utf8string( ps: PUCFS32String ): String;
-{DOC>> convert ucfstring into ansi ascii 7 bit string, if replace_faults=true, non a7
-       characters are replaced with C_DEFAULT_FAULT_REPLACE, if
-       replace_faults = false, the result will be empty on faults (check length)}
-function ucfs_to_string( ps: PUCFS32String; replace_faults: Boolean = false ): String;
+
 {DOC>> alloc string with len charlen, and bytesize blen (must be 1,2 or 4)}
 function ucfs_alloc( charlen: VMInt; blen: VMInt = 1 ): PUCFS32String; inline;
-{DOC>> free string}
+{DOC>> decref or free string}
 procedure ucfs_release( ps: PUCFS32String ); inline;
-{DOC>> copy (part of) string, expand to bytesize b or compress (b=0)}
-function ucfs_copy( ps: PUCFS32String; start, len: VMInt; b: VMInt = 0 ): PUCFS32String;
-{DOC>> copy (whole) string, expand to bytesize b or compress (b=0)}
-function ucfs_copy( ps: PUCFS32String; b: VMInt = 0 ): PUCFS32String; inline;
+
+{DOC>> Copy before Write - Check
+       Checks if string is referenced more than once, if so it will create
+       a new copy and return @true, otherwise nothing changes and it
+       returns @false.}
+function ucfs_cbw_check( var ps: PUCFS32String; b: VMInt = 0 ): Boolean;
+
+{DOC>> (explicit) copy (part of) string, expand to bytesize b or compress (b=0)}
+function ucfs_cpy( ps: PUCFS32String; start, len: VMInt; b: VMInt = 0 ): PUCFS32String;
+{DOC>> (explicit) copy (whole) string, expand to bytesize b or compress (b=0)}
+function ucfs_cpy( ps: PUCFS32String; b: VMInt = 0 ): PUCFS32String; inline;
+
+{DOC>> (ref) copy string}
+function ucfs_incref( ps: PUCFS32String ): PUCFS32String; inline;
 
 (*******************************************************************************
  * UCF String OPS
@@ -164,9 +179,7 @@ function ucfs_submatch( ps, pss: PUCFS32String; p, len: VMInt ): Boolean;
 {DOC>> move src/sub string pss into psdest at pos destp..destp+srclen-1
        returns false if psdestp must be regrown due to bytelen missmatch
        invalid srclen/destp -> assert}
-function ucfs_submove_check( pss, psdest: PUCFS32String; destp, srclen: VMInt ): Boolean;
-{DOC>> submove, triggers IE on undhandled regrow}
-procedure ucfs_submove(pss, psdest: PUCFS32String; destp, srclen: VMInt); inline;
+procedure ucfs_submove( pss: PUCFS32String; var psdest: PUCFS32String; destp, srclen: VMInt); inline;
 
 implementation
 
@@ -220,109 +233,103 @@ var i: VMInt;
 begin
   ASSERT(srclen >= 0);
   ASSERT(srclen <= ucfs_length(pss));
-  if (srclen <= 0) then
-    Exit(true);
   ASSERT(destp >= 0);
   ASSERT(((destp+srclen)-1) <= ucfs_length(psdest));
-  if pss^.bytelen = psdest^.bytelen then
-    Move( pss^.chars[0], psdest^.chars[(destp-1) * psdest^.bytelen], srclen*psdest^.bytelen)
-  else
-    begin
-      if pss^.bytelen > psdest^.bytelen then
-        begin
-          for i := 1 to pss^.charlen do
-            if ucfs_u32c_bytelen(ucfs_getc(pss,i)) > psdest^.bytelen then
-              Exit(false);
-        end;
-      for i := 1 to pss^.charlen do
-        ucfs_setc(psdest,(i+destp)-1,ucfs_getc(pss,i));
-    end;
   Result := true;
+  if pss^.info.getcharsize = psdest^.info.getcharsize then
+    begin
+      Move( pss^.bchars[0], psdest^.bchars[(destp-1) * psdest^.info.getcharsize], srclen*psdest^.info.getcharsize);
+    end
+  else if pss^.info.getcharsize < psdest^.info.getcharsize then
+    begin
+      for i := 0 to srclen-1 do
+        ucfs_setc(psdest,i+destp,ucfs_getc(pss,i+1));
+    end
+  else
+    Result := false;
 end;
 
-procedure ucfs_submove(pss, psdest: PUCFS32String; destp, srclen: VMInt);
+procedure ucfs_submove(pss: PUCFS32String; var psdest: PUCFS32String; destp, srclen: VMInt);
+var tmp: PUCFS32String;
 begin
+  if (srclen <= 0) then
+    Exit;
+  ucfs_cbw_check(psdest,ucfs_charsize(psdest));
   if not ucfs_submove_check(pss,psdest,destp,srclen) then
-    put_internalerror(12012801);
+    begin
+      tmp := ucfs_cpy(psdest,pss^.info.getcharsize);
+      ucfs_release(psdest);
+      psdest := tmp;
+      if not ucfs_submove_check(pss,psdest,destp,srclen) then
+        put_internalerror(12012801);
+    end;
 end;
 
 function ucfs_compare( psl, psr: PUCFS32String ): VMInt;
 var l, i: VMInt;
 begin
+  Result := 0;
   if psl<>psr then
     begin
       l := ucfs_length(psl);
       Result := l - ucfs_length(psr);
-      if (Result = 0) and
-         (l > 0) then
+      if Result = 0 then // -> l>0 since psl<>psr
         begin
-          i := 1;
-          while (i <= l) and
-                (Result = 0) do
+          {same length, check for same char size (simply compare
+           both packed charlen fields)}
+          if psl^.info.charlen = psr^.info.charlen then
             begin
-              // u32c has 31 bit max -> wont overflow (if uc32c is correct)
-              Result := ucfs_getc(psl,i) - ucfs_getc(psr,i);
-              Inc(i,1);
+              if psl^.info.getcharsize = 1 then
+                Result := CompareByte(psl^.bchars[0],psr^.bchars[0],l)
+              else if psl^.info.getcharsize = 2 then
+                Result := CompareWord(psl^.wchars[0],psr^.wchars[0],l)
+              else
+                Result := CompareDWord(psl^.lchars[0],psr^.lchars[0],l);
+            end
+          else
+            begin
+              i := 1;
+              while (i <= l) and
+                    (Result = 0) do
+                begin
+                  // u32c has 31 bit max -> wont overflow (if uc32c is correct)
+                  Result := ucfs_getc(psl,i) - ucfs_getc(psr,i);
+                  Inc(i,1);
+                end;
             end;
         end;
-    end
-  else
-    Result := 0;
+    end;
 end;
 
 function ucfs_concat( psl, psr: PUCFS32String ): PUCFS32String;
-var i: VMInt;
 begin
   Result := nil;
   if Assigned(psl) and
      Assigned(psr) then
     begin
-      ASSERT( (psl^.charlen+psr^.charlen) <= CL_SO_MaxShortBuffer );
+      ASSERT( (psl^.info.getlen+psr^.info.getlen) <= CL_SO_MaxShortBuffer );
       {alloc}
-      if psl^.bytelen > psr^.bytelen then
-        Result := ucfs_alloc( psl^.charlen + psr^.charlen, psl^.bytelen )
+      if psl^.info.getcharsize > psr^.info.getcharsize then
+        Result := ucfs_alloc( psl^.info.getlen + psr^.info.getlen, psl^.info.getcharsize )
       else
-        Result := ucfs_alloc( psl^.charlen + psr^.charlen, psr^.bytelen );
+        Result := ucfs_alloc( psl^.info.getlen + psr^.info.getlen, psr^.info.getcharsize );
       {move into result}
-      ucfs_submove(psl,Result,1,psl^.charlen);
-      ucfs_submove(psr,Result,psl^.charlen+1,psr^.charlen);
+      ucfs_submove(psl,Result,1,psl^.info.getlen);
+      ucfs_submove(psr,Result,psl^.info.getlen+1,psr^.info.getlen);
     end
   else
     begin
       {either left/right/nil - use downgrading}
       if Assigned(psl) then
-        Result := ucfs_copy( psl, 1, psl^.charlen );
+        Result := ucfs_incref(psl);
       if Assigned(psr) then
-        Result := ucfs_copy( psr, 1, psr^.charlen );
+        Result := ucfs_incref(psr);
     end;
 end;
 
 (*******************************************************************************
  * UCF Strings
  ******************************************************************************)
-
-type
-  {for casting}
-  PUCFS32String2 = ^TUCFS32String2;
-  TUCFS32String2 = packed record
-    charlen: VMInt;
-    bytelen: VMInt;
-    chars: TFSUWords;
-  end;
-
-  {for casting}
-  PUCFS32String4 = ^TUCFS32String4;
-  TUCFS32String4 = packed record
-    charlen: VMInt;
-    bytelen: VMInt;
-    chars: TFSULongs;
-  end;
-
-function ucfs_a7us(const s: String; lows: VMInt): PUCFS32String;
-begin
-  if ucfs_from_string( s, Result, lows ) >= 0 then
-    put_internalerror(12012804);
-end;
 
 function ucfs_to_utf8string( ps: PUCFS32String ): String;
 {decode to string}
@@ -335,7 +342,7 @@ begin
 
   {calculate real byte length}
   l := 0;
-  for i := 1 to ps^.charlen do
+  for i := 1 to ps^.info.getlen do
     begin
       uc := ucfs_getc(ps,i);
       ASSERT(uc >= 0);
@@ -345,7 +352,7 @@ begin
   {de/encode}
   SetLength(Result,l);
   l := 1;
-  for i := 1 to ps^.charlen do
+  for i := 1 to ps^.info.getlen do
     begin
       uc := ucfs_getc(ps,i);
       ucfs_u32c_to_utf8c(uc,@utf8c);
@@ -359,32 +366,7 @@ begin
     end;
 end;
 
-function ucfs_to_string( ps: PUCFS32String; replace_faults: Boolean = false ): String;
-{decode to a7 string}
-var i: VMInt;
-    uc: TUCFS32Char;
-begin
-  if ucfs_length(ps) <= 0 then
-    Exit('');
-
-  SetLength(Result,ps^.charlen);
-  for i := 1 to ps^.charlen do
-    begin
-      uc := ucfs_getc(ps,i);
-      ASSERT(uc >= 0);
-      if uc <= Utf8ByteFirstMask[0] then
-        Result[i] := Chr(uc)
-      else
-        begin
-          if replace_faults then
-            Result[i] := C_DEFAULT_FAULT_REPLACE
-          else
-            Exit('');
-        end;
-    end;
-end;
-
-function ucfs_copy( ps: PUCFS32String; start, len: VMInt; b: VMInt = 0 ): PUCFS32String;
+function ucfs_cpy( ps: PUCFS32String; start, len: VMInt; b: VMInt = 0 ): PUCFS32String;
 var i: VMInt;
 begin
   ASSERT(b in [0,1,2,4]);
@@ -393,14 +375,14 @@ begin
   ASSERT(start > 0);
   {check explicit shrinking: it could destroy characters}
   if (b > 0) and
-     (b < ps^.bytelen) then
-    b := ps^.bytelen;
+     (b < ps^.info.getcharsize) then
+    b := ps^.info.getcharsize;
   {check start above len -> 0 len copy}
-  if start > ps^.charlen then
+  if start > ps^.info.getlen then
     Exit(nil);
   {check len, it must be correct for move/copy so cut it to the maximum len}
-  if ((start+len)-1) > ps^.charlen then
-    len := (ps^.charlen+1)-start;
+  if ((start+len)-1) > ps^.info.getlen then
+    len := (ps^.info.getlen+1)-start;
   if len > 0 then
     begin
       if b <= 0 then
@@ -422,8 +404,8 @@ begin
         end;
       {alloc and copy (either move for same size, or use expanding/shrinking characterwise conversion)}
       Result := ucfs_alloc( len, b );
-      if b = ps^.bytelen then
-        Move( ps^.chars[(start-1)*b], Result^.chars[0], len*b )
+      if b = ps^.info.getcharsize then
+        Move( ps^.bchars[(start-1)*b], Result^.bchars[0], len*b )
       else
         begin
           for i := start to (start+len)-1 do
@@ -434,37 +416,66 @@ begin
     Result := nil;
 end;
 
-function ucfs_copy(ps: PUCFS32String; b: VMInt): PUCFS32String;
+function ucfs_cpy(ps: PUCFS32String; b: VMInt): PUCFS32String;
 begin
-  Result := ucfs_copy(ps,1,ucfs_length(ps),b);
+  Result := ucfs_cpy(ps,1,ucfs_length(ps),b);
 end;
 
 function ucfs_alloc( charlen: VMInt; blen: VMInt = 1 ): PUCFS32String;
 begin
-  ASSERT( blen in [1,2,4] );
   ASSERT( charlen <= CL_SO_MaxShortBuffer );
+  ASSERT( blen in [1,2,4] );
   if charlen <= 0 then
     Exit(nil);
-  Result := GetMem( (SizeOf(TUCFS32String) - SizeOf(TFSUBytes)) + (blen*charlen) );
-  Result^.charlen := charlen;
-  Result^.bytelen := blen;
+  Result := GetMem( SizeOf(TUCFS32StringInfo) + (blen*charlen) );
+  Result^.info.init(blen,charlen);
 end;
 
 procedure ucfs_release( ps: PUCFS32String );
 begin
   if Assigned(ps) then
-    Freemem( ps, (SizeOf(TUCFS32String) - SizeOf(TFSUBytes)) + (ps^.bytelen*ps^.charlen) );
+    begin
+      ASSERT(ps^.info.refcnt > 0);
+      Dec(ps^.info.refcnt,1);
+      if ps^.info.refcnt <= 0 then
+        Freemem( ps, ps^.info.getbufferlen );
+    end;
+end;
+
+function ucfs_cbw_check(var ps: PUCFS32String; b: VMInt): Boolean;
+begin
+  if Assigned(ps) and
+     (ps^.info.refcnt > 1) then
+    begin
+      ucfs_release(ps);
+      ps := ucfs_cpy(ps,b);
+      Result := true;
+    end
+  else
+    Result := false;
+end;
+
+function ucfs_incref(ps: PUCFS32String): PUCFS32String;
+begin
+  if Assigned(ps) then
+    Inc(ps^.info.refcnt);
+  Result := ps;
 end;
 
 function ucfs_length( ps: PUCFS32String ): VMInt;
 begin
   if Assigned(ps) then
-    begin
-      ASSERT(ps^.charlen > 0);
-      Result := ps^.charlen
-    end
+    Result := ps^.info.getlen
   else
     Result := 0;
+end;
+
+function ucfs_charsize(ps: PUCFS32String): VMInt;
+begin
+  if Assigned(ps) then
+    Result := ps^.info.getcharsize
+  else
+    Result := 1;
 end;
 
 function ucfs_setc_check( ps: PUCFS32String; p: VMInt; uc: TUCFS32Char ): Boolean;
@@ -472,91 +483,61 @@ begin
   ASSERT( Assigned(ps) );
   ASSERT( uc >= 0 );
   ASSERT( p > 0 );
-  ASSERT( p <= ps^.charlen );
-  ASSERT( ps^.bytelen in [1,2,4] );
+  ASSERT( p <= ps^.info.getlen );
   Result := true;
-  if ps^.bytelen = 1 then
+  if ps^.info.getcharsize = 1 then
     begin
       if uc <= $FF then
-        ps^.chars[ p-1 ] := uc
+        ps^.bchars[ p-1 ] := uc
       else
         Result := false;
     end
-  else if ps^.bytelen = 2 then
+  else if ps^.info.getcharsize = 2 then
     begin
       if uc <= $FFFF then
-        PUCFS32String2( ps )^.chars[ p-1 ] := uc
+        ps^.wchars[ p-1 ] := uc
       else
         Result := false;
     end
   else
-    PUCFS32String4( ps )^.chars[ p-1 ] := uc
+    ps^.lchars[ p-1 ] := uc
 end;
 
-procedure ucfs_setc( ps: PUCFS32String; p: VMInt; uc: TUCFS32Char );
+procedure ucfs_setc( var ps: PUCFS32String; p: VMInt; uc: TUCFS32Char );
+var tmp: PUCFS32String;
 begin
+  ucfs_cbw_check(ps);
   if not ucfs_setc_check( ps, p, uc ) then
-    put_internalerror(12012802);
+    begin
+      if uc <= $FFFF then
+        tmp := ucfs_cpy(ps,2)
+      else
+        tmp := ucfs_cpy(ps,4);
+      ucfs_release(ps);
+      ps := tmp;
+      if not ucfs_setc_check(ps,p,uc) then
+        put_internalerror(12012802);
+    end;
 end;
 
 function ucfs_getc( ps: PUCFS32String; p: VMInt ): TUCFS32Char;
 begin
   ASSERT( Assigned(ps) );
   ASSERT( p > 0 );
-  ASSERT( p <= ps^.charlen );
-  ASSERT( ps^.bytelen in [1,2,4] );
-  if ps^.bytelen = 1 then
-    Result := ps^.chars[ p-1 ]
-  else if ps^.bytelen = 2 then
-    Result := PUCFS32String2( ps )^.chars[ p-1 ]
+  ASSERT( p <= ps^.info.getlen );
+  ASSERT( ps^.info.getcharsize in [1,2,4] );
+  if ps^.info.getcharsize = 1 then
+    Result := ps^.bchars[ p-1 ]
+  else if ps^.info.getcharsize = 2 then
+    Result := ps^.wchars[ p-1 ]
   else
-    Result := PUCFS32String4( ps )^.chars[ p-1 ];
+    Result := ps^.lchars[ p-1 ];
 end;
 
 function ucfs_utf8us(const s: String; lows: VMInt): PUCFS32String;
 begin
   if ucfs_from_utf8string( s, Result, lows ) >= 0 then
     put_internalerror(12012803);
-end;
-
-function ucfs_from_string( const s: String; out ps: PUCFS32String; lows: VMInt = 1 ): VMInt;
-var i: VMInt;
-begin
-  {check length 0 string}
-  ps := nil;
-  if Length(s) <= 0 then
-    Exit(-1);
-
-  {check maxlength}
-  if Length(s) > CL_SO_MaxShortBuffer then
-    Exit(CL_SO_MaxShortBuffer);
-
-  {check all characters are 7bit}
-  ASSERT( lows in [1,2,4] );
-  for i := 1 to Length(s) do
-    begin
-      if Ord(s[i]) > Utf8ByteFirstMask[0] then
-        Exit(i);
-    end;
-
-  {alloc and copy/expand}
-  ps := ucfs_alloc( Length(s), lows );
-  if lows = 1 then
-    Move( s[1], ps^.chars[0], Length(s) )
-  else
-    begin
-      for Result := 1 to Length(s) do
-        ucfs_setc( ps, Result, Ord(s[i]) );
-    end;
-  Result := -1;
-end;
-
-function ucfs_charsize(ps: PUCFS32String): VMInt;
-begin
-  if Assigned(ps) then
-    Result := ps^.bytelen
-  else
-    Result := 1;
 end;
 
 function ucfs_from_utf8string( const s: String; out ps: PUCFS32String; lows: VMInt ): VMInt;
@@ -703,7 +684,6 @@ end;
 
 procedure ucfs_u32c_To_utf8c( uc: TUCFS32Char; pc: PFSUtf8Char );
 var l: VMInt;
-    tcu: TUCFS32Char;
 begin
   if uc < 0 then
     uc := 0; // cut.. 32 bit = invalid utf8_6 only codes 31 bits
@@ -751,6 +731,37 @@ end;
 function ucfs_valid_follow(fsb: Byte): Boolean;
 begin
   Result := (fsb and (Utf8ByteSequenceMarkerMask or Utf8ByteSequenceMarker)) = fsb;
+end;
+
+{ TUCFS32StringInfo }
+
+procedure TUCFS32StringInfo.init(cc: Byte; len: VMWord; initr: VMWord);
+begin
+  ASSERT(cc in [1,2,4]);
+  ASSERT(len <= CL_SO_MaxShortBuffer);
+  charlen := len shl 3;
+  charlen := charlen or cc;
+  refcnt := initr;
+end;
+
+function TUCFS32StringInfo.getrefs: VMWord;
+begin
+  Result := refcnt;
+end;
+
+function TUCFS32StringInfo.getlen: VMWord;
+begin
+  Result := charlen shr 3;
+end;
+
+function TUCFS32StringInfo.getcharsize: VMWord;
+begin
+  Result := charlen and %111;
+end;
+
+function TUCFS32StringInfo.getbufferlen: VMWord;
+begin
+  Result := (getlen*getcharsize) + SizeOf(TUCFS32StringInfo);
 end;
 
 end.

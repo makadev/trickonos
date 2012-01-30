@@ -27,7 +27,7 @@ unit bytecode;
 
 interface
 
-uses Sysutils, Classes, commontl, opcode;
+uses Sysutils, Classes, commontl, opcode, ucfs;
 
 const
   CBCCompatCode = 1;
@@ -67,7 +67,7 @@ type
   PByteCodeBlock = ^TByteCodeBlock;
   TByteCodeBlock = object
     inclmode: TInsMIncludeMode;
-    stab: array of String;
+    stab: array of PUCFS32String;
     image: TByteCodeImage;
     bcsize: VMInt;
     procedure Init;
@@ -75,7 +75,7 @@ type
     procedure WriteEncode( AStream: TStream );
     procedure Done;
 
-    function StabAdd(const s: String): VMInt;
+    function StabAdd(s: PUCFS32String): VMInt;
     function OpcodeAdd: VMInt;
   end;
 
@@ -127,8 +127,8 @@ begin
   try
     for i := 0 to High(stab) do
       begin
-        stab[i] := AStream.ReadAnsiString;
-        Inc(bcsize,Length(stab[i]));
+        stab[i] := ucfs_utf8us(AStream.ReadAnsiString);
+        Inc(bcsize,ucfs_length(stab[i]));
         if not check_bc_maxsize(bcsize) then
           begin
             Result := bcec_bclimit;
@@ -185,24 +185,27 @@ begin
     end;
   AStream.Write(bchead,SizeOf(TBCHeader));
   for i := 0 to High(stab) do
-    AStream.WriteAnsiString(stab[i]);
+    AStream.WriteAnsiString(ucfs_to_utf8string(stab[i]));
   AStream.Write(image[0],Length(image)*SizeOf(TInstructionPackage));
 end;
 
 procedure TByteCodeBlock.Done;
+var i: VMInt;
 begin
   SetLength(image,0);
+  for i := 0 to High(stab) do
+    ucfs_release(stab[i]);
   SetLength(stab,0);
 end;
 
-function TByteCodeBlock.StabAdd(const s: String): VMInt;
+function TByteCodeBlock.StabAdd(s: PUCFS32String): VMInt;
 begin
   if check_bc_maxstab(Length(stab)+1) then
     begin
       SetLength(stab,Length(stab)+1);
-      stab[High(stab)] := s;
+      stab[High(stab)] := ucfs_incref(s);
       Result := High(stab);
-      Inc(bcsize,Length(s)+SizeOf(LongInt));
+      Inc(bcsize,ucfs_length(s)+SizeOf(LongInt));
     end
   else
     Result := -1;

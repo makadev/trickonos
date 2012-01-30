@@ -563,7 +563,7 @@ begin
     end;
   {add new (or first) collision}
   chain := New(PHashTrieCollision);
-  chain^.colstring := ucfs_copy(key);
+  chain^.colstring := ucfs_incref(key);
   chain^.data := newdata;
   chain^.next := ochain;
   FTrie.SetNodeData(idx,chain);

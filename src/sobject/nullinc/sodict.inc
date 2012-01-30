@@ -41,7 +41,7 @@ type
 
 function socls_Dict_TypeQuery( soself: PSOInstance ): String;
 begin
-  SelfCheck(soself,so_dict_class);
+  {$IFDEF SELFCHECK}SelfCheck(soself,so_dict_class);{$ENDIF}
   Result := C_SOTYPE_DICTIONARY_NAME;
 end;
 
@@ -57,7 +57,7 @@ end;
 
 function socls_Dict_Compare(soself, rightop: PSOInstance): TSOCompareResult;
 begin
-  SelfCheck(soself,so_dict_class);
+  {$IFDEF SELFCHECK}SelfCheck(soself,so_dict_class);{$ENDIF}
   if rightop^.IsType(so_dict_class) then
     begin
       if soself = rightop then
@@ -97,6 +97,7 @@ var m: TSOMethodHandler;
 begin
   with callinfo^ do
     begin
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_dict_class);{$ENDIF}
       m := TSOMethodHandler( TMethodTrie_Dict.LookupByHash(hashk,name) );
       if Assigned(m) then
         Result := m( callinfo )
@@ -112,7 +113,7 @@ var oldval: PSOInstance;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_dict_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_dict_class);{$ENDIF}
       if argnum = 2 then
         begin
           if soargs^[0]^.IsType(so_string_class) then
@@ -122,7 +123,7 @@ begin
                   check_so_maxcollection(PSO_Dict(soself)^.dict.GetCount+1);
                   soargs^[1]^.IncRef; // << entry in table
                   soargs^[1]^.IncRef; // << incref again for result
-                  oldval := PSOInstance(PSO_Dict(soself)^.dict.Add(so_string_get_utf8(soargs^[0]),soargs^[1]));
+                  oldval := PSOInstance(PSO_Dict(soself)^.dict.Add(so_string_get_ucfs(soargs^[0],false),soargs^[1]));
                   if Assigned(oldval) then
                     oldval^.DecRef;
                   Result := soargs^[1];
@@ -144,12 +145,12 @@ function _Dict_GetMember_(callinfo: PMethodCallInfo): PSOInstance;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_dict_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_dict_class);{$ENDIF}
       if argnum = 1 then
         begin
           if soargs^[0]^.IsType(so_string_class) then
             begin
-              Result := PSO_Dict(soself)^.dict.Lookup(so_string_get_utf8(soargs^[0]));
+              Result := PSO_Dict(soself)^.dict.Lookup(so_string_get_ucfs(soargs^[0],false));
               if Assigned(Result) then
                 Result^.IncRef
               else
@@ -218,7 +219,7 @@ begin
       if not Assigned(attrinfo^.setter) then
         begin
           ASSERT(PSO_Dict(FReferings[0])^.GetLocked);
-          Result := so_string_init_ucfs(ucfs_copy(FHTIter.currcoll^.colstring));
+          Result := so_string_init_ucfs(FHTIter.currcoll^.colstring,true);
         end
       else
         Result := nil;
@@ -284,7 +285,7 @@ end;
 
 function so_dict_get_member(d: PSOInstance; const s: String; noincref: Boolean): PSOInstance;
 begin
-  SelfCheck(d,so_dict_class);
+  {$IFDEF SELFCHECK}SelfCheck(d,so_dict_class);{$ENDIF}
   Result := PSO_Dict(d)^.dict.Lookup(s);
   if Assigned(Result) then
     begin
@@ -298,7 +299,7 @@ end;
 procedure so_dict_set_member(d, value: PSOInstance; const s: String; noincref: Boolean);
 var tmp: PSOInstance;
 begin
-  SelfCheck(d,so_dict_class);
+  {$IFDEF SELFCHECK}SelfCheck(d,so_dict_class);{$ENDIF}
   tmp := PSO_Dict(d)^.dict.Add(s,value);
   if Assigned(tmp) then
     tmp^.DecRef;
@@ -311,6 +312,7 @@ function _Dict_Count_(callinfo: PMethodCallInfo): PSOInstance;
 begin
   with callinfo^ do
     begin
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_dict_class);{$ENDIF}
       if argnum = 0 then
         begin
           Result := so_integer_init(PSO_Dict(soself)^.dict.GetCount);
@@ -325,13 +327,14 @@ function _Dict_Delete_(callinfo: PMethodCallInfo): PSOInstance;
 begin
   with callinfo^ do
     begin
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_dict_class);{$ENDIF}
       if argnum = 1 then
         begin
           if soargs^[0]^.IsType(so_string_class) then
             begin
               if not soself^.GetLocked then
                 begin
-                  Result := PSO_Dict(soself)^.dict.Delete(so_string_get_utf8(soargs^[0]));
+                  Result := PSO_Dict(soself)^.dict.Delete(so_string_get_ucfs(soargs^[0],false));
                   if not Assigned(Result) then
                     Result := so_nil;
                 end
@@ -351,6 +354,7 @@ function _Dict_Iterator_(callinfo: PMethodCallInfo): PSOInstance;
 begin
   with callinfo^ do
     begin
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_dict_class);{$ENDIF}
       if argnum = 0 then
         begin
           Result := so_create_internalobject_bound(C_SOTYPE_IO_DICTITER_NAME,TSODict_IODictIterator,soself);

@@ -50,7 +50,7 @@ type
 
 function socls_List_TypeQuery( soself: PSOInstance ): String;
 begin
-  SelfCheck(soself,so_list_class);
+  {$IFDEF SELFCHECK}SelfCheck(soself,so_list_class);{$ENDIF}
   Result := C_SOTYPE_LIST_NAME;
 end;
 
@@ -90,7 +90,7 @@ end;
 function socls_List_Compare(soself, rightop: PSOInstance): TSOCompareResult;
 var ld,rd: PSOListElement;
 begin
-  SelfCheck(soself,so_list_class);
+  {$IFDEF SELFCHECK}SelfCheck(soself,so_list_class);{$ENDIF}
   if rightop^.IsType(so_list_class) then
     begin
       if soself = rightop then
@@ -123,6 +123,7 @@ var m: TSOMethodHandler;
 begin
   with callinfo^ do
     begin
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_list_class);{$ENDIF}
       m := TSOMethodHandler( TMethodTrie_List.LookupByHash(hashk,name) );
       if Assigned(m) then
         Result := m( callinfo )
@@ -327,6 +328,7 @@ function _List_Append_(callinfo: PMethodCallInfo): PSOInstance;
 begin
   with callinfo^ do
     begin
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_list_class);{$ENDIF}
       if argnum > 0 then
         begin
           if not soself^.GetLocked then
@@ -347,6 +349,7 @@ function _List_Iterator_(callinfo: PMethodCallInfo): PSOInstance;
 begin
   with callinfo^ do
     begin
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_list_class);{$ENDIF}
       if argnum = 0 then
         begin
           Result := so_create_internalobject_bound(C_SOTYPE_IO_LISTITER_NAME,TSOList_IOListIterator,soself);

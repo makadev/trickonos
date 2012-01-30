@@ -347,11 +347,9 @@ begin
 end;
 
 function StabWriter( us: PUCFS32String; data, xdata: Pointer ): Boolean;
-var s: String;
 begin
-  s := ucfs_to_utf8string(us);
-  PByteCodeBlock(xdata)^.stab[PtrInt(data-nil)] := s;
-  Inc(PByteCodeBlock(xdata)^.bcsize,Length(s));
+  PByteCodeBlock(xdata)^.stab[PtrInt(data-nil)] := ucfs_incref(us);
+  Inc(PByteCodeBlock(xdata)^.bcsize,ucfs_length(us));
   Result := true;
 end;
 

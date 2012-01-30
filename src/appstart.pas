@@ -26,7 +26,7 @@ unit appstart;
 interface
 
 uses SysUtils, eomsg, bytecode, fpath, ccache,
-     vmstate, compload, cscan, opcode, vmrun 
+     vmstate, compload, cscan, opcode, vmrun, ucfs
      {$ifdef CLEANSHUTDOWN}, ccbase {$endif};
 
 const
@@ -486,6 +486,7 @@ var
 
 procedure Setup;
 var i: Integer;
+    tmps: PUCFS32String;
 begin
   SetLength(OptTable,0);
   SetLength(FStartBootCoder,0);
@@ -539,8 +540,10 @@ begin
   else
     begin
       {assemble an include on stab}
-      if bootblock.StabAdd(fname) < 0 then
+      tmps := ucfs_utf8us(fname);
+      if bootblock.StabAdd(tmps) < 0 then
         put_internalerror(2011123000); // put_critical('Stab Limit Exceeded');
+      ucfs_release(tmps);
       if bootblock.OpcodeAdd < 0 then
         put_internalerror(2011123001);
       bootblock.image[High(bootblock.image)].SetOpcode(isc_m_include_stab);

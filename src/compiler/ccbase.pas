@@ -60,7 +60,7 @@ type
       property TokenType: TSMESymbol read FTokenType write FTokenType;
       property Pattern: PUCFS32String read FPattern;
       procedure PatternSetS( const s: String );
-      procedure PatternSetU( us: PUCFS32String );
+      procedure PatternSetU( us: PUCFS32String; incref: Boolean );
       constructor Create; override;
       destructor Destroy; override;
   end;
@@ -333,11 +333,13 @@ end;
 
 procedure TScanRecord.PatternSetS(const s: String);
 begin
-  PatternSetU(ucfs_utf8us(s));
+  PatternSetU(ucfs_utf8us(s),false);
 end;
 
-procedure TScanRecord.PatternSetU(us: PUCFS32String);
+procedure TScanRecord.PatternSetU(us: PUCFS32String; incref: Boolean);
 begin
+  if incref then
+    ucfs_incref(us);
   ucfs_release(FPattern);
   FPattern := us;
 end;

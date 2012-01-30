@@ -1,4 +1,6 @@
 
+  /* default methods */
+
   constr.add('dm_setmember','SETMEMBER');
   constr.add('dm_getmember','GETMEMBER');
   
@@ -27,3 +29,16 @@
   constr.add('dm_call','CALL');
   constr.add('dm_create','CREATE');
 
+  /* internal used names */
+  
+  constr.add('name_system','SYSTEM');
+  
+  constr.add('name_iterator','ITERATOR');
+  constr.add('name_next','NEXT');
+  constr.add('name_current','CURRENT');
+  constr.add('name_currentkey','CURRENTKEY');
+  constr.add('name_currentvalue','CURRENTVALUE');
+  
+  constr.add('name_self','SELF');
+  constr.add('name_result','RESULT');
+  constr.add('name_varargs','VARARGS');  

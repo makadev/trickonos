@@ -21,7 +21,16 @@ type
     ci_dm_abs,
     ci_dm_not,
     ci_dm_call,
-    ci_dm_create 
+    ci_dm_create,
+    ci_name_system,
+    ci_name_iterator,
+    ci_name_next,
+    ci_name_current,
+    ci_name_currentkey,
+    ci_name_currentvalue,
+    ci_name_self,
+    ci_name_result,
+    ci_name_varargs 
   );
 
 
@@ -48,7 +57,16 @@ const
     'OP_ABS' {ci_dm_abs},
     'OP_NOT' {ci_dm_not},
     'CALL' {ci_dm_call},
-    'CREATE' {ci_dm_create} 
+    'CREATE' {ci_dm_create},
+    'SYSTEM' {ci_name_system},
+    'ITERATOR' {ci_name_iterator},
+    'NEXT' {ci_name_next},
+    'CURRENT' {ci_name_current},
+    'CURRENTKEY' {ci_name_currentkey},
+    'CURRENTVALUE' {ci_name_currentvalue},
+    'SELF' {ci_name_self},
+    'RESULT' {ci_name_result},
+    'VARARGS' {ci_name_varargs} 
   );
 
 

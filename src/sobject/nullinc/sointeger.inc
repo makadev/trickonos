@@ -41,7 +41,7 @@ type
 
 function socls_Integer_TypeQuery( soself: PSOInstance ): String;
 begin
-  SelfCheck(soself,so_integer_class);
+  {$IFDEF SELFCHECK}SelfCheck(soself,so_integer_class);{$ENDIF}
   Result := C_SOTYPE_INTEGER_NAME;
 end;
 
@@ -62,6 +62,7 @@ var m: TSOMethodHandler;
 begin
   with callinfo^ do
     begin
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_integer_class);{$ENDIF}
       m := TSOMethodHandler( TMethodTrie_Integer.LookupByHash(hashk,name) );
       if Assigned(m) then
         Result := m( callinfo )
@@ -73,7 +74,7 @@ end;
 function socls_Integer_Compare(soself, rightop: PSOInstance): TSOCompareResult;
 var ncmp: VMInt;
 begin
-  SelfCheck(soself,so_integer_class);
+  {$IFDEF SELFCHECK}SelfCheck(soself,so_integer_class);{$ENDIF}
   if rightop^.IsType(so_integer_class) then
     begin
       ncmp := PSO_Integer(soself)^.fnum^.compare(PSO_Integer(rightop)^.fnum);
@@ -97,7 +98,7 @@ function _Integer_Add_(callinfo: PMethodCallInfo): PSOInstance;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_integer_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_integer_class);{$ENDIF}
       if argnum = 1 then
         begin
           if soargs^[0]^.IsType(so_integer_class) then
@@ -115,7 +116,7 @@ function _Integer_And_(callinfo: PMethodCallInfo): PSOInstance;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_integer_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_integer_class);{$ENDIF}
       if argnum = 1 then
         begin
           if soargs^[0]^.IsType(so_integer_class) then
@@ -134,7 +135,7 @@ var i: PTFM_Integer;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_integer_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_integer_class);{$ENDIF}
       if argnum = 1 then
         begin
           if soargs^[0]^.IsType(so_integer_class) then
@@ -159,7 +160,7 @@ var i: PTFM_Integer;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_integer_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_integer_class);{$ENDIF}
       if argnum = 1 then
         begin
           if soargs^[0]^.IsType(so_integer_class) then
@@ -183,7 +184,7 @@ function _Integer_Mul_(callinfo: PMethodCallInfo): PSOInstance;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_integer_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_integer_class);{$ENDIF}
       if argnum = 1 then
         begin
           if soargs^[0]^.IsType(so_integer_class) then
@@ -201,7 +202,7 @@ function _Integer_Or_(callinfo: PMethodCallInfo): PSOInstance;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_integer_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_integer_class);{$ENDIF}
       if argnum = 1 then
         begin
           if soargs^[0]^.IsType(so_integer_class) then
@@ -219,7 +220,7 @@ function _Integer_Xor_(callinfo: PMethodCallInfo): PSOInstance;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_integer_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_integer_class);{$ENDIF}
       if argnum = 1 then
         begin
           if soargs^[0]^.IsType(so_integer_class) then
@@ -237,7 +238,7 @@ function _Integer_Rol_(callinfo: PMethodCallInfo): PSOInstance;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_integer_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_integer_class);{$ENDIF}
       if argnum = 1 then
         begin
           if soargs^[0]^.IsType(so_integer_class) then
@@ -261,7 +262,7 @@ function _Integer_Ror_(callinfo: PMethodCallInfo): PSOInstance;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_integer_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_integer_class);{$ENDIF}
       if argnum = 1 then
         begin
           if soargs^[0]^.IsType(so_integer_class) then
@@ -285,7 +286,7 @@ function _Integer_Shl_(callinfo: PMethodCallInfo): PSOInstance;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_integer_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_integer_class);{$ENDIF}
       if argnum = 1 then
         begin
           if soargs^[0]^.IsType(so_integer_class) then
@@ -309,7 +310,7 @@ function _Integer_Shr_(callinfo: PMethodCallInfo): PSOInstance;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_integer_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_integer_class);{$ENDIF}
       if argnum = 1 then
         begin
           if soargs^[0]^.IsType(so_integer_class) then
@@ -333,7 +334,7 @@ function _Integer_Sar_(callinfo: PMethodCallInfo): PSOInstance;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_integer_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_integer_class);{$ENDIF}
       if argnum = 1 then
         begin
           if soargs^[0]^.IsType(so_integer_class) then
@@ -357,7 +358,7 @@ function _Integer_Sub_(callinfo: PMethodCallInfo): PSOInstance;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_integer_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_integer_class);{$ENDIF}
       if argnum = 1 then
         begin
           if soargs^[0]^.IsType(so_integer_class) then
@@ -375,7 +376,7 @@ function _Integer_Abs_(callinfo: PMethodCallInfo): PSOInstance;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_integer_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_integer_class);{$ENDIF}
       if argnum = 0 then
         Result := so_integer_init_tfm(tfm_abs(PSO_Integer(soself)^.fnum))
       else
@@ -388,7 +389,7 @@ function _Integer_Not_(callinfo: PMethodCallInfo): PSOInstance;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_integer_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_integer_class);{$ENDIF}
       if argnum = 0 then
         Result := so_integer_init_tfm(tfm_not(PSO_Integer(soself)^.fnum))
       else
@@ -401,7 +402,7 @@ function _Integer_Neg_(callinfo: PMethodCallInfo): PSOInstance;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_integer_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_integer_class);{$ENDIF}
       if argnum = 0 then
         Result := so_integer_init_tfm(tfm_neg(PSO_Integer(soself)^.fnum))
       else
@@ -427,7 +428,7 @@ end;
 function so_integer_fits( soint: PSOInstance ): Boolean;
 {check if integer fits into VMInt}
 begin
-  SelfCheck(soint,so_integer_class);
+  {$IFDEF SELFCHECK}SelfCheck(soint,so_integer_class);{$ENDIF}
   Result := PSO_Integer(soint)^.fnum^.is_wordsize;
   if Result then
     begin
@@ -440,7 +441,7 @@ end;
 function so_integer_string( soint: PSOInstance ): String;
 {convert integer to string}
 begin
-  SelfCheck(soint,so_integer_class);
+  {$IFDEF SELFCHECK}SelfCheck(soint,so_integer_class);{$ENDIF}
   Result := tfm_to_string(PSO_Integer(soint)^.fnum);
 end;
 
@@ -449,7 +450,7 @@ function so_integer_get( soint: PSOInstance; usecut: Boolean ): VMInt;
  first word to VMInt (usecut)
  produces internalerror if integer doesn't fit and usecut=false}
 begin
-  SelfCheck(soint,so_integer_class);
+  {$IFDEF SELFCHECK}SelfCheck(soint,so_integer_class);{$ENDIF}
   if usecut or
      so_integer_fits(soint) then
     begin
@@ -465,9 +466,10 @@ function _Integer_ToStr_(callinfo: PMethodCallInfo): PSOInstance;
 begin
   with callinfo^ do
     begin
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_integer_class);{$ENDIF}
       if argnum = 0 then
         begin
-          Result := so_string_init_a7(tfm_to_string(PSO_Integer(soself)^.fnum));
+          Result := so_string_init_utf8(tfm_to_string(PSO_Integer(soself)^.fnum));
         end
       else
         Result := init_invargnum_error(soself,argnum,name);

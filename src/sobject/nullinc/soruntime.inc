@@ -35,7 +35,7 @@ end;
 
 procedure socls_RT_ENV_PostConstructor(instance: PSOInstance);
 begin
-  PSO_RuntimeEnv(instance)^.dict.Init(CL_LinearRegrow_Medium);
+  PSO_RuntimeEnv(instance)^.dict.Init(CL_LinearRegrow_Medium,CL_LinearRegrow_Medium);
 end;
 
 procedure socls_RT_ENV_PreDestructor(instance: PSOInstance);
@@ -45,7 +45,7 @@ end;
 
 function socls_RT_ENV_TypeQuery(soself: PSOInstance): String;
 begin
-  SelfCheck(soself,so_rtenv_class);
+  {$IFDEF SELFCHECK}SelfCheck(soself,so_rtenv_class);{$ENDIF}
   Result := C_SOTYPE_RTENV;
 end;
 
@@ -53,12 +53,11 @@ end;
   RTENV Helpers
  ******************************************************************************)
 
-function so_rtenv_set_member( e: PSOInstance; const s: string; i: PSOInstance; noretref: Boolean ): PSOInstance;
+function so_rtenv_set_member( e: PSOInstance; s: PUCFS32String; i: PSOInstance; noretref: Boolean ): PSOInstance;
 var oldval: PSOInstance;
 begin
-  SelfCheck(e,so_rtenv_class);
+  {$IFDEF SELFCHECK}SelfCheck(e,so_rtenv_class);{$ENDIF}
   ASSERT(i<>nil);
-  ASSERT(s=UpCase(s));
   if i <> so_nil then
     begin
       check_so_maxcollection(PSO_RuntimeEnv(e)^.dict.GetCount+1);
@@ -74,9 +73,9 @@ begin
   Result := i;
 end;
 
-function so_rtenv_get_member( e: PSOInstance; const s: string ): PSOInstance;
+function so_rtenv_get_member( e: PSOInstance; s: PUCFS32String ): PSOInstance;
 begin
-  SelfCheck(e,so_rtenv_class);
+  {$IFDEF SELFCHECK}SelfCheck(e,so_rtenv_class);{$ENDIF}
   Result := PSO_RuntimeEnv(e)^.dict.Lookup(s);
   if Assigned(Result) then
     Result^.IncRef
@@ -115,6 +114,7 @@ end;
 
 function socls_RT_STACK_TypeQuery(soself: PSOInstance): String;
 begin
+  {$IFDEF SELFCHECK}SelfCheck(soself,so_rtstack_class);{$ENDIF}
   Result := C_SOTYPE_RTSTACK;
 end;
 
@@ -126,31 +126,34 @@ end;
 procedure so_rtstack_setlength( s: PSOInstance; len: PtrInt );
 var oldl: PtrInt;
 begin
-   oldl := Length(PSO_RuntimeStack(s)^.stack);
-   if oldl > len then
-     begin
-       {shrink, explicit decref stuff}
-       for oldl := oldl-1 downto len do
-         if Assigned(PSO_RuntimeStack(s)^.stack[oldl]) then
-           PSO_RuntimeStack(s)^.stack[oldl]^.DecRef;
-       SetLength(PSO_RuntimeStack(s)^.stack,len);
-     end
-   else if oldl < len then
-     begin
-       {grow and trash}
-       SetLength(PSO_RuntimeStack(s)^.stack,len);
-       FillByte(PSO_RuntimeStack(s)^.stack[oldl],SizeOf(PSOInstance)*(len-(oldl+1)),0);
-     end;
+  {$IFDEF SELFCHECK}SelfCheck(s,so_rtstack_class);{$ENDIF}
+  oldl := Length(PSO_RuntimeStack(s)^.stack);
+  if oldl > len then
+    begin
+      {shrink, explicit decref stuff}
+      for oldl := oldl-1 downto len do
+        if Assigned(PSO_RuntimeStack(s)^.stack[oldl]) then
+          PSO_RuntimeStack(s)^.stack[oldl]^.DecRef;
+      SetLength(PSO_RuntimeStack(s)^.stack,len);
+    end
+  else if oldl < len then
+    begin
+      {grow and trash}
+      SetLength(PSO_RuntimeStack(s)^.stack,len);
+      FillByte(PSO_RuntimeStack(s)^.stack[oldl],SizeOf(PSOInstance)*(len-(oldl+1)),0);
+    end;
 end;
 
 function so_rtstack_getlength( s: PSOInstance ): PtrInt;
 begin
+  {$IFDEF SELFCHECK}SelfCheck(s,so_rtstack_class);{$ENDIF}
   Result := Length(PSO_RuntimeStack(s)^.stack);
 end;
 
 procedure so_rtstack_set( s, i: PSOInstance; idx: PtrInt );
 var oldval: PSOInstance;
 begin
+  {$IFDEF SELFCHECK}SelfCheck(s,so_rtstack_class);{$ENDIF}
   if Assigned(PSO_RuntimeStack(s)^.stack[idx]) then
     begin
       oldval := PSO_RuntimeStack(s)^.stack[idx];
@@ -163,6 +166,7 @@ end;
 
 function so_rtstack_get( s: PSOInstance; idx: PtrInt ): PSOInstance;
 begin
+  {$IFDEF SELFCHECK}SelfCheck(s,so_rtstack_class);{$ENDIF}
   if Assigned(PSO_RuntimeStack(s)^.stack[idx]) then
     Result := PSO_RuntimeStack(s)^.stack[idx]
   else
@@ -171,12 +175,14 @@ end;
 
 function so_rtstack_getargf(s: PSOInstance; idx: PtrInt): PSOMethodVarArgs;
 begin
+  {$IFDEF SELFCHECK}SelfCheck(s,so_rtstack_class);{$ENDIF}
   Result := @PSO_RuntimeStack(s)^.stack[idx];
 end;
 
 procedure so_rtstack_move( s: PSOInstance; sidx, didx: PtrInt );
 var oldval,cpval: PSOInstance;
 begin
+  {$IFDEF SELFCHECK}SelfCheck(s,so_rtstack_class);{$ENDIF}
   if sidx <> didx then
     begin
       oldval := PSO_RuntimeStack(s)^.stack[didx];
@@ -192,6 +198,7 @@ end;
 procedure so_rtstack_switch(s: PSOInstance; sidx, didx: PtrInt);
 var tmpval: PSOInstance;
 begin
+  {$IFDEF SELFCHECK}SelfCheck(s,so_rtstack_class);{$ENDIF}
   if sidx <> didx then
     begin
       tmpval := PSO_RuntimeStack(s)^.stack[didx];

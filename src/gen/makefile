@@ -1,5 +1,5 @@
 
-INCLGEN = ctab_imp.tpl ctab_int.tpl
+INCLGEN = ctab_imp.tpl ctab_int.tpl nulltypes.tpl
 
 ##
 
@@ -10,9 +10,9 @@ INCL = $(INCLGEN:.tpl=.inc)
 .PHONY: clean regen check_tc $(INCLGEN)
 
 .tpl.inc:
-	../../$(TCBIN) -vc -f $*.tpl > $*.inc
+	$(TCCI) -vc -f $*.tpl > $*.inc
 
-regenindex: check_tc $(INCL)
+regen: check_tc $(INCL)
 
 check_tc:
-	../../$(TCBIN) -vs -oc ctab.use
+	$(TCCI) -vs -oc ctab.use

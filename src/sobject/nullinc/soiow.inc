@@ -45,21 +45,15 @@ function socls_IO_MethodCall( callinfo: PMethodCallInfo ): PSOInstance;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_io_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_io_class);{$ENDIF}
       check_so_maxargs(argnum);
       Result := PSO_IO(soself)^.ioo.DispatchMethodCall(callinfo);
     end;
 end;
 
-function socls_IO_MethodCallOverride( callinfo: PMethodOverrideCallInfo ): PSOInstance;
-begin
-  SelfCheck(callinfo^.soself,so_io_class);
-  Result := nil;
-end;
-
 function socls_IO_TypeQuery(soself: PSOInstance): String;
 begin
-  SelfCheck(soself,so_io_class);
+  {$IFDEF SELFCHECK}SelfCheck(soself,so_io_class);{$ENDIF}
   Result := C_SOTYPE_IO_BASENAME+PSO_IO(soself)^.ioo.TypeName;
 end;
 
@@ -93,7 +87,7 @@ begin
             begin
               if soargs^[0]^.IsType(so_string_class) then
                 begin
-                  attrinfo.name := so_string_get_ucfs(soargs^[0]);
+                  attrinfo.name := so_string_get_ucfs(soargs^[0],false);
                   attrinfo.soself := soself;
                   attrinfo.setter := nil;
                   Result := DispatchAttr(@attrinfo);
@@ -105,7 +99,7 @@ begin
             begin
               if soargs^[0]^.IsType(so_string_class) then
                 begin
-                  attrinfo.name := so_string_get_ucfs(soargs^[0]);
+                  attrinfo.name := so_string_get_ucfs(soargs^[0],false);
                   attrinfo.soself := soself;
                   attrinfo.setter := soargs^[1];
                   Result := DispatchAttr(@attrinfo);
@@ -225,7 +219,7 @@ end;
 
 function so_internalobject_get(soios: PSOInstance): TInternalObject;
 begin
-  SelfCheck(soios,so_io_class);
+  {$IFDEF SELFCHECK}SelfCheck(soios,so_io_class);{$ENDIF}
   Result := PSO_IO(soios)^.ioo;
 end;
 

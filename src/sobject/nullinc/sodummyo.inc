@@ -32,9 +32,9 @@ var i: VMInt;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_dummy_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_dummy_class);{$ENDIF}
       put_info(C_SOTYPE_DUMMY_NAME+' method '+
-        ucfs_to_string(name,true)+':'+hexStr(hashk,SizeOf(Pointer)*2)+' called with '+IntToStr(argnum)+' Args.');
+        ucfs_to_utf8string(name)+':'+hexStr(hashk,SizeOf(Pointer)*2)+' called with '+IntToStr(argnum)+' Args.');
       if debug_mode then
         for i := 0 to argnum-1 do
           put_debug('  ARG '+IntToStr(i+1)+' is '+soargs^[0]^.GetTypeCls^.TypeQuery(soargs^[0]));
@@ -44,14 +44,14 @@ end;
 
 function socls_DummyObject_TypeQuery(soself: PSOInstance): String;
 begin
-  SelfCheck(soself,so_dummy_class);
+  {$IFDEF SELFCHECK}SelfCheck(soself,so_dummy_class);{$ENDIF}
   Result := C_SOTYPE_DUMMY_NAME;
   put_debug(C_SOTYPE_DUMMY_NAME+' got (Type)checked :o');
 end;
 
 function socls_DummyObject_Compare(soself, rightop: PSOInstance): TSOCompareResult;
 begin
-  SelfCheck(soself,so_dummy_class);
+  {$IFDEF SELFCHECK}SelfCheck(soself,so_dummy_class);{$ENDIF}
   put_debug(C_SOTYPE_DUMMY_NAME+' getting Compared against '+rightop^.GetTypeCls^.TypeQuery(rightop));
   Result := DefaultCompare(soself, rightop);
 end;
@@ -60,9 +60,9 @@ function socls_DummyObject_MethodCallOverride( callinfo: PMethodOverrideCallInfo
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_dummy_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_dummy_class);{$ENDIF}
       put_debug(C_SOTYPE_DUMMY_NAME+' getting Checked for MethodOverride '+
-        ucfs_to_string(name)+':'+hexStr(hashk,SizeOf(Pointer)*2));
+        ucfs_to_utf8string(name)+':'+hexStr(hashk,SizeOf(Pointer)*2));
     end;
   Result := nil;
 end;

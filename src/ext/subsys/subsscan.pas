@@ -279,31 +279,31 @@ begin
           Result := nil;
           if setter^.IsType(so_string_class) then
             begin
-              if ucfs_compare_a7(so_string_get_ucfs(setter),'none') = 0 then
+              if ucfs_compare_a7(so_string_get_ucfs(setter,false),'none') = 0 then
                 begin
                   FScanStream.NewLineMode := nlmNone;
                   Result := setter;
                   Result^.IncRef;
                 end
-              else if ucfs_compare_a7(so_string_get_ucfs(setter),'windows') = 0 then
+              else if ucfs_compare_a7(so_string_get_ucfs(setter,false),'windows') = 0 then
                 begin
                   FScanStream.NewLineMode := nlmWindows;
                   Result := setter;
                   Result^.IncRef;
                 end
-              else if ucfs_compare_a7(so_string_get_ucfs(setter),'unix') = 0 then
+              else if ucfs_compare_a7(so_string_get_ucfs(setter,false),'unix') = 0 then
                 begin
                   FScanStream.NewLineMode := nlmUnix;
                   Result := setter;
                   Result^.IncRef;
                 end
-              else if ucfs_compare_a7(so_string_get_ucfs(setter),'mac') = 0 then
+              else if ucfs_compare_a7(so_string_get_ucfs(setter,false),'mac') = 0 then
                 begin
                   FScanStream.NewLineMode := nlmMac;
                   Result := setter;
                   Result^.IncRef;
                 end
-              else if ucfs_compare_a7(so_string_get_ucfs(setter),'mixed') = 0 then
+              else if ucfs_compare_a7(so_string_get_ucfs(setter,false),'mixed') = 0 then
                 begin
                   FScanStream.NewLineMode := nlmMixed;
                   Result := setter;
@@ -431,7 +431,7 @@ begin
                   if memblock.ReadFromFile(tmps) then
                     begin
                       ucfs_release(tmps);
-                      readerstream := TMemoryBlockReaderStream.Create(so_string_get_ucfs(soargs^[0]),memblock);
+                      readerstream := TMemoryBlockReaderStream.Create(nil,memblock);
                     end
                   else
                     begin
@@ -443,12 +443,12 @@ begin
               else
                 begin
                   tmps := ucfs_utf8us(fname);
-                  readerstream := TFileReaderStream.Create(so_string_get_ucfs(soargs^[0]), tmps);
+                  readerstream := TFileReaderStream.Create(nil, tmps);
                   ucfs_release(tmps);
                 end;
             end
           else
-            readerstream := TStringReaderStream.Create(nil,so_string_get_ucfs(soargs^[0]));
+            readerstream := TStringReaderStream.Create(nil,so_string_get_ucfs(soargs^[0],false));
 
           {create the scanner stream}
           scstream := TScannerStream.Create(LAChars,readerstream);

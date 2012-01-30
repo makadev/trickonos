@@ -95,16 +95,13 @@ function init_invargnum_error(soself: PSOInstance; argnum: MachineInt; opname: P
 function init_lockmod(soself: PSOInstance; opname: PUCFS32String): PSOInstance;
 
 {string}
-function so_string_init_a7( const s: String ): PSOInstance; inline;
 function so_string_init_utf8( const s: String ): PSOInstance; inline;
 function so_string_init_char( uc: TUCFS32Char ): PSOInstance; inline;
-function so_string_init_ucfs( ps: PUCFS32String ): PSOInstance; inline;
+function so_string_init_ucfs( ps: PUCFS32String; incref: Boolean ): PSOInstance; inline;
 function so_string_init_empty: PSOInstance; inline;
 function so_string_length( sostring: PSOInstance ): VMInt; inline;
-function so_string_get_ucfs( sostring: PSOInstance ): PUCFS32String; inline;
-function so_string_get_a7( sostring: PSOInstance; dereplace: Boolean = false ): String; inline;
+function so_string_get_ucfs( sostring: PSOInstance; increfs: Boolean ): PUCFS32String; inline;
 function so_string_get_utf8( sostring: PSOInstance ): String; inline;
-procedure so_string_set_ucfs( sostring: PSOInstance; newstr: PUCFS32String; releaseold: Boolean = true ); inline;
 procedure so_string_addmethod( const mname: String; methh: TSOMethodHandler ); inline;
 
 {integer}
@@ -146,8 +143,8 @@ function so_function_init( coderef: PCodeReference; argf, argn, slotn, ip: Integ
 function so_function_codelnstr( f: PSOInstance ): String; inline;
 
 {rt env}
-function so_rtenv_set_member( e: PSOInstance; const s: String; i: PSOInstance; noretref: Boolean ): PSOInstance; inline;
-function so_rtenv_get_member( e: PSOInstance; const s: String ): PSOInstance; inline;
+function so_rtenv_set_member( e: PSOInstance; s: PUCFS32String; i: PSOInstance; noretref: Boolean ): PSOInstance; inline;
+function so_rtenv_get_member( e: PSOInstance; s: PUCFS32String ): PSOInstance; inline;
 
 
 {rt stack}
@@ -169,7 +166,7 @@ function so_instance_getclass( instance: PSOInstance ): PSOInstance; inline;
 
 {class}
 function so_class_create( const name: String; coderef: PCodeReference; ip: VMInt ): PSOInstance;
-procedure so_class_methodreg( cls, funobj: PSOInstance; const mname: String ); inline;
+procedure so_class_methodreg( cls, funobj: PSOInstance; mname: PUCFS32String ); inline;
 {DOC>> increfs if constructor object exists}
 function so_class_getconstructor( cls: PSOInstance ): PSOInstance; inline;
 
@@ -721,7 +718,6 @@ begin
 
   so_string_addmethod(ci_str(ci_dm_add),@_String_Add_);
   so_string_addmethod(ci_str(ci_dm_getindex),@_String_GetIndex_);
-  so_string_addmethod(ci_str(ci_dm_setindex),@_String_SetIndex_);
   so_string_addmethod(C_STDCALLM_LENGTH,@_String_Length_);
 
   so_integer_addmethod(ci_str(ci_dm_add),@_Integer_Add_);

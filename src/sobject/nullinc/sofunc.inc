@@ -43,7 +43,7 @@ type
 
 function socls_Function_TypeQuery(soself: PSOInstance): String;
 begin
-  SelfCheck(soself,so_function_class);
+  {$IFDEF SELFCHECK}SelfCheck(soself,so_function_class);{$ENDIF}
   Result := C_SOTYPE_FUNCTION_NAME;
 end;
 
@@ -52,7 +52,7 @@ var vararglist: PSOInstance;
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_function_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_function_class);{$ENDIF}
       Result := nil;
       if (hashk = DEFAULT_METHOD_DirectCall_Hash) and
          (ucfs_compare(name,ci_us(ci_dm_call,false))=0) then
@@ -104,7 +104,7 @@ function socls_Function_MethodCallOverride( callinfo: PMethodOverrideCallInfo ):
 begin
   with callinfo^ do
     begin
-      SelfCheck(soself,so_function_class);
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_function_class);{$ENDIF}
       if (hashk = DEFAULT_METHOD_DirectCall_Hash) and
          (ucfs_compare(name,ci_us(ci_dm_call,false))=0) then
         begin
@@ -119,6 +119,7 @@ end;
 
 function socls_Function_Compare(soself, rightop: PSOInstance): TSOCompareResult;
 begin
+  {$IFDEF SELFCHECK}SelfCheck(soself,so_function_class);{$ENDIF}
   if soself = rightop then
     Result := socmp_isEqual
   else
@@ -150,7 +151,7 @@ end;
 function so_function_codelnstr( f: PSOInstance ): String;
 var resstring: String;
 begin
-  SelfCheck(f,so_function_class);
+  {$IFDEF SELFCHECK}SelfCheck(f,so_function_class);{$ENDIF}
   ASSERT( Assigned(PSO_Function(f)^.fun.code) );
   ASSERT( Assigned(PSO_Function(f)^.fun.code^.pbcode) );
   ASSERT( Length(PSO_Function(f)^.fun.code^.pbcode^.image) > (PSO_Function(f)^.fun.ip-1) );

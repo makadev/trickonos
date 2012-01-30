@@ -1,13 +1,15 @@
 {?
   x := 1;
   d := {};
+  cnt := 100000;
+  i := 1;
   
   writeln "filling Dict";
   
   repeat
     d[ x.tostr() ] := x;
-    x := x + 1;
-  until x > 100000;
+    x := x + i;
+  until x > cnt;
 
   writeln "done filling, now checking";
   
@@ -16,8 +18,8 @@
     if d[ x.tostr() ] <> x then
       Halt(1);
     end;
-    x := x + 1;
-  until x > 100000;
+    x := x + i;
+  until x > cnt;
 
   writeln "done, all clear.";
   
