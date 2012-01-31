@@ -1,0 +1,9 @@
+{?
+  open 'somefile';
+?}
+
+stuff
+
+{?
+  close;
+?}

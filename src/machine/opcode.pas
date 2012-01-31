@@ -38,6 +38,18 @@ type
     mincl_terminator
   );
 
+  {output mode}
+  TInsMOutputMode = (
+    mout_invalid = 0,
+
+    mout_open,
+    mout_reopen,
+    mout_path,
+    mout_close,
+
+    mout_terminator
+  );
+
   {empty type loading}
   TInsSOLoad = (
     soload_invalid = 0,
@@ -213,6 +225,9 @@ type
       stab entry is the new methodname}
     isc_m_decl_method_stab,
 
+    {output command}
+    isc_m_outputop,
+
     isc_invalid
   );
 
@@ -309,6 +324,9 @@ begin
 
     isc_m_include: if (operand <= Ord(mincl_invalid)) or
                       (operand >= Ord(mincl_terminator)) then Invalidate;
+
+    isc_m_outputop: if (operand <= Ord(mout_invalid)) or
+                       (operand >= Ord(mout_terminator)) then Invalidate;
 
     isc_m_fprel_set_slot,
     isc_m_fprel_load_slot,
@@ -482,6 +500,17 @@ begin
         case TInsMIncludeMode(operand) of
           mincl_include: Result := 'CODE := LOAD(TOS) as Template, pop 1, EXEC CODE';
           mincl_use: Result := 'CODE := LOAD(TOS) as Code Unit, pop 1, EXEC CODE';
+        end;
+      end;
+
+    isc_m_outputop:
+      begin
+        Result := 'Output.Invalid';
+        case TInsMOutputMode(operand) of
+          mout_open: Result := 'OPEN(TOS) for Output, PUSH on OUTSTACK, pop 1';
+          mout_reopen: Result := 'REOPEN(TOS) for Output, PUSH on OUTSTACK, pop 1';
+          mout_path: Result := 'ENTER PATH(TOS) for Output, PUSH on OUTSTACK, pop 1';
+          mout_close: Result := 'CLOSE LAST OUTPUT, POP OUTSTACK';
         end;
       end;
 

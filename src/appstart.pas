@@ -26,7 +26,7 @@ unit appstart;
 interface
 
 uses SysUtils, eomsg, bytecode, fpath, ccache,
-     vmstate, compload, cscan, opcode, vmrun, ucfs
+     vmstate, compload, cscan, opcode, vmrun, ucfs, outstack
      {$ifdef CLEANSHUTDOWN}, ccbase {$endif};
 
 const
@@ -440,6 +440,47 @@ end;
 var
   OnlyCompile: Boolean;
 
+
+function NoStdOutHandler( var unused: TParamStrings ): Boolean;
+begin
+  SetStdOut(false);
+  Result := true;
+end;
+
+function OutFileHandler( var aonefile: TParamStrings ): Boolean;
+begin
+  if FileExists(aonefile[0]) then
+    begin
+      WriteLn(StdErr,'Outfile already Exists: ',aonefile[0]);
+      Exit(false);
+    end;
+  Result := true;
+  outstack_push(aonefile[0],opfm_open);
+end;
+
+function OutPathHandler( var aonepath: TParamStrings ): Boolean;
+begin
+  if not DirectoryExists(aonepath[0]) then
+    begin
+      WriteLn(StdErr,'Directory does not Exist: ',aonepath[0]);
+      Exit(false);
+    end;
+  Result := true;
+  {$NOTE no protect?}
+  fpath_out_enter(aonepath[0],false);
+end;
+
+function TPLPathHandler( var aonepath: TParamStrings ): Boolean;
+begin
+  if not DirectoryExists(aonepath[0]) then
+    begin
+      WriteLn(StdErr,'Directory does not Exist: ',aonepath[0]);
+      Exit(false);
+    end;
+  Result := true;
+  fpath_rel_enter(aonepath[0],false);
+end;
+
 function LogOutHandler( var aonefile: TParamStrings ): Boolean;
 begin
   if FileExists(aonefile[0]) then
@@ -497,6 +538,7 @@ begin
   fpath_init;
   fcache_init;
   machine_init;
+  outstack_init;
   {setup default commandline input}
   RegisterOpt( 'Version', 'V', 'print version and short copying notice', 0, @VersionHandler );
   RegisterOpt( 'help', 'h', 'print this', 0, @HelpHandler );
@@ -510,6 +552,10 @@ begin
                             ' s or silent    - be as quite as possible',
                             1, @VerbosityHandler );
   RegisterOpt( 'logfile', 'log', 'log to file rather then stderr', 1, @LogOutHandler );
+  RegisterOpt( 'outfile', 'out', 'set initial output file', 1, @OutFileHandler );
+  RegisterOpt( 'nostdout', 'no', 'only output into files, if no outfile is open then ignore output', 0, @NoStdOutHandler );
+  RegisterOpt( 'init-outpath', 'O', 'set initial outpath', 1, @OutPathHandler );
+  RegisterOpt( 'init-tplpath', 'C', 'set initial template path', 1, @TPLPathHandler );
   RegisterOpt( 'write-pct', 'pct', 'write precompiled templates', 0, @WriteByteCodeHandler );
   RegisterOpt( 'only-compile', 'oc', 'do not execute, just compile a template', 0, @CompileOnlyHandler );
   RegisterOpt( 'scan-debug', '', 'enable scandebug mode (outputs scanned tokens)',
@@ -608,6 +654,7 @@ begin
 {$ifdef CLEANSHUTDOWN}
   ReleaseCC;
 {$endif}
+  outstack_fini;
   machine_fini;
   fcache_fini;
   fpath_fini;

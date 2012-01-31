@@ -89,6 +89,31 @@ type
       function Compile: Boolean; override;
   end;
 
+  {1 argument}
+  TCoreMacro_Open = class(TPLDefaultMCall)
+    public
+      function Compile: Boolean; override;
+  end;
+
+  {1 argument}
+  TCoreMacro_Reopen = class(TPLDefaultMCall)
+    public
+      function Compile: Boolean; override;
+  end;
+
+  {1 argument}
+  TCoreMacro_Path = class(TPLDefaultMCall)
+    public
+      function Compile: Boolean; override;
+  end;
+
+  {0 argument}
+  TCoreMacro_Close = class(TPLDefaultMCall)
+    public
+      class function Parse: TParserNode; override;
+      function Compile: Boolean; override;
+  end;
+
   {0 or 1 arguments}
   TCoreMacro_Halt = class(TPLDefaultMCall)
     public
@@ -391,12 +416,80 @@ begin
   DecRec;
 end;
 
+{ TCoreMacro_Open }
+
+function TCoreMacro_Open.Compile: Boolean;
+begin
+  CreateAssembly;
+  IncRec;
+  ASSERT(Occ[1] is TParserNode);
+  Result := TParserNode(Occ[1]).Compile;
+  Assembly.AppendAssembly(TParserNode(Occ[1]).Assembly);
+  Assembly.InsOperand(Line,Column,isc_m_outputop,Ord(mout_open));
+  DecRec;
+end;
+
+{ TCoreMacro_Reopen }
+
+function TCoreMacro_Reopen.Compile: Boolean;
+begin
+  CreateAssembly;
+  IncRec;
+  ASSERT(Occ[1] is TParserNode);
+  Result := TParserNode(Occ[1]).Compile;
+  Assembly.AppendAssembly(TParserNode(Occ[1]).Assembly);
+  Assembly.InsOperand(Line,Column,isc_m_outputop,Ord(mout_reopen));
+  DecRec;
+end;
+
+{ TCoreMacro_Path }
+
+function TCoreMacro_Path.Compile: Boolean;
+begin
+  CreateAssembly;
+  IncRec;
+  ASSERT(Occ[1] is TParserNode);
+  Result := TParserNode(Occ[1]).Compile;
+  Assembly.AppendAssembly(TParserNode(Occ[1]).Assembly);
+  Assembly.InsOperand(Line,Column,isc_m_outputop,Ord(mout_path));
+  DecRec;
+end;
+
+{ TCoreMacro_Close }
+
+class function TCoreMacro_Close.Parse: TParserNode;
+begin
+  IncRec;
+  ExpectSym(SMES_ID);
+  Result := self.Create;
+  Result.SetLineInfoFrom(CurrentToken);
+  Result.AddOcc(CurrentToken);
+  NextToken;
+  ExpectSym(SMES_SColon);
+  NextToken;
+  DecRec;
+end;
+
+function TCoreMacro_Close.Compile: Boolean;
+begin
+  CreateAssembly;
+  IncRec;
+  ASSERT(Count <= 1);
+  Assembly.InsOperand(Line,Column,isc_m_outputop,Ord(mout_close));
+  Result := true;
+  DecRec;
+end;
+
 (******************************************************************************
  * Macro Register Hook and Init
  ******************************************************************************)
 
 procedure InitAndRegister;
 begin
+  ccstatn.RegisterMacroCallNode('OPEN',TCoreMacro_Open);
+  ccstatn.RegisterMacroCallNode('REOPEN',TCoreMacro_Reopen);
+  ccstatn.RegisterMacroCallNode('OPENDIR',TCoreMacro_Path);
+  ccstatn.RegisterMacroCallNode('CLOSE',TCoreMacro_Close);
   ccstatn.RegisterMacroCallNode('ASSERT',TCoreMacro_Assert);
   ccstatn.RegisterMacroCallNode('WRITESUBST',TCoreMacro_Echo_Subst);
   ccstatn.RegisterMacroCallNode('WRITEFMT',TCoreMacro_Echo_Fmt);

@@ -27,7 +27,7 @@ interface
 
 uses
   SysUtils, commontl, eomsg, vmstate, ccache, fpath, compload, opcode,
-  solnull, socore, cons, corealg, ucfs;
+  solnull, socore, cons, corealg, ucfs, outstack;
 
 
 type
@@ -58,6 +58,7 @@ procedure vmop_m_stackdup;
 procedure vmop_compare;
 procedure vmop_class_create;
 procedure vmop_method_decl;
+procedure vmop_openout;
 
 const
   VMOpcodeHandler: array[TInsOpcodeCode] of TVMOpcodeHandler =
@@ -152,6 +153,9 @@ const
      // isc_m_decl_method_stab,
      @vmop_method_decl,
 
+     // isc_m_outputop,
+     @vmop_openout,
+
      // isc_invalid
      @vmop_invalid
   );
@@ -216,7 +220,7 @@ end;
 procedure vmop_m_puts_stab;
 {load stab entry and output it}
 begin
-  Write(ucfs_to_utf8string(template_stabentry(template_ip_operand,false)));
+  OutputWrite(ucfs_to_utf8string(template_stabentry(template_ip_operand,false)));
 end;
 
 procedure vmop_m_include;
@@ -412,16 +416,16 @@ begin
   case TInsMEchoOp(template_ip_operand) of
       mecho_echo:
         begin
-          Write(so_any_flatstring(runtimestack_get(0)));
+          OutputWrite(so_any_flatstring(runtimestack_get(0)));
           runtimestack_pop(1);
         end;
       mecho_echonl:
         begin
-          WriteLn;
+          OutputWrite('',true);
         end;
       mecho_echoln:
         begin
-          WriteLn(so_any_flatstring(runtimestack_get(0)));
+          OutputWrite(so_any_flatstring(runtimestack_get(0)),true);
           runtimestack_pop(1);
         end;
       mecho_echofmt:
@@ -457,23 +461,23 @@ begin
                             begin
                               {copy leftof l+1..i-1}
                               if (l+1) <= (i-1) then
-                                Write(Copy(substr,l+1,(i-1)-l));
+                                OutputWrite(Copy(substr,l+1,(i-1)-l));
                               l := j;
                               {copy i+1<subr>j-1}
                               subr := Copy(substr,i+1,(j-1)-i);
                               res := so_dict_get_member(pdict,subr);
-                              Write(so_any_flatstring(res));
+                              OutputWrite(so_any_flatstring(res));
                               i := j+1;
                             end
                           else
                             begin
                               {copy leftof l+1..i-1}
                               if (l+1) <= (i-1) then
-                                Write(Copy(substr,l+1,(i-1)-l));
+                                OutputWrite(Copy(substr,l+1,(i-1)-l));
                               {skip ::, do :}
                               Inc(i,2);
                               l := i-1;
-                              Write(':');
+                              OutputWrite(':');
                             end;
                         end
                       else
@@ -481,7 +485,7 @@ begin
                     end;
                   {write stuff from l..Length(substr)}
                   if (l+1) <= (Length(substr)) then
-                    Write(Copy(substr,l+1,Length(substr)-l));
+                    OutputWrite(Copy(substr,l+1,Length(substr)-l));
                 end;
               runtimestack_pop(2);
             end
@@ -504,7 +508,6 @@ procedure vmop_m_declfun;
 var funobj: PSOInstance;
     slotn,argn,argf: Integer;
     canv: Boolean;
-    name: String;
 begin
   if (runtimestack_get(0)^.GetTypeCls <> so_boolean_class) or
      (runtimestack_get(1)^.GetTypeCls <> so_integer_class) or
@@ -644,6 +647,46 @@ begin
     end
   else
     put_internalerror(12012310);
+end;
+
+procedure vmop_openout;
+begin
+  case TInsMOutputMode(template_ip_operand) of
+    mout_open:
+      begin
+        if runtimestack_get(0)^.IsType(so_string_class) then
+          outstack_push(so_string_get_utf8(runtimestack_get(0)),opfm_open)
+        else
+          put_critical('Expected String');
+        runtimestack_pop(1);
+      end;
+
+    mout_reopen:
+      begin
+        if runtimestack_get(0)^.IsType(so_string_class) then
+          outstack_push(so_string_get_utf8(runtimestack_get(0)),opfm_reopen)
+        else
+          put_critical('Expected String');
+        runtimestack_pop(1);
+      end;
+
+    mout_path:
+      begin
+        if runtimestack_get(0)^.IsType(so_string_class) then
+          outstack_push(so_string_get_utf8(runtimestack_get(0)),opfm_path)
+        else
+          put_critical('Expected String');
+        runtimestack_pop(1);
+      end;
+
+    mout_close:
+      begin
+        if not outstack_pop then
+          put_warning('No Outfile, Ignored Close.');
+      end;
+    else
+      put_internalerror(12013100);
+  end;
 end;
 
 (*******************************************************************************
@@ -861,7 +904,6 @@ end;
 
 procedure vmop_m_calltranslate;
 var name: PUCFS32String;
-    args: VMInt;
 begin
   case template_ip_opcode of
     isc_o_callm_nrops:

@@ -662,7 +662,7 @@ end;
 function fpath_out_enter(const suri: String; onfile: Boolean;
   createpath: Boolean): String;
 {
-  Allowed Service: pwd, out, abs
+  Allowed Service: pwd, out
   Automagic Converts: absolute, relative to out
   Fails if path doesn't exist (when createpath=false) or uses illegal prefix
   Fails if file already exists.
@@ -676,8 +676,11 @@ begin
     begin
       f := surip.comps[High(surip.comps)];
       SetLength(surip.comps,Length(surip.comps)-1);
-      if Length(surip.comps) <= 0 then
-        put_critical('Illegal Filename: '+suri);
+{$ifdef windows}
+      if (Length(surip.comps) <= 0) and
+         (surip.servtype = sspAbsolute) then
+        put_critical('Illegal Filename: '+suri); {<< stripped Drive Component}
+{$endif}
     end;
   if onfile and
      (Length(f) <= 0) then
@@ -687,7 +690,7 @@ begin
     end;
   if surip.servtype = sspUnknown then
     surip.servtype := sspOutpath;
-  if not (surip.servtype in [sspWorkDir,sspOutpath,sspAbsolute]) then
+  if not (surip.servtype in [sspWorkDir,sspOutpath]) then
     begin
       SetLength(surip.comps,0);
       put_critical('Illegal Out Path: '+suri);
@@ -696,34 +699,28 @@ begin
   p := SURIRewrite(surip);
   SetLength(surip.comps,0);
   if onfile then
-    begin
-      Result := ExcludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(p)+f);
-      if FileExists(Result) then
-        begin
-          put_critical('File Exists: '+suri);
-        end
-      else
-        begin
-          if not DirectoryExists(p) then
-            begin
-              if createpath then
-                CreateDirDeep(p)
-              else
-                put_critical('Path doesnt Exists: '+suri);
-            end;
-        end;
-    end
+    Result := ExcludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(p)+f)
   else
+    Result := p;
+
+  if (Length(Result) < Length(OutPathStack[0])) or
+     (FileNameCaseSensitive and
+      (CompareByte(Result[1],OutPathStack[0][1],Length(OutPathStack[0])) <> 0)) or
+     ((not FileNameCaseSensitive) and
+      (Upcase(Copy(Result,1,Length(OutPathStack[0]))) <> Upcase(OutPathStack[0]))) then
     begin
-      Result := p;
-      if not DirectoryExists(p) then
-        begin
-          if createpath then
-            CreateDirDeep(p)
-          else
-            put_critical('Path doesnt Exists: '+suri);
-        end;
+      put_critical('File or Path is out of Tree: '+Result);
     end;
+
+  if not DirectoryExists(p) then
+    begin
+      if createpath then
+        CreateDirDeep(p)
+      else
+        put_critical('Path doesnt Exists: '+suri);
+    end;
+
+  OutPathPush(p);
 end;
 
 function fpath_rel_to_abs(const suri: String; onfile: Boolean;
@@ -765,7 +762,7 @@ end;
 
 procedure fpath_rel_leave;
 begin
-  if Length(FilePathStack) > 0 then
+  if Length(FilePathStack) > 1 then
     SetLength(FilePathStack,Length(FilePathStack)-1)
   else
     put_critical('FilePath Underflow');
@@ -773,7 +770,7 @@ end;
 
 procedure fpath_out_leave;
 begin
-  if Length(OutPathStack) > 0 then
+  if Length(OutPathStack) > 1 then
     SetLength(OutPathStack,Length(OutPathStack)-1)
   else
     put_critical('OutPath Underflow');

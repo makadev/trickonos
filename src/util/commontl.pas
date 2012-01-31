@@ -108,6 +108,9 @@ const
    CL_VM_MaxRTStack = 4194304; {max number of stack slots (runtime stack)}
    CL_VM_MaxTPLStack = 65536; {max tpl stacksize (inclusion/callstack)}
 
+   {Maximum of open Outfiles and Pathes on Outstack}
+   CL_MAX_OutStack = 32;
+
 procedure check_so_maxargs( argnum: VMInt ); inline;
 procedure check_so_shortbuf( asize: MachineInt ); inline;
 procedure check_so_maxcollection( asize: VMInt ); inline;

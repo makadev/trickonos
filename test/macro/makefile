@@ -1,4 +1,4 @@
-TESTDIR = includes includef markers echo
+TESTDIR = includes includef markers echo fopen open
 
 ##
 
