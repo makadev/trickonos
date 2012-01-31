@@ -363,3 +363,18 @@ begin
         Result := init_invargnum_error(soself,argnum,name);
     end;
 end;
+
+{Dict::_bucket_count() -> return bucket count (for information)}
+function _Dict__Bucket_Count_(callinfo: PMethodCallInfo): PSOInstance;
+begin
+  with callinfo^ do
+    begin
+      {$IFDEF SELFCHECK}SelfCheck(soself,so_dict_class);{$ENDIF}
+      if argnum = 0 then
+        begin
+          Result := so_integer_init(PSO_Dict(soself)^.dict.GetBuckets);
+        end
+      else
+        Result := init_invargnum_error(soself,argnum,name);
+    end;
+end;

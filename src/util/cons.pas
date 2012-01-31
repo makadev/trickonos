@@ -99,6 +99,7 @@ end;
 initialization
   FillByte(_ci_us,SizeOf(_ci_us),0);
   FillByte(_mi_us,SizeOf(_mi_us),0);
+  rst_reloadindex;
 
 finalization
   wipe_mi;

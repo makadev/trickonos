@@ -749,6 +749,7 @@ begin
   so_dict_addmethod(C_STDCALLM_COUNT,@_Dict_Count_);
   so_dict_addmethod('DELETE',@_Dict_Delete_);
   so_dict_addmethod(C_STDCALLM_SEQ_ITERATOR,@_Dict_Iterator_);
+  so_dict_addmethod('_BUCKET_COUNT',@_Dict__Bucket_Count_);
 
   so_system_addmethod(ci_str(ci_dm_getmember),@_System_GetMember_);
   so_system_addmethod(ci_str(ci_dm_setmember),@_System_SetMember_);

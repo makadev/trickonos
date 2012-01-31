@@ -101,8 +101,8 @@ const
    CL_SO_MaxItems = 4194304; {per collection restriction}
    CL_SO_MaxObjects = 16777216; {overall instance table restriction}
    CL_SO_MaxShortBuffer = 16777216; {max buffer, f.e. for strings}
-   CL_SO_MaxArgs = 65536; {max number of arguments to be passed to any function}
-   CL_SO_MaxFrame = 65536*2; {max function frame size}
+   CL_SO_MaxArgs = 1048576; {max number of arguments to be passed to any function}
+   CL_SO_MaxFrame = 1048576; {max function frame size}
 
    {Limits and Restrictions for the Machine}
    CL_VM_MaxRTStack = 4194304; {max number of stack slots (runtime stack)}

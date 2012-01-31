@@ -183,7 +183,7 @@ type
       {DOC>> Gets the Value for a Data Entrie. Returns nil if param i is not a
              data Node index.}
       function GetNodeData( i: MachineInt ): Pointer; inline;
-      {DOC>> Lookup and Check @returns value less than 0 if not found, 
+      {DOC>> Lookup and Check @returns value less than 0 if not found,
              otherwise the Leaf Index}
       function Lookup( val: MachineWord ): MachineInt; inline;
       {DOC>> Lookup or Add @returns the Leaf Index}
@@ -226,8 +226,11 @@ type
   THashTrie = object
     protected
       FTrie: TDataCritBitTrie;
+      FCount: MachineInt;
       function Hash(s: PUCFS32String): MachineWord;
     public
+      {DOC>> Get Nr Buckets (HashTrie Entries)}
+      function GetBuckets: MachineInt; inline;
       {DOC>> Get Nr Entries}
       function GetCount: MachineInt; inline;
       {DOC>> Checks for Existence of a given Key (so, will work with
@@ -451,9 +454,14 @@ begin
     Result := mas3hash_len0;
 end;
 
-function THashTrie.GetCount: MachineInt;
+function THashTrie.GetBuckets: MachineInt;
 begin
   Result := FTrie.GetCount;
+end;
+
+function THashTrie.GetCount: MachineInt;
+begin
+  Result := FCount;
 end;
 
 function THashTrie.Exists(const key: String): Boolean;
@@ -566,6 +574,7 @@ begin
   chain^.colstring := ucfs_incref(key);
   chain^.data := newdata;
   chain^.next := ochain;
+  Inc(FCount,1);
   FTrie.SetNodeData(idx,chain);
 end;
 
@@ -614,6 +623,7 @@ begin
               else
                 pchain^.next := chain^.next;
               ucfs_release(chain^.colstring);
+              Dec(FCount,1);
               Dispose(chain);
             end;
         end;
@@ -623,6 +633,7 @@ end;
 procedure THashTrie.Init(APrealloc: MachineInt; ALinGrow: MachineInt);
 begin
   FTrie.Init(APrealloc,ALinGrow);
+  FCount := 0;
 end;
 
 procedure THashTrie.Pack;
@@ -665,6 +676,7 @@ begin
           dchain := chain^.next;
           ucfs_release(chain^.colstring);
           Dispose(chain);
+          Dec(FCount,1);
           chain := dchain;
         end;
     end;
