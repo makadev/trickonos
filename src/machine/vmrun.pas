@@ -27,7 +27,7 @@ interface
 
 uses
   SysUtils, commontl, eomsg, vmstate, ccache, fpath, compload, opcode,
-  solnull, socore, cons, corealg, ucfs, outstack;
+  solnull, socore, cons, corealg, ucfs, outstack, ffpa;
 
 
 type
@@ -253,6 +253,7 @@ end;
 
 procedure vmop_m_load_type;
 {load a base type, empty or from stab}
+var tmpi: PTFM_Integer;
 begin
   case template_ip_opcode of
     isc_m_load_type:
@@ -272,13 +273,12 @@ begin
             put_internalerror(2011120920);
         end;
       end;
-{$WARNING replace or remove -> tminteger}
     isc_m_load_int_stab:
       begin
-        runtimestack_push(
-          so_integer_init(
-            StrToInt64(
-              ucfs_to_utf8string(template_stabentry(template_ip_operand,false)))));
+        tmpi := tfm_from_hex(ucfs_to_utf8string(template_stabentry(template_ip_operand,false)),-1);
+        if not Assigned(tmpi) then
+          put_internalerror(12020100);
+        runtimestack_push(so_integer_init_tfm(tmpi));
       end;
     isc_m_load_string_stab:
       begin

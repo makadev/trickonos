@@ -223,14 +223,18 @@ function tfm_load_null( m: VMInt = 32 ): PTFM_Integer;
 function tfm_load_int( val: VMInt; m: VMInt = 32 ): PTFM_Integer;
 
 //DOC>> create decimal string for nr, add separator '_' every 10^sep steps
-function tfm_to_string( nr: PTFM_Integer; sep: VMInt = 0 ): String;
-//DOC>> load Integer from decimal string: Format [+|-]? [0-9_]+
+function tfm_to_string( nr: PTFM_Integer; qform: Boolean = false; sep: VMInt = 0 ): String;
+//DOC>> load Integer from decimal string: Format [+|-]? [0-9_]+ [q[0-9]]
 function tfm_from_string( num: String; bits: VMInt ): PTFM_Integer;
 
 //DOC>> create hexadecimal string, using at most digits digits or all when digits <= 0 (strips leading zeros)
-function tfm_to_hex( nr: PTFM_Integer; sep: VMInt = 0; digits: VMInt = 0 ): String;
-//DOC>> load Integer from hex string [+|-]? [0-9a-fA-F_]+
+function tfm_to_hex( nr: PTFM_Integer; qform: Boolean = false; sep: VMInt = 0; digits: VMInt = 0 ): String;
+//DOC>> load Integer from hex string [+|-]? [0-9a-fA-F_]+ [q[0-9]]
 function tfm_from_hex( hexstring: String; bits: VMInt ): PTFM_Integer;
+//DOC>> load Integer from oct string [+|-]? [0-7_]+ [q[0-9]]
+function tfm_from_oct( octstring: String; bits: VMInt ): PTFM_Integer;
+//DOC>> load Integer from bin string [+|-]? [0-1_]+ [q[0-9]]
+function tfm_from_bin( binstring: String; bits: VMInt ): PTFM_Integer;
 
 //DOC>> create number info string, containing flags and bitness
 function tfm_nrinfostr( ptfmint: PTFM_Integer ): String;
@@ -311,7 +315,7 @@ begin
     m := C_TTFM_MAX;
   Result := GetMem(((((m-1) div C_TTFM_WORD_BITS) + 1)*C_TTFM_WORD_BYTES + SizeOf(TTFM_Integer)) - SizeOf(TTFMWords));
   Result^.props.init(m);
-  //if wipe then
+  if wipe then
     Result^.reinit;
 end;
 

@@ -1,0 +1,9 @@
+{?
+  ASSERT 10 = %1010;
+  ASSERT 10 = &12;
+  ASSERT 160 = $A0;
+
+  ASSERT 010 = %01010;
+  ASSERT 010 = &012;
+  ASSERT 0160 = $0A0;
+?}

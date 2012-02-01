@@ -157,6 +157,8 @@ const
   C_Char_Small_a = Ord('a');
   C_Char_Small_z = Ord('z');
 
+  C_Char_Small_q = Ord('q');
+
   C_Char_Small_f = Ord('f');
   C_Char_Capital_f = Ord('F');
 

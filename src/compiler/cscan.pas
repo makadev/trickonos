@@ -414,7 +414,7 @@ begin
         Result.PatternSetU(BufferCopy,false);
         Result.TokenType := IdToSym(Result.Pattern);
       end;
-    {INT [$,%,&] (:digset:)+}
+    {INT [$,%,&] (:digset:)+ [q[:digset]]}
     C_Char_Digit_Zero..C_Char_Digit_Nine,
     C_Char_Dollar,
     C_Char_Percent,
@@ -434,6 +434,25 @@ begin
               begin
                 NextChar;
                 PatternAddCurrent;
+                if LookAhead and (LAChar = C_Char_Underscore) then
+                  begin
+                    NextChar;
+                    if LookAhead and  (LAChar = C_Char_BackSlash) then
+                      begin
+                        NextChar;
+                        while LookAhead and
+                              (LAChar in C_WhiteSpace) do
+                          NextChar;
+                        if (not LookAhead) or
+                           (not((LAChar in C_Set_HexNum_Follow) or
+                                (LAChar = C_Char_Small_q))) then
+                          begin
+                            Result.TokenType := SMES_ERROR;
+                            Result.PatternSetS('Unexpected End of Multiline Number');
+                            Exit(Result);
+                          end;
+                      end;
+                  end;
               end;
             end;
           C_Char_Ampersand:
@@ -448,6 +467,25 @@ begin
               begin
                 NextChar;
                 PatternAddCurrent;
+                if LookAhead and (LAChar = C_Char_Underscore) then
+                  begin
+                    NextChar;
+                    if LookAhead and  (LAChar = C_Char_BackSlash) then
+                      begin
+                        NextChar;
+                        while LookAhead and
+                              (LAChar in C_WhiteSpace) do
+                          NextChar;
+                        if (not LookAhead) or
+                           (not((LAChar in C_Set_OctNum_Follow) or
+                                (LAChar = C_Char_Small_q))) then
+                          begin
+                            Result.TokenType := SMES_ERROR;
+                            Result.PatternSetS('Unexpected End of Multiline Number');
+                            Exit(Result);
+                          end;
+                      end;
+                  end;
               end;
             end;
           C_Char_Percent:
@@ -462,6 +500,25 @@ begin
               begin
                 NextChar;
                 PatternAddCurrent;
+                if LookAhead and (LAChar = C_Char_Underscore) then
+                  begin
+                    NextChar;
+                    if LookAhead and  (LAChar = C_Char_BackSlash) then
+                      begin
+                        NextChar;
+                        while LookAhead and
+                              (LAChar in C_WhiteSpace) do
+                          NextChar;
+                        if (not LookAhead) or
+                           (not((LAChar in C_Set_BinNum_Follow) or
+                                (LAChar = C_Char_Small_q))) then
+                          begin
+                            Result.TokenType := SMES_ERROR;
+                            Result.PatternSetS('Unexpected End of Multiline Number');
+                            Exit(Result);
+                          end;
+                      end;
+                  end;
               end;
             end
           else
@@ -472,9 +529,52 @@ begin
               begin
                 NextChar;
                 PatternAddCurrent;
+                if LookAhead and (LAChar = C_Char_Underscore) then
+                  begin
+                    NextChar;
+                    if LookAhead and  (LAChar = C_Char_BackSlash) then
+                      begin
+                        NextChar;
+                        while LookAhead and
+                              (LAChar in C_WhiteSpace) do
+                          NextChar;
+                        if (not LookAhead) or
+                           (not((LAChar in C_Set_Num_Follow) or
+                                (LAChar = C_Char_Small_q))) then
+                          begin
+                            Result.TokenType := SMES_ERROR;
+                            Result.PatternSetS('Unexpected End of Multiline Number');
+                            Exit(Result);
+                          end;
+                      end;
+                  end;
               end;
             end;
         end;
+        if Result.TokenType <> SMES_ERROR then
+          begin
+            if LookAhead and
+               (LAChar = C_Char_Small_q) then
+              begin
+                NextChar;
+                PatternAddCurrent;
+                if LookAhead and
+                   (LAChar in C_Set_Num_Follow) then
+                  begin
+                    while LookAhead and (LAChar in C_Set_Num_Follow) do
+                    begin
+                      NextChar;
+                      PatternAddCurrent;
+                    end;
+                  end
+                else
+                  begin
+                    Result.TokenType := SMES_ERROR;
+                    Result.PatternSetS('Expected Decimal Q Number');
+                    Exit(Result);
+                  end;
+              end;
+          end;
         Result.PatternSetU(BufferCopy,false);
       end;
     {STRING_Q}

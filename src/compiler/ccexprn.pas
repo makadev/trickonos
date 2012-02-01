@@ -163,61 +163,43 @@ begin
     SMES_FALSE: Assembly.InsOperand(Line,Column,isc_m_load_type,Ord(soload_false));
     SMES_String: Assembly.InsStabLoad(Line,Column,isc_m_load_string_stab,TScanRecord(Occ[0]).Pattern);
 
-    SMES_Int:
+    SMES_Int,SMES_IntBin,SMES_IntHex,SMES_IntOct:
       begin
         tmps := ucfs_to_utf8string(TScanRecord(Occ[0]).Pattern);
-        if StrToIntDef(tmps,-1) >= 0 then
-          Assembly.InsOperand(Line,Column,isc_m_load_int_oper,StrToInt(tmps))
+        tmpi := nil;
+        {convert number}
+        case TScanRecord(Occ[0]).TokenType of
+          SMES_Int: tmpi := tfm_from_string(tmps,32);
+          SMES_IntBin: tmpi := tfm_from_bin(tmps,32);
+          SMES_IntHex: tmpi := tfm_from_hex(tmps,32);
+          SMES_IntOct: tmpi := tfm_from_oct(tmps,32);
+          else
+            put_internalerror(12020101);
+        end;
+
+        if Assigned(tmpi) then
+          begin
+            if tmpi^.Properties.NrBits = 32 then
+              begin
+                {cut stuff above and convert into longint}
+                Assembly.InsOperand(Line,Column,isc_m_load_int_oper,VMInt(tmpi^.logic_expanded_word(0)));
+                tfm_release(tmpi);
+              end
+            else
+              begin
+                tmps := tfm_to_hex(tmpi,true);
+                tfm_release(tmpi);
+                TScanRecord(Occ[0]).PatternSetS(tmps);
+                TScanRecord(Occ[0]).TokenType := SMES_IntHex;
+                Assembly.InsStabLoad(Line,Column,isc_m_load_int_stab,TScanRecord(Occ[0]).Pattern);
+              end;
+          end
         else
           begin
-            {$WARNING todo: q scan part}
-            tmpi := tfm_from_string(tmps,32);
-            tmps := tfm_to_hex(tmpi);
-            TScanRecord(Occ[0]).PatternSetS(tmps);
-            TScanRecord(Occ[0]).TokenType := SMES_IntHex;
-            Assembly.InsStabLoad(Line,Column,isc_m_load_int_stab,TScanRecord(Occ[0]).Pattern);
-          end;
-      end;
-    SMES_IntBin:
-      begin
-        {$WARNING todo: q scan part, missing bin conv}
-        tmps := ucfs_to_utf8string(TScanRecord(Occ[0]).Pattern);
-        if StrToIntDef('%'+tmps,-1) >= 0 then
-          Assembly.InsOperand(Line,Column,isc_m_load_int_oper,StrToInt('%'+tmps))
-        else
-          begin
-            put_error_for(Line,Column,ucfs_to_utf8string(cscan_streamid),'Int > 31 bit currently not supported.');
+            put_error_for(Line,Column,ucfs_to_utf8string(cscan_streamid),
+                          'Invalid Q Number Format.');
             Result := false;
           end;
-        // Assembly.InsStabLoad(Line,Column,isc_m_load_int_stab,'%'+TScanRecord(Occ[0]).Pattern);
-      end;
-    SMES_IntHex:
-      begin
-        tmps := ucfs_to_utf8string(TScanRecord(Occ[0]).Pattern);
-        if StrToIntDef('$'+tmps,-1) >= 0 then
-          Assembly.InsOperand(Line,Column,isc_m_load_int_oper,StrToInt('$'+tmps))
-        else
-          begin
-            {$WARNING todo: q scan part}
-            tmpi := tfm_from_hex(tmps,32); // round trip conv -> strip leading zero, overflow, ..
-            tmps := tfm_to_hex(tmpi);
-            TScanRecord(Occ[0]).PatternSetS(tmps);
-            TScanRecord(Occ[0]).TokenType := SMES_IntHex;
-            Assembly.InsStabLoad(Line,Column,isc_m_load_int_stab,TScanRecord(Occ[0]).Pattern);
-          end;
-      end;
-    SMES_IntOct:
-      begin
-        {$WARNING todo: q scan part, missing oct conv (prob. extend string conv to variable radix)}
-        tmps := ucfs_to_utf8string(TScanRecord(Occ[0]).Pattern);
-        if StrToIntDef('&'+tmps,-1) >= 0 then
-          Assembly.InsOperand(Line,Column,isc_m_load_int_oper,StrToInt('&'+tmps))
-        else
-          begin
-            put_error_for(Line,Column,ucfs_to_utf8string(cscan_streamid),'Int > 31 bit currently not supported.');
-            Result := false;
-          end;
-        // Assembly.InsStabLoad(Line,Column,isc_m_load_int_stab,'&'+TScanRecord(Occ[0]).Pattern);
       end;
     else
       put_internalerror(2011120301);

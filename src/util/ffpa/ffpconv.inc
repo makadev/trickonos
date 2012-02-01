@@ -71,6 +71,31 @@ begin
     Result := s;
 end;
 
+function getqbits( var s: String; dq: VMInt = 32 ): VMInt;
+var i: VMInt;
+begin
+  {check for q<bits>}
+  Result := -1;
+  for i := 1 to Length(s) do
+     if s[i] = 'q' then
+       begin
+         Result := i;
+         break;
+       end;
+  if Result >= 0 then
+    begin
+      {convert and check range}
+      i := Result;
+      Result := StrToIntDef(Copy(s,Result+1,Length(s)),-1);
+      if (Result <= 2) or
+         (Result > C_TTFM_MAX) then
+        Result := dq;
+      SetLength(s,i-1);
+    end
+  else
+    Result := dq;
+end;
+
 type
   TNumberChars = set of char;
 
@@ -92,6 +117,7 @@ begin
     Exit('');
   Result := '';
 
+  signed := false;
   pos := 1;
   if allowesign and
      (s[1] in [ '+', '-' ]) then
@@ -160,7 +186,7 @@ type
     intp: TFFPA_Word;
   end;
 
-function tfm_to_string( nr: PTFM_Integer; sep: VMInt = 0 ): String;
+function tfm_to_string( nr: PTFM_Integer; qform: Boolean; sep: VMInt ): String;
 { create decimal string for nr, add separator '_' every 10^sep steps }
 var radixnum: TTFM_Integer_Small;
     sepstep: VMInt;
@@ -201,9 +227,11 @@ begin
   until tmpA.is_zero;
   if nr^.is_signed then
     Result := '-' + Result;
+  if qform then
+    Result := Result + 'q'+IntToStr(nr^.props.mbits);
 end;
 
-function tfm_to_hex( nr: PTFM_Integer; sep: VMInt = 0; digits: VMInt = 0 ): String;
+function tfm_to_hex( nr: PTFM_Integer; qform: Boolean; sep: VMInt; digits: VMInt ): String;
 { create hexadecimal string, using at most digits digits or
   all when digits <= 0 (strips leading zeros) }
 const
@@ -263,6 +291,8 @@ begin
 
   if sep > 0 then
     Result := make_sep_string(Result, sep);
+  if qform then
+    Result := Result + 'q'+IntToStr(nr^.props.mbits);
 end;
 
 
@@ -271,11 +301,22 @@ function tfm_from_string( num: String; bits: VMInt ): PTFM_Integer;
 var radixnum: TTFM_Integer_Small;
     i, j: VMInt;
 begin
+  // check for q bits, otherwise take the passed bits, anyway check the bitness
+  i := getqbits(num,-1);
+  if (i > 1) then
+    bits := i;
+
+  if (bits <= 1) or
+     (bits > C_TTFM_MAX) then
+    Exit(nil);
+
   // check&rewrite number
   num := nr_contains_striprs( num, ['0'..'9'], true, true, true );
 
   if (Length(num) <= 0) then
     Exit(nil);
+
+  ASSERT(Length(num)>=2);
 
   // prepare radix number r, use 5 bits (%01010 for 10)
   radixnum.props.Init(5);
@@ -325,38 +366,59 @@ end;
 
 function tfm_from_hex( hexstring: String; bits: VMInt ): PTFM_Integer;
 {DOC>> load Integer from hex string [+|-]? [0-9a-fA-F_]+}
-var d, i, j: VMInt;
+var d, i, j, k: VMInt;
 begin
+  // check for q bits, otherwise take the passed bits, anyway check the bitness
+  i := getqbits(hexstring,-1);
+  if (i > 1) then
+    bits := i;
+
+  if (bits <= 1) or
+     (bits > C_TTFM_MAX) then
+    Exit(nil);
+
   // check&rewrite number
   hexstring := nr_contains_striprs( UpCase(hexstring), ['0'..'9','A'..'F'], true, true, true );
 
   if (Length(hexstring) <= 0) then
     Exit(nil);
 
+  ASSERT(Length(hexstring)>=2);
+
   // alloc number of given bitness
   Result := tfm_alloc( bits, true );
 
   // directly write wordwise
-  d := Length(hexstring)-1;
-  j := 0;
-  while (d > 0) and
-        (bits > 0) do
+  if (Length(hexstring)-1)*4 <= bits then
     begin
-      i := C_TTFM_WORD_BITS div 4;
+      d := Length(hexstring)-1;
+      k := 1;
+    end
+  else
+    begin
+      d := ((bits-1) div 4)+1;
+      k := ((Length(hexstring)-1)-d)+1
+    end;
+  j := (d-1) div (C_TTFM_WORD_BITS div 4);
+  i := d mod (C_TTFM_WORD_BITS div 4);
+  if i = 0 then
+    i := C_TTFM_WORD_BITS div 4;
+  d := Length(hexstring);
+  while k < d do
+    begin
       repeat
-        if hexstring[d] in ['0'..'9'] then
+        if hexstring[k] in ['0'..'9'] then
           Result^.intp[j] := (Result^.intp[j] shl TFFPA_Word(4))
-                             or TFFPA_Word( Ord(hexstring[d]) - Ord('0') )
+                             or TFFPA_Word( Ord(hexstring[k]) - Ord('0') )
         else
           Result^.intp[j] := (Result^.intp[j] shl TFFPA_Word(4))
-                             or TFFPA_Word( Ord(hexstring[d]) - Ord('A') );
+                             or TFFPA_Word( (Ord(hexstring[k]) - Ord('A')) + 10 );
         Dec(i,1);
-        Dec(d,1);
-        Dec(bits,4);
-      until (d <= 0) or
-            (bits <= 0) or
+        Inc(k,1);
+      until (k >= d) or
             (i < 0);
-      Inc(j,1);
+      Dec(j,1);
+      i := C_TTFM_WORD_BITS div 4;
     end;
 
   // since we wrote directly into this number, reset its oper flags which may
@@ -364,7 +426,127 @@ begin
   Result^.props.reset_of_flags;
 
   // sign
-  if hexstring[Length(hexstring)] = '-' then
+  if hexstring[d] = '-' then
+    Result^.twoscomplement;
+end;
+
+function tfm_from_oct(octstring: String; bits: VMInt): PTFM_Integer;
+var bstr: String;
+    i,j: VMInt;
+begin
+  // check for q bits, otherwise take the passed bits, anyway check the bitness
+  i := getqbits(octstring,-1);
+  if (i > 1) then
+    bits := i;
+
+  if (bits <= 1) or
+     (bits > C_TTFM_MAX) then
+    Exit(nil);
+
+  // check&rewrite number
+  octstring := nr_contains_striprs( octstring, ['0'..'7'], true, true, true );
+
+  if (Length(octstring) <= 0) then
+    Exit(nil);
+
+  ASSERT(Length(octstring)>=2);
+
+  SetLength(bstr,(Length(octstring)*3)-2);
+  bstr[1] := octstring[Length(octstring)];
+  FillByte(bstr[2],((Length(octstring)-1)*3),Ord('0'));
+  j := 2;
+  for i := 1 to Length(octstring)-1 do
+    begin
+      case octstring[i] of
+        '0': ;
+        '1': bstr[j+2] := '1';
+        '2': bstr[j+1] := '1';
+        '3':
+          begin
+            bstr[j+1] := '1';
+            bstr[j+2] := '1';
+          end;
+        '4': bstr[j] := '1';
+        '5':
+          begin
+            bstr[j] := '1';
+            bstr[j+2] := '1';
+          end;
+        '6':
+          begin
+            bstr[j] := '1';
+            bstr[j+1] := '1';
+          end;
+        '7':
+          begin
+            bstr[j] := '1';
+            bstr[j+1] := '1';
+            bstr[j+2] := '1';
+          end;
+      end;
+      Inc(j,3);
+    end;
+  Result := tfm_from_bin(bstr,bits);
+end;
+
+function tfm_from_bin(binstring: String; bits: VMInt): PTFM_Integer;
+var d, i, j, k: VMInt;
+begin
+  // check for q bits, otherwise take the passed bits, anyway check the bitness
+  i := getqbits(binstring,-1);
+  if (i > 1) then
+    bits := i;
+
+  if (bits <= 1) or
+     (bits > C_TTFM_MAX) then
+    Exit(nil);
+
+  // check&rewrite number
+  binstring := nr_contains_striprs( binstring, ['0'..'1'], true, true, true );
+
+  if (Length(binstring) <= 0) then
+    Exit(nil);
+
+  ASSERT(Length(binstring)>=2);
+
+  // alloc number of given bitness
+  Result := tfm_alloc( bits, true );
+
+  // directly write wordwise
+  if (Length(binstring)-1) <= bits then
+    begin
+      d := Length(binstring)-1;
+      k := 1;
+    end
+  else
+    begin
+      d := bits;
+      k := ((Length(binstring)-1)-d)+1
+    end;
+  j := (d-1) div C_TTFM_WORD_BITS;
+  i := d mod C_TTFM_WORD_BITS;
+  if i = 0 then
+    i := C_TTFM_WORD_BITS;
+  d := Length(binstring);
+  while k < d do
+    begin
+      repeat
+        Result^.intp[j] := (Result^.intp[j] shl TFFPA_Word(1))
+                           or TFFPA_Word( Ord(binstring[k]) - Ord('0') );
+        Dec(i,1);
+        Inc(k,1);
+      until (k >= d) or
+            (i < 0);
+      i := C_TTFM_WORD_BITS;
+      Dec(j,1);
+    end;
+
+  // since we wrote directly into this number, reset its oper flags which may
+  // be wrong now
+  Result^.props.reset_of_flags;
+
+  // sign
+  if binstring[d] = '-' then
     Result^.twoscomplement;
 end;
 
