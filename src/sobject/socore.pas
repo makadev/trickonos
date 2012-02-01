@@ -264,21 +264,31 @@ procedure Ref0SweepCheck(soinstance: PSOInstance); inline;
  will be release, so swap in above the sweeppointer for combined collection.
  otherwise start sweepmode.}
 begin
-  if SweepMode then
+  if not SweepMode then
+    begin
+      if not Assigned(soinstance^.clsptr^.GCEnumerator) then
+        begin
+          SweepPointer := SOInstanceTable.Count-1;
+          if Assigned(soinstance^.clsptr^.PreDestructor) then
+            soinstance^.clsptr^.PreDestructor(soinstance);
+          DoneInstance(soinstance);
+        end
+      else
+        begin
+          SweepMode := true;
+          SweepPointer := SOInstanceTable.Count-1;
+          SwapAndFix(soinstance^.centry,SweepPointer);
+          Sweep;
+          SweepMode := false;
+        end;
+    end
+  else
     begin
       if soinstance^.centry < SweepPointer then
         begin
           Dec(SweepPointer,1);
           SwapAndFix(soinstance^.centry,SweepPointer);
         end;
-    end
-  else
-    begin
-      SweepMode := true;
-      SweepPointer := SOInstanceTable.Count-1;
-      SwapAndFix(soinstance^.centry,SweepPointer);
-      Sweep;
-      SweepMode := false;
     end;
 end;
 

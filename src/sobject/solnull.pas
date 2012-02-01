@@ -799,7 +799,7 @@ begin
     begin
       {deep or non representable type}
       Result := '<Object '+soinstance^.GetTypeCls^.TypeQuery(soinstance)+' $'+
-        IntToHex(MachineWord(soinstance^.GetCollectorEntry),SizeOf(MachineWord)*2)+'>';
+        IntToHex(PtrInt(soinstance-nil),SizeOf(PtrInt)*2)+'>';
     end;
 end;
 
