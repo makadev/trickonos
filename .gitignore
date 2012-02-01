@@ -1,4 +1,5 @@
 *.pc[tu]
+*.out
 
 lib/*
 bin/*
