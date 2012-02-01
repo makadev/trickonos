@@ -147,8 +147,8 @@ begin
               FileClose(orec^.outfile);
               SetLength(orec^.outbuffer,0);
               ASSERT(orec^.outptr <= 0);  // lost data, flush should have removed it
-              Dispose(orec);
             end;
+          Dispose(orec);
         end
       else
         Dec(orec^.instance,1);
