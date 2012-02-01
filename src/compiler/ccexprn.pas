@@ -130,7 +130,7 @@ begin
   ASSERT(Occ[1].ClassType = TScanRecord);
   Result := TParserNode(Occ[0]).Compile;
   Assembly.AppendAssembly(TParserNode(Occ[0]).Assembly);
-  Assembly.InsStabLoad(Line,Column,isc_o_typecheck_stab,TScanRecord(Occ[1]).Pattern);
+  Assembly.InsStabLoad(Line,Column,isc_typecheck_stab,TScanRecord(Occ[1]).Pattern);
   DecRec;
 end;
 
@@ -158,10 +158,10 @@ begin
   ASSERT(Occ[0].ClassType = TScanRecord);
   Result := true;
   case TScanRecord(Occ[0]).TokenType of
-    SMES_NIL: Assembly.InsOperand(Line,Column,isc_m_load_type,Ord(soload_nil));
-    SMES_TRUE: Assembly.InsOperand(Line,Column,isc_m_load_type,Ord(soload_true));
-    SMES_FALSE: Assembly.InsOperand(Line,Column,isc_m_load_type,Ord(soload_false));
-    SMES_String: Assembly.InsStabLoad(Line,Column,isc_m_load_string_stab,TScanRecord(Occ[0]).Pattern);
+    SMES_NIL: Assembly.InsNoOperand(Line,Column,isc_soload_nil_ign);
+    SMES_TRUE: Assembly.InsNoOperand(Line,Column,isc_soload_true_ign);
+    SMES_FALSE: Assembly.InsNoOperand(Line,Column,isc_soload_false_ign);
+    SMES_String: Assembly.InsStabLoad(Line,Column,isc_soload_string_stab,TScanRecord(Occ[0]).Pattern);
 
     SMES_Int,SMES_IntBin,SMES_IntHex,SMES_IntOct:
       begin
@@ -182,7 +182,7 @@ begin
             if tmpi^.Properties.NrBits = 32 then
               begin
                 {cut stuff above and convert into longint}
-                Assembly.InsOperand(Line,Column,isc_m_load_int_oper,VMInt(tmpi^.logic_expanded_word(0)));
+                Assembly.InsOperand(Line,Column,isc_soload_int_operi,VMInt(tmpi^.logic_expanded_word(0)));
                 tfm_release(tmpi);
               end
             else
@@ -191,7 +191,7 @@ begin
                 tfm_release(tmpi);
                 TScanRecord(Occ[0]).PatternSetS(tmps);
                 TScanRecord(Occ[0]).TokenType := SMES_IntHex;
-                Assembly.InsStabLoad(Line,Column,isc_m_load_int_stab,TScanRecord(Occ[0]).Pattern);
+                Assembly.InsStabLoad(Line,Column,isc_soload_int_stab,TScanRecord(Occ[0]).Pattern);
               end;
           end
         else
@@ -237,7 +237,7 @@ var i: MachineInt;
 begin
   CreateAssembly;
   IncRec;
-  Assembly.InsOperand(Line,Column,isc_m_load_type,Ord(soload_list));
+  Assembly.InsNoOperand(Line,Column,isc_soload_list_ign);
   Result := true;
   if Count > 0 then
     begin
@@ -249,7 +249,7 @@ begin
         end;
     end;
   if Count >= 1 then
-    Assembly.InsOperand(Line,Column,isc_o_listappend_nr,Count);
+    Assembly.InsOperand(Line,Column,isc_listappend_opern,Count);
   DecRec;
 end;
 
@@ -287,7 +287,7 @@ var i: MachineInt;
 begin
   CreateAssembly;
   IncRec;
-  Assembly.InsOperand(Line,Column,isc_m_load_type,Ord(soload_dict));
+  Assembly.InsNoOperand(Line,Column,isc_soload_dict_ign);
   Result := true;
   if Count > 0 then
     begin
@@ -303,25 +303,25 @@ begin
                  x := dict['bla'] := z -> x = z,
                  so we need to safe the dict instance, while building with
                  setmember/setindex}
-              Assembly.InsOperand(Line,Column,isc_m_stackdup_nr,1);
+              Assembly.InsOperand(Line,Column,isc_dup_opern,1);
               // stackdup
               if TScanRecord(Occ[i]).TokenType = SMES_ID then
                 begin
                   Assembly.AppendAssembly(TParserNode(Occ[i+1]).Assembly);
-                  Assembly.InsStabLoad(Occ[i].Line,Occ[i].Column,isc_o_setm_stab,
+                  Assembly.InsStabLoad(Occ[i].Line,Occ[i].Column,isc_setm_stab,
                                        TScanRecord(Occ[i]).Pattern);
                 end
               else
                 begin
                   {string into x["<string>"] := bla, case sensitive,
                     needs different order, first <x>, then stabentry, then <expr>}
-                  Assembly.InsStabLoad(Occ[i].Line,Occ[i].Column,isc_m_load_string_stab,
+                  Assembly.InsStabLoad(Occ[i].Line,Occ[i].Column,isc_soload_string_stab,
                     TScanRecord(Occ[i]).Pattern);
                   Assembly.AppendAssembly(TParserNode(Occ[i+1]).Assembly);
-                  Assembly.InsNoOperand(Occ[i].Line,Occ[i].Column,isc_o_seti_ign);
+                  Assembly.InsNoOperand(Occ[i].Line,Occ[i].Column,isc_seti_ign);
                 end;
                // pop
-               Assembly.InsOperand(Line,Column,isc_m_pop_nr,1);
+               Assembly.InsOperand(Line,Column,isc_pop_opern,1);
             end;
           Inc(i,2);
         end;
@@ -334,11 +334,11 @@ begin
   if FrameStackNoFun or
      (not FrameStackTopFun^.local_index^.Exists(name)) then
     {default global load}
-    Assembly.InsStabLoad(Line,Column,isc_m_getenv_stab,name)
+    Assembly.InsStabLoad(Line,Column,isc_getenv_stab,name)
   else
     begin
       {local load slot in function frame}
-      Assembly.InsOperand(Line,Column,isc_m_fprel_load_slot,
+      Assembly.InsOperand(Line,Column,isc_fprel_load_slot,
         PtrInt(FrameStackTopFun^.local_index^.Lookup(name)-nil));
     end;
 end;
@@ -388,7 +388,7 @@ begin
   {assemble idx access}
   Result := TParserNode(Occ[1]).Compile and Result;
   Assembly.AppendAssembly(TParserNode(Occ[1]).Assembly);
-  Assembly.InsNoOperand(Line,Column,isc_o_geti_ign);
+  Assembly.InsNoOperand(Line,Column,isc_geti_ign);
   DecRec;
 end;
 
@@ -411,7 +411,7 @@ begin
   Result := TParserNode(Occ[0]).Compile;
   Assembly.AppendAssembly(TParserNode(Occ[0]).Assembly);
   {assemble member get}
-  Assembly.InsStabLoad(Line,Column,isc_o_getm_stab,TScanRecord(Occ[1]).Pattern);
+  Assembly.InsStabLoad(Line,Column,isc_getm_stab,TScanRecord(Occ[1]).Pattern);
   DecRec;
 end;
 
@@ -447,10 +447,10 @@ begin
           Assembly.AppendAssembly(TParserNode(Occ[i]).Assembly);
         end;
       {load ident for call -> TOS}
-      Assembly.InsStabLoad(Occ[0].Line,Occ[0].Column,isc_m_load_string_stab,
+      Assembly.InsStabLoad(Occ[0].Line,Occ[0].Column,isc_soload_string_stab,
                            TScanRecord(TParserNode(Occ[0]).Occ[1]).Pattern);
       {callm}
-      Assembly.InsCall(Line,Column, isc_o_callm_nrops, Count-1 );
+      Assembly.InsCall(Line,Column, isc_callm_opern, Count-1 );
     end
   else
     begin
@@ -463,7 +463,7 @@ begin
           Assembly.AppendAssembly(TParserNode(Occ[i]).Assembly);
         end;
       {call call}
-      Assembly.InsCall(Line,Column, isc_o_callcall_nrops, Count-1 );
+      Assembly.InsCall(Line,Column, isc_callcall_opern, Count-1 );
     end;
   if not check_cc_maxargs(Count-1) then
     begin
@@ -497,23 +497,22 @@ begin
     begin
       Assembly.AppendAssembly(TParserNode(Occ[2]).Assembly);
       case TScanRecord(Occ[0]).TokenType of
-        SMES_Plus: Assembly.InsOperand(Line,Column,isc_o_binaryop,Ord(sobinop_add));
-        SMES_Minus: Assembly.InsOperand(Line,Column,isc_o_binaryop,Ord(sobinop_sub));
-        SMES_Star: Assembly.InsOperand(Line,Column,isc_o_binaryop,Ord(sobinop_mul));
-        SMES_XOR: Assembly.InsOperand(Line,Column,isc_o_binaryop,Ord(sobinop_xor));
-        {SMES_Slash: Assembly.InsIOperand(Line,Column,isc_o_binaryop,Ord(sobinop_div));}
-        SMES_DIV: Assembly.InsOperand(Line,Column,isc_o_binaryop,Ord(sobinop_div));
-        SMES_MOD: Assembly.InsOperand(Line,Column,isc_o_binaryop,Ord(sobinop_mod));
-        SMES_OAngel: Assembly.InsOperand(Line,Column,isc_o_compare,Ord(socompare_lt));
-        SMES_CAngel: Assembly.InsOperand(Line,Column,isc_o_compare,Ord(socompare_gt));
-        SMES_LE: Assembly.InsOperand(Line,Column,isc_o_compare,Ord(socompare_le));
-        SMES_GE: Assembly.InsOperand(Line,Column,isc_o_compare,Ord(socompare_ge));
-        SMES_EQ: Assembly.InsOperand(Line,Column,isc_o_compare,Ord(socompare_equ));
-        SMES_NEQ: Assembly.InsOperand(Line,Column,isc_o_compare,Ord(socompare_neq));
-        SMES_SHL,SMES_SHLK: Assembly.InsOperand(Line,Column,isc_o_binaryop,Ord(sobinop_shl));
-        SMES_SHR,SMES_SHRK: Assembly.InsOperand(Line,Column,isc_o_binaryop,Ord(sobinop_shr));
-        SMES_ROL,SMES_ROLK: Assembly.InsOperand(Line,Column,isc_o_binaryop,Ord(sobinop_rol));
-        SMES_ROR,SMES_RORK: Assembly.InsOperand(Line,Column,isc_o_binaryop,Ord(sobinop_ror));
+        SMES_Plus: Assembly.InsNoOperand(Line,Column,isc_sobinop_add_ign);
+        SMES_Minus: Assembly.InsNoOperand(Line,Column,isc_sobinop_sub_ign);
+        SMES_Star: Assembly.InsNoOperand(Line,Column,isc_sobinop_mul_ign);
+        SMES_XOR: Assembly.InsNoOperand(Line,Column,isc_sobinop_xor_ign);
+        SMES_DIV: Assembly.InsNoOperand(Line,Column,isc_sobinop_div_ign);
+        SMES_MOD: Assembly.InsNoOperand(Line,Column,isc_sobinop_mod_ign);
+        SMES_OAngel: Assembly.InsNoOperand(Line,Column,isc_socmp_lt_ign);
+        SMES_CAngel: Assembly.InsNoOperand(Line,Column,isc_socmp_gt_ign);
+        SMES_LE: Assembly.InsNoOperand(Line,Column,isc_socmp_le_ign);
+        SMES_GE: Assembly.InsNoOperand(Line,Column,isc_socmp_ge_ign);
+        SMES_EQ: Assembly.InsNoOperand(Line,Column,isc_socmp_equ_ign);
+        SMES_NEQ: Assembly.InsNoOperand(Line,Column,isc_socmp_neq_ign);
+        SMES_SHL,SMES_SHLK: Assembly.InsNoOperand(Line,Column,isc_sobinop_shl_ign);
+        SMES_SHR,SMES_SHRK: Assembly.InsNoOperand(Line,Column,isc_sobinop_shr_ign);
+        SMES_ROL,SMES_ROLK: Assembly.InsNoOperand(Line,Column,isc_sobinop_rol_ign);
+        SMES_ROR,SMES_RORK: Assembly.InsNoOperand(Line,Column,isc_sobinop_ror_ign);
         else
           put_internalerror(2011120431);
       end;
@@ -541,13 +540,13 @@ begin
             {push left}
             Assembly.AppendAssembly(TParserNode(Occ[1]).Assembly);
             {jmpfalsenil}
-            Assembly.InsLRefOp(Line,Column,isc_m_jmp_false_nil_addr,tmplab);
+            Assembly.InsLRefOp(Line,Column,isc_jmp_false_nil_addr,tmplab);
             {push right}
             Assembly.AppendAssembly(TParserNode(Occ[2]).Assembly);
             {jmp on tos-1 = true, rotate, pop}
-            Assembly.InsLRefOp(Line,Column,isc_m_tos1_true_rot_pop_jmp_addr,tmplab);
+            Assembly.InsLRefOp(Line,Column,isc_tos1_true_rot_pop_jmp_addr,tmplab);
             {eval no shortcut and}
-            Assembly.InsOperand(Line,Column,isc_o_binaryop,Ord(sobinop_and));
+            Assembly.InsNoOperand(Line,Column,isc_sobinop_and_ign);
             {append label}
             Assembly.AppendLabel(tmplab);
           end;
@@ -565,13 +564,13 @@ begin
             {push left}
             Assembly.AppendAssembly(TParserNode(Occ[1]).Assembly);
             {jmptrue}
-            Assembly.InsLRefOp(Line,Column,isc_m_jmp_true_addr,tmplab);
+            Assembly.InsLRefOp(Line,Column,isc_jmp_true_addr,tmplab);
             {push right}
             Assembly.AppendAssembly(TParserNode(Occ[2]).Assembly);
             {jmp on tos-1 = false, rotate, pop}
-            Assembly.InsLRefOp(Line,Column,isc_m_tos1_false_nil_rot_pop_jmp_addr,tmplab);
+            Assembly.InsLRefOp(Line,Column,isc_tos1_false_nil_rot_pop_jmp_addr,tmplab);
             {eval no shortcut and}
-            Assembly.InsOperand(Line,Column,isc_o_binaryop,Ord(sobinop_or));
+            Assembly.InsNoOperand(Line,Column,isc_sobinop_or_ign);
             {append label}
             Assembly.AppendLabel(tmplab);
           end
@@ -600,9 +599,9 @@ begin
   Result := TParserNode(Occ[1]).Compile;
   Assembly.AppendAssembly(TParserNode(Occ[1]).Assembly);
   case TScanRecord(Occ[0]).TokenType of
-    SMES_Plus: Assembly.InsOperand(Line,Column,isc_o_unaryop,Ord(sounop_abs));
-    SMES_Minus: Assembly.InsOperand(Line,Column,isc_o_unaryop,Ord(sounop_neg));
-    SMES_NOT: Assembly.InsOperand(Line,Column,isc_o_unaryop,Ord(sounop_not));
+    SMES_Plus: Assembly.InsNoOperand(Line,Column,isc_sounop_abs_ign);
+    SMES_Minus: Assembly.InsNoOperand(Line,Column,isc_sounop_neg_ign);
+    SMES_NOT: Assembly.InsNoOperand(Line,Column,isc_sounop_not_ign);
     else
       put_internalerror(2011120430);
   end;
@@ -623,11 +622,11 @@ begin
   if FrameStackNoFun or
      (not FrameStackTopFun^.local_index^.Exists(name)) then
     {default global set}
-    Assembly.InsStabLoad(Line,Column,isc_m_setenv_stab,name)
+    Assembly.InsStabLoad(Line,Column,isc_setenv_stab,name)
   else
     begin
       {local set slot in function frame}
-      Assembly.InsOperand(Line,Column,isc_m_fprel_set_slot,
+      Assembly.InsOperand(Line,Column,isc_fprel_set_slot,
         PtrInt(FrameStackTopFun^.local_index^.Lookup(name)-nil));
     end;
 end;
@@ -664,7 +663,7 @@ begin
       Result := TParserNode(Occ[1]).Compile and Result;
       Assembly.AppendAssembly(TParserNode(Occ[1]).Assembly);
       {setm}
-      Assembly.InsStabLoad(Line,Column,isc_o_setm_stab,
+      Assembly.InsStabLoad(Line,Column,isc_setm_stab,
         TScanRecord(TParserNode(Occ[0]).Occ[1]).Pattern);
     end
   else if Occ[0].ClassType = TExprIndex then
@@ -683,7 +682,7 @@ begin
       Result := TParserNode(Occ[1]).Compile and Result;
       Assembly.AppendAssembly(TParserNode(Occ[1]).Assembly);
       {seti}
-      Assembly.InsNoOperand(Line,Column,isc_o_seti_ign);
+      Assembly.InsNoOperand(Line,Column,isc_seti_ign);
     end
   else
     begin

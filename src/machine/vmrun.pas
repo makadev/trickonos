@@ -35,132 +35,38 @@ type
 
 procedure vmop_invalid;
 procedure vmop_ni;
+procedure vmop_nop_ign;
 
-procedure vmop_m_nop_ign;
-procedure vmop_m_haltabort_ign;
-procedure vmop_m_puts_stab;
-procedure vmop_m_include;
-procedure vmop_m_load_type;
-procedure vmop_m_jumpaddr;
-procedure vmop_m_envmod;
-procedure vmop_m_pop_nr;
-procedure vmop_object_operation_unary;
-procedure vmop_object_operation_binary;
-procedure vmop_object_operation_setget;
-procedure vmop_object_typecheck;
-procedure vmop_listappend;
-procedure vmop_m_echo;
-procedure vmop_m_calltranslate;
-procedure vmop_m_declfun;
-procedure vmop_m_fprel;
-procedure vmop_m_returnclean;
-procedure vmop_m_stackdup;
-procedure vmop_compare;
-procedure vmop_class_create;
-procedure vmop_method_decl;
-procedure vmop_openout;
+{$I ins_disp_proc.inc}
 
 const
   VMOpcodeHandler: array[TInsOpcodeCode] of TVMOpcodeHandler =
     (
-     // isc_m_nop_ign
-     @vmop_m_nop_ign,
-     // isc_m_stackdup_nr,
-     @vmop_m_stackdup,
-     // isc_m_echo,
-     @vmop_m_echo,
-     // isc_m_pop_nr
-     @vmop_m_pop_nr,
-     // isc_m_include_stab,
-     @vmop_m_include,
-     // isc_m_include_ign,
-     @vmop_m_include,
-     // isc_m_halt_ign,
-     @vmop_m_haltabort_ign,
-     // isc_m_puts_stab,
-     @vmop_m_puts_stab,
-     // isc_m_jmp_addr,
-     @vmop_m_jumpaddr,
-     // isc_m_jmp_true_addr,
-     @vmop_m_jumpaddr,
-     // isc_m_jmp_false_nil_addr,
-     @vmop_m_jumpaddr,
-     // isc_m_jmppop_false_nil_addr,
-     @vmop_m_jumpaddr,
-     // isc_m_tos1_false_nil_rot_pop_jmp_addr,
-     @vmop_m_jumpaddr,
-     // isc_m_tos1_true_rot_pop_jmp_addr,
-     @vmop_m_jumpaddr,
-     // isc_m_load_type,
-     @vmop_m_load_type,
-     // isc_m_setenv_stab,
-     @vmop_m_envmod,
-     // isc_m_getenv_stab,
-     @vmop_m_envmod,
-
-     // isc_o_setm_stab,
-     @vmop_object_operation_setget,
-     // isc_o_getm_stab,
-     @vmop_object_operation_setget,
-     // isc_o_seti_ign,
-     @vmop_object_operation_setget,
-     // isc_o_geti_ign,
-     @vmop_object_operation_setget,
-     // isc_o_callcall_nrops,
-     @vmop_m_calltranslate,
-     // isc_o_callm_nrops,
-     @vmop_m_calltranslate,
-
-     // isc_o_binaryop,
-     @vmop_object_operation_binary,
-
-     // isc_o_unaryop,
-     @vmop_object_operation_unary,
-
-     // isc_o_listappend_nr,
-     @vmop_listappend,
-
-     // isc_o_typecheck_stab,
-     @vmop_object_typecheck,
-
-     // isc_m_load_int_stab,
-     @vmop_m_load_type,
-
-     // isc_m_load_int_oper,
-     @vmop_m_load_type,
-
-     // isc_m_load_string_stab,
-     @vmop_m_load_type,
-
-     // isc_m_fprel_set_slot,
-     @vmop_m_fprel,
-
-     // isc_m_fprel_load_slot,
-     @vmop_m_fprel,
-
-     // isc_m_ret_slot,
-     @vmop_m_returnclean,
-
-     // isc_m_decl_fun_addr,
-     @vmop_m_declfun,
-
-     // isc_o_compare,
-     @vmop_compare,
-
-     // isc_m_class_stab,
-     @vmop_class_create,
-
-     // isc_m_decl_method_stab,
-     @vmop_method_decl,
-
-     // isc_m_outputop,
-     @vmop_openout,
-
+     // isc_nop_ign
+     @vmop_nop_ign,
+{$I ins_disp.inc}
      // isc_invalid
      @vmop_invalid
   );
 
 implementation
+
+procedure vmop_nop_ign;
+begin
+  // nop
+end;
+
+procedure vmop_invalid;
+begin
+  put_debug('INVALID OPCODE');
+  put_internalerror(2011120555);
+end;
+
+procedure vmop_ni;
+begin
+  put_error('NOT IMPLEMENTED OPCODE '+IntToStr(Ord(template_ip_opcode)));
+  put_internalerror(0);
+end;
 
 (*******************************************************************************
  Simple Opcode Part.
@@ -169,13 +75,7 @@ implementation
    They dont do Script Objects Calls (except basic and hardcoded stuff)
  ******************************************************************************)
 
-procedure vmop_m_nop_ign;
-{yeah.. a must have for every machine :D}
-begin
-  // nop
-end;
-
-procedure vmop_m_haltabort_ign;
+procedure vmop_halt_ign;
 {set machine halt and exitcode (will be taken as exitcode for main application).
  also try printing something if "abort" is used}
 begin
@@ -217,169 +117,177 @@ begin
     end;
 end;
 
-procedure vmop_m_puts_stab;
+procedure vmop_put_stab;
 {load stab entry and output it}
 begin
   OutputWrite(ucfs_to_utf8string(template_stabentry(template_ip_operand,false)));
 end;
 
-procedure vmop_m_include;
-{include a template,
- either using a stab entry as filename or
- a string from stack}
+{ Template/Use Inclusion }
+
+procedure vmop_include_stab;
 var cref: PCodeReference;
 begin
-  case template_ip_opcode of
-    isc_m_include:
-      begin
-        if not runtimestack_get(0)^.IsType(so_string_class) then
-          put_critical('Include expected String, got '+ so_type_name(runtimestack_get(0)));
-        cref := LoadTemplate(TInsMIncludeMode(template_ip_operand),so_string_get_utf8(runtimestack_get(0)));
-        runtimestack_pop(1);
-      end;
-    isc_m_include_stab:
-      begin
-        cref := LoadTemplate(mincl_include,ucfs_to_utf8string(template_stabentry(template_ip_operand,false)));
-      end;
-    else
-      put_internalerror(2011120703);
-  end;
+  cref := LoadTemplate(true,ucfs_to_utf8string(template_stabentry(template_ip_operand,false)));
   if Length(cref^.pbcode^.image) > 0 then
     templatestack_push(cref,0,false)
   else
-    if TInsMIncludeMode(template_ip_operand) <> mincl_use then
-      put_info('empty template inclusion, ignored');
+    put_warning('empty template inclusion, ignored');
 end;
 
-procedure vmop_m_load_type;
-{load a base type, empty or from stab}
+procedure vmop_include_ign;
+var cref: PCodeReference;
+begin
+  if not runtimestack_get(0)^.IsType(so_string_class) then
+    put_critical('Include expected String, got '+ so_type_name(runtimestack_get(0)));
+  cref := LoadTemplate(true,so_string_get_utf8(runtimestack_get(0)));
+  runtimestack_pop(1);
+  if Length(cref^.pbcode^.image) > 0 then
+    templatestack_push(cref,0,false)
+  else
+    put_info('empty template inclusion, ignored');
+end;
+
+procedure vmop_use_ign;
+var cref: PCodeReference;
+begin
+  if not runtimestack_get(0)^.IsType(so_string_class) then
+    put_critical('Include expected String, got '+ so_type_name(runtimestack_get(0)));
+  cref := LoadTemplate(false,so_string_get_utf8(runtimestack_get(0)));
+  runtimestack_pop(1);
+  if Length(cref^.pbcode^.image) > 0 then
+    templatestack_push(cref,0,false)
+  else
+    put_warning('empty use inclusion, ignored');
+end;
+
+{ loading values }
+
+procedure vmop_soload_nil_ign;
+begin
+  runtimestack_push(so_nil);
+end;
+
+procedure vmop_soload_true_ign;
+begin
+  runtimestack_push(so_true);
+end;
+
+procedure vmop_soload_false_ign;
+begin
+  runtimestack_push(so_false);
+end;
+
+procedure vmop_soload_list_ign;
+begin
+  runtimestack_push(so_list_init);
+end;
+
+procedure vmop_soload_dict_ign;
+begin
+  runtimestack_push(so_dict_init);
+end;
+
+procedure vmop_soload_int_stab;
 var tmpi: PTFM_Integer;
 begin
-  case template_ip_opcode of
-    isc_m_load_type:
-      begin
-        case TInsSOLoad(template_ip_operand) of
-          soload_nil:
-            runtimestack_push(so_nil);
-          soload_true:
-            runtimestack_push(so_true);
-          soload_false:
-            runtimestack_push(so_false);
-          soload_list:
-            runtimestack_push(so_list_init);
-          soload_dict:
-            runtimestack_push(so_dict_init);
-          else
-            put_internalerror(2011120920);
-        end;
-      end;
-    isc_m_load_int_stab:
-      begin
-        tmpi := tfm_from_hex(ucfs_to_utf8string(template_stabentry(template_ip_operand,false)),-1);
-        if not Assigned(tmpi) then
-          put_internalerror(12020100);
-        runtimestack_push(so_integer_init_tfm(tmpi));
-      end;
-    isc_m_load_string_stab:
-      begin
-        runtimestack_push(
-          so_string_init_ucfs(
-            template_stabentry(template_ip_operand,true),false));
-      end;
-    isc_m_load_int_oper:
-      begin
-        runtimestack_push(so_integer_init(template_ip_operand));
-      end
-    else
-      put_internalerror(2011120701);
-  end;
+  tmpi := tfm_from_hex(ucfs_to_utf8string(template_stabentry(template_ip_operand,false)),-1);
+  if not Assigned(tmpi) then
+    put_internalerror(12020100);
+  runtimestack_push(so_integer_init_tfm(tmpi));
 end;
 
-procedure vmop_m_jumpaddr;
+procedure vmop_soload_string_stab;
+begin
+  runtimestack_push(
+    so_string_init_ucfs(
+      template_stabentry(template_ip_operand,true),false));
+end;
+
+procedure vmop_soload_int_operi;
+begin
+  runtimestack_push(so_integer_init(template_ip_operand));
+end;
+
 {template internal jumps,
   -> use template_ip_setrel(addr,true) which sets a jumpfix such that
      loading next instruction wont simple take the next, but the one we
      jumped.
      also it checks for rel addr in range of image and simply adds the rel addr.}
+
+procedure vmop_jmp_addr;
 begin
-  case template_ip_opcode of
-    isc_m_jmp_addr:
-      begin
-        template_ip_setrel(template_ip_operand,true);
-      end;
-    isc_m_jmp_true_addr:
-      begin
-        if runtimestack_get(0) = so_true then
-          template_ip_setrel(template_ip_operand,true);
-      end;
-    isc_m_jmp_false_nil_addr:
-      begin
-        if (runtimestack_get(0) = so_false) or
-           (runtimestack_get(0) = so_nil) then
-          template_ip_setrel(template_ip_operand,true);
-      end;
-    isc_m_jmppop_false_nil_addr:
-      begin
-        if (runtimestack_get(0) = so_false) or
-           (runtimestack_get(0) = so_nil) then
-          begin
-            runtimestack_pop(1);
-            template_ip_setrel(template_ip_operand,true);
-          end;
-      end;
-    isc_m_tos1_true_rot_pop_jmp_addr:
-      begin
-        if runtimestack_get(1) = so_true then
-          begin
-            runtimestack_moved(0,1);
-            runtimestack_pop(1);
-            template_ip_setrel(template_ip_operand,true);
-          end;
-      end;
-    isc_m_tos1_false_nil_rot_pop_jmp_addr:
-      begin
-        if (runtimestack_get(1) = so_false) or
-           (runtimestack_get(1) = so_nil) then
-          begin
-            runtimestack_moved(0,1);
-            runtimestack_pop(1);
-            template_ip_setrel(template_ip_operand,true);
-          end;
-      end;
-    else
-      put_internalerror(2011120702);
-  end;
+  template_ip_setrel(template_ip_operand,true);
 end;
 
-procedure vmop_m_envmod;
+procedure vmop_jmp_true_addr;
+begin
+  if runtimestack_get(0) = so_true then
+    template_ip_setrel(template_ip_operand,true);
+end;
+
+procedure vmop_jmp_false_nil_addr;
+begin
+  if (runtimestack_get(0) = so_false) or
+     (runtimestack_get(0) = so_nil) then
+    template_ip_setrel(template_ip_operand,true);
+end;
+
+procedure vmop_jmppop_false_nil_addr;
+begin
+  if (runtimestack_get(0) = so_false) or
+     (runtimestack_get(0) = so_nil) then
+    begin
+      runtimestack_pop(1);
+      template_ip_setrel(template_ip_operand,true);
+    end;
+end;
+
+procedure vmop_tos1_true_rot_pop_jmp_addr;
+begin
+  if runtimestack_get(1) = so_true then
+    begin
+      runtimestack_moved(0,1);
+      runtimestack_pop(1);
+      template_ip_setrel(template_ip_operand,true);
+    end;
+end;
+
+procedure vmop_tos1_false_nil_rot_pop_jmp_addr;
+begin
+  if (runtimestack_get(1) = so_false) or
+     (runtimestack_get(1) = so_nil) then
+    begin
+      runtimestack_moved(0,1);
+      runtimestack_pop(1);
+      template_ip_setrel(template_ip_operand,true);
+    end;
+end;
+
 {set or get env entry}
+
+procedure vmop_getenv_stab;
 begin
-  case template_ip_opcode of
-    isc_m_getenv_stab:
-      begin
-        globalenv_load(template_stabentry(template_ip_operand,false));
-      end;
-    isc_m_setenv_stab:
-      begin
-        globalenv_set_tos(template_stabentry(template_ip_operand,false));
-      end;
-    else
-      put_internalerror(2011120704);
-  end;
+  globalenv_load(template_stabentry(template_ip_operand,false));
 end;
 
-procedure vmop_m_pop_nr;
-{pop nr elements from object stack}
+procedure vmop_setenv_stab;
 begin
-  if template_ip_opcode <> isc_m_pop_nr then
-    put_internalerror(2011120910);
+  globalenv_set_tos(template_stabentry(template_ip_operand,false));
+end;
+
+{pop nr elements from object stack}
+
+procedure vmop_pop_opern;
+begin
   runtimestack_pop(template_ip_operand);
 end;
 
-procedure vmop_object_typecheck;
+{typecheck}
+
+procedure vmop_typecheck_stab;
 {hardcoded typecheck call, checks TOS against TOS.Cls.TypeQuery}
 begin
-  {check typenames}
   if ucfs_compare_a7(template_stabentry(template_ip_operand,false),
       Upcase(runtimestack_get(0)^.GetTypeCls^.TypeQuery(runtimestack_get(0)))) = 0 then
     runtimestack_push(so_true)
@@ -390,7 +298,9 @@ begin
   runtimestack_pop(1);
 end;
 
-procedure vmop_listappend;
+{listappend}
+
+procedure vmop_listappend_opern;
 {hardcoded list append. Appends nrops Args to the List @relstack(args)}
 begin
   if runtimestack_get(template_ip_operand)^.GetTypeCls <> so_list_class then
@@ -406,98 +316,98 @@ begin
   runtimestack_pop(template_ip_operand+1);
 end;
 
-procedure vmop_m_echo;
+{echo out (write*)}
+
+procedure vmop_echo_ign;
+begin
+  OutputWrite(so_any_flatstring(runtimestack_get(0)));
+  runtimestack_pop(1);
+end;
+
+procedure vmop_echonl_ign;
+begin
+  OutputWrite('',true);
+end;
+
+procedure vmop_echoln_ign;
+begin
+  OutputWrite(so_any_flatstring(runtimestack_get(0)),true);
+  runtimestack_pop(1);
+end;
+
+procedure vmop_echofmt_ign;
+begin
+{$WARNING implement me}
+  // format string ... -> string,list
+  put_internalerror(0);
+end;
+
+procedure vmop_echosubst_ign;
 {echo call, probably removed in future}
 var substr: String;
     subr: String;
     pdict, res: PSOInstance;
     i,j,l: Integer;
 begin
-  case TInsMEchoOp(template_ip_operand) of
-      mecho_echo:
+  if (runtimestack_get(1)^.GetTypeCls = so_string_class) and
+     (runtimestack_get(0)^.GetTypeCls = so_dict_class) then
+    begin
+      substr := so_string_get_utf8(runtimestack_get(1));
+      if Length(substr) > 0 then
         begin
-          OutputWrite(so_any_flatstring(runtimestack_get(0)));
-          runtimestack_pop(1);
-        end;
-      mecho_echonl:
-        begin
-          OutputWrite('',true);
-        end;
-      mecho_echoln:
-        begin
-          OutputWrite(so_any_flatstring(runtimestack_get(0)),true);
-          runtimestack_pop(1);
-        end;
-      mecho_echofmt:
-        begin
-          // format string ... -> string,list
-          put_internalerror(0);
-        end;
-      mecho_echosubst:
-        begin
-          if (runtimestack_get(1)^.GetTypeCls = so_string_class) and
-             (runtimestack_get(0)^.GetTypeCls = so_dict_class) then
+          {$NOTE outsource}
+          pdict := runtimestack_get(0);
+          // substitute string ... -> string,dict
+          i := 1;
+          l := 0;
+          while i <= Length(substr) do
             begin
-              substr := so_string_get_utf8(runtimestack_get(1));
-              if Length(substr) > 0 then
+              if (substr[i] = ':') and
+                 ((i+2) <= Length(substr)) then
                 begin
-                  {$NOTE outsource}
-                  pdict := runtimestack_get(0);
-                  // substitute string ... -> string,dict
-                  i := 1;
-                  l := 0;
-                  while i <= Length(substr) do
+                  j := i+1;
+                  while (j <= Length(substr)) and
+                        (substr[j] <> ':') do
+                    Inc(j,1);
+                  if j > Length(substr) then
+                    break;
+                  if j <> i+1 then
                     begin
-                      if (substr[i] = ':') and
-                         ((i+2) <= Length(substr)) then
-                        begin
-                          j := i+1;
-                          while (j <= Length(substr)) and
-                                (substr[j] <> ':') do
-                            Inc(j,1);
-                          if j > Length(substr) then
-                            break;
-                          if j <> i+1 then
-                            begin
-                              {copy leftof l+1..i-1}
-                              if (l+1) <= (i-1) then
-                                OutputWrite(Copy(substr,l+1,(i-1)-l));
-                              l := j;
-                              {copy i+1<subr>j-1}
-                              subr := Copy(substr,i+1,(j-1)-i);
-                              res := so_dict_get_member(pdict,subr);
-                              OutputWrite(so_any_flatstring(res));
-                              i := j+1;
-                            end
-                          else
-                            begin
-                              {copy leftof l+1..i-1}
-                              if (l+1) <= (i-1) then
-                                OutputWrite(Copy(substr,l+1,(i-1)-l));
-                              {skip ::, do :}
-                              Inc(i,2);
-                              l := i-1;
-                              OutputWrite(':');
-                            end;
-                        end
-                      else
-                        Inc(i,1);
+                      {copy leftof l+1..i-1}
+                      if (l+1) <= (i-1) then
+                        OutputWrite(Copy(substr,l+1,(i-1)-l));
+                      l := j;
+                      {copy i+1<subr>j-1}
+                      subr := Copy(substr,i+1,(j-1)-i);
+                      res := so_dict_get_member(pdict,subr);
+                      OutputWrite(so_any_flatstring(res));
+                      i := j+1;
+                    end
+                  else
+                    begin
+                      {copy leftof l+1..i-1}
+                      if (l+1) <= (i-1) then
+                        OutputWrite(Copy(substr,l+1,(i-1)-l));
+                      {skip ::, do :}
+                      Inc(i,2);
+                      l := i-1;
+                      OutputWrite(':');
                     end;
-                  {write stuff from l..Length(substr)}
-                  if (l+1) <= (Length(substr)) then
-                    OutputWrite(Copy(substr,l+1,Length(substr)-l));
-                end;
-              runtimestack_pop(2);
-            end
-          else
-            runtimestack_push(so_error_init('EchoSubst expected String,Dict Pair'));
+                end
+              else
+                Inc(i,1);
+            end;
+          {write stuff from l..Length(substr)}
+          if (l+1) <= (Length(substr)) then
+            OutputWrite(Copy(substr,l+1,Length(substr)-l));
         end;
-    else
-      put_internalerror(2011120995);
-  end;
+      runtimestack_pop(2);
+    end
+  else
+    runtimestack_push(so_error_init('EchoSubst expected String,Dict Pair'));
 end;
 
-procedure vmop_m_declfun;
+procedure vmop_decl_fun_addr;
 {
   stack layout:
     TOS  = canvararg
@@ -525,24 +435,20 @@ begin
   runtimestack_pop(4);
 end;
 
-procedure vmop_m_fprel;
+procedure vmop_fprel_set_slot;
 begin
-  case template_ip_opcode of
-    isc_m_fprel_set_slot:
-      runtimestack_moved(0,runtimestack_fprel_to_sp(template_ip_operand));
-    isc_m_fprel_load_slot:
-      begin
-        runtimestack_push(
-          runtimestack_get(runtimestack_fprel_to_sp(template_ip_operand)));
-        // need explicit incref, since neither get nor push incref (but po and ops will decref!)
-        runtimestack_get(0)^.IncRef;
-      end;
-    else
-      put_internalerror(2011121170);
-  end;
+  runtimestack_moved(0,runtimestack_fprel_to_sp(template_ip_operand));
 end;
 
-procedure vmop_m_returnclean;
+procedure vmop_fprel_load_slot;
+begin
+  runtimestack_push(
+    runtimestack_get(runtimestack_fprel_to_sp(template_ip_operand)));
+  // need explicit incref, since neither get nor push incref (but po and ops will decref!)
+  runtimestack_get(0)^.IncRef;
+end;
+
+procedure vmop_ret_slot;
 begin
   {simply mv result slot @ FP+1 (where the function object resides)
    and clean up TOS..FP+2}
@@ -553,7 +459,7 @@ begin
   templatestack_pop;
 end;
 
-procedure vmop_m_stackdup;
+procedure vmop_dup_opern;
 var nr: Integer;
 begin
   for nr := template_ip_operand downto 1 do
@@ -563,67 +469,77 @@ begin
     end;
 end;
 
-procedure vmop_invalid;
-begin
-  put_debug('INVALID OPCODE');
-  put_internalerror(2011120555);
-end;
+{compare set}
 
-procedure vmop_ni;
+procedure vmop_socmp_lt_ign;
 begin
-  put_error('NOT IMPLEMENTED OPCODE '+IntToStr(Ord(template_ip_opcode)));
-  put_internalerror(0);
-end;
-
-procedure vmop_compare;
-begin
-  case TInsSOCompareOp(template_ip_operand) of
-    socompare_lt:
-      if runtimestack_get(1)^.GetTypeCls^.Compare(
-            runtimestack_get(1),
-            runtimestack_get(0)) = socmp_isLess then
-        runtimestack_push(so_true)
-      else
-        runtimestack_push(so_false);
-    socompare_gt:
-      if runtimestack_get(1)^.GetTypeCls^.Compare(
-            runtimestack_get(1),
-            runtimestack_get(0)) = socmp_isGreater then
-        runtimestack_push(so_true)
-      else
-        runtimestack_push(so_false);
-    socompare_le:
-      if runtimestack_get(1)^.GetTypeCls^.Compare(
-            runtimestack_get(1),
-            runtimestack_get(0)) in [socmp_isEqual,socmp_isLess] then
-        runtimestack_push(so_true)
-      else
-        runtimestack_push(so_false);
-    socompare_ge:
-      if runtimestack_get(1)^.GetTypeCls^.Compare(
-            runtimestack_get(1),
-            runtimestack_get(0)) in [socmp_isEqual,socmp_isGreater] then
-        runtimestack_push(so_true)
-      else
-        runtimestack_push(so_false);
-    socompare_equ:
-      if runtimestack_get(1)^.GetTypeCls^.Compare(runtimestack_get(1),runtimestack_get(0)) = socmp_isEqual then
-        runtimestack_push(so_true)
-      else
-        runtimestack_push(so_false);
-    socompare_neq:
-        if runtimestack_get(1)^.GetTypeCls^.Compare(runtimestack_get(1),runtimestack_get(0)) <> socmp_isEqual then
-          runtimestack_push(so_true)
-        else
-          runtimestack_push(so_false);
-    else
-      put_internalerror(2011122040);
-  end;
+  if runtimestack_get(1)^.GetTypeCls^.Compare(
+        runtimestack_get(1),
+        runtimestack_get(0)) = socmp_isLess then
+    runtimestack_push(so_true)
+  else
+    runtimestack_push(so_false);
   runtimestack_moved(0,2);
   runtimestack_pop(2);
 end;
 
-procedure vmop_class_create;
+procedure vmop_socmp_gt_ign;
+begin
+  if runtimestack_get(1)^.GetTypeCls^.Compare(
+        runtimestack_get(1),
+        runtimestack_get(0)) = socmp_isGreater then
+    runtimestack_push(so_true)
+  else
+    runtimestack_push(so_false);
+  runtimestack_moved(0,2);
+  runtimestack_pop(2);
+end;
+
+procedure vmop_socmp_le_ign;
+begin
+  if runtimestack_get(1)^.GetTypeCls^.Compare(
+        runtimestack_get(1),
+        runtimestack_get(0)) in [socmp_isEqual,socmp_isLess] then
+    runtimestack_push(so_true)
+  else
+    runtimestack_push(so_false);
+  runtimestack_moved(0,2);
+  runtimestack_pop(2);
+end;
+
+procedure vmop_socmp_ge_ign;
+begin
+  if runtimestack_get(1)^.GetTypeCls^.Compare(
+        runtimestack_get(1),
+        runtimestack_get(0)) in [socmp_isEqual,socmp_isGreater] then
+    runtimestack_push(so_true)
+  else
+    runtimestack_push(so_false);
+  runtimestack_moved(0,2);
+  runtimestack_pop(2);
+end;
+
+procedure vmop_socmp_equ_ign;
+begin
+  if runtimestack_get(1)^.GetTypeCls^.Compare(runtimestack_get(1),runtimestack_get(0)) = socmp_isEqual then
+    runtimestack_push(so_true)
+  else
+    runtimestack_push(so_false);
+  runtimestack_moved(0,2);
+  runtimestack_pop(2);
+end;
+
+procedure vmop_socmp_neq_ign;
+begin
+  if runtimestack_get(1)^.GetTypeCls^.Compare(runtimestack_get(1),runtimestack_get(0)) <> socmp_isEqual then
+    runtimestack_push(so_true)
+  else
+    runtimestack_push(so_false);
+  runtimestack_moved(0,2);
+  runtimestack_pop(2);
+end;
+
+procedure vmop_decl_class_stab;
 {create class and push on tos}
 begin
   runtimestack_push(
@@ -632,7 +548,7 @@ begin
                     template_ip));
 end;
 
-procedure vmop_method_decl;
+procedure vmop_decl_method_stab;
 {TOS-1 = Class, TOS = function obj
   -> pop function and register with stab name
   -> leave class}
@@ -649,44 +565,39 @@ begin
     put_internalerror(12012310);
 end;
 
-procedure vmop_openout;
+{output set}
+
+procedure vmop_output_open_ign;
 begin
-  case TInsMOutputMode(template_ip_operand) of
-    mout_open:
-      begin
-        if runtimestack_get(0)^.IsType(so_string_class) then
-          outstack_push(so_string_get_utf8(runtimestack_get(0)),opfm_open)
-        else
-          put_critical('Expected String');
-        runtimestack_pop(1);
-      end;
+  if runtimestack_get(0)^.IsType(so_string_class) then
+    outstack_push(so_string_get_utf8(runtimestack_get(0)),opfm_open)
+  else
+    put_critical('Expected String');
+  runtimestack_pop(1);
+end;
 
-    mout_reopen:
-      begin
-        if runtimestack_get(0)^.IsType(so_string_class) then
-          outstack_push(so_string_get_utf8(runtimestack_get(0)),opfm_reopen)
-        else
-          put_critical('Expected String');
-        runtimestack_pop(1);
-      end;
+procedure vmop_output_reopen_ign;
+begin
+  if runtimestack_get(0)^.IsType(so_string_class) then
+    outstack_push(so_string_get_utf8(runtimestack_get(0)),opfm_reopen)
+  else
+    put_critical('Expected String');
+  runtimestack_pop(1);
+end;
 
-    mout_path:
-      begin
-        if runtimestack_get(0)^.IsType(so_string_class) then
-          outstack_push(so_string_get_utf8(runtimestack_get(0)),opfm_path)
-        else
-          put_critical('Expected String');
-        runtimestack_pop(1);
-      end;
+procedure vmop_output_path_ign;
+begin
+  if runtimestack_get(0)^.IsType(so_string_class) then
+    outstack_push(so_string_get_utf8(runtimestack_get(0)),opfm_path)
+  else
+    put_critical('Expected String');
+  runtimestack_pop(1);
+end;
 
-    mout_close:
-      begin
-        if not outstack_pop then
-          put_warning('No Outfile, Ignored Close.');
-      end;
-    else
-      put_internalerror(12013100);
-  end;
+procedure vmop_output_close_ign;
+begin
+  if not outstack_pop then
+    put_warning('No Outfile, Ignored Close.');
 end;
 
 (*******************************************************************************
@@ -845,96 +756,142 @@ begin
     end;
 end;
 
-procedure vmop_object_operation_unary;
 {call unary operation on so object}
+
+procedure vmop_sounop_abs_ign;
 begin
-  case TInsSOUnaryOp(template_ip_operand) of
-    sounop_abs: do_so_method_call(DEFAULT_METHOD_UnOpAbs_Hash,ci_us(ci_dm_abs,false),0);
-    sounop_neg: do_so_method_call(DEFAULT_METHOD_UnOpNeg_Hash,ci_us(ci_dm_neg,false),0);
-    sounop_not: do_so_method_call(DEFAULT_METHOD_UnOpNot_Hash,ci_us(ci_dm_not,false),0);
-    else
-      put_internalerror(2011122060);
-  end;
+  do_so_method_call(DEFAULT_METHOD_UnOpAbs_Hash,ci_us(ci_dm_abs,false),0);
 end;
 
-procedure vmop_object_operation_binary;
+procedure vmop_sounop_neg_ign;
+begin
+  do_so_method_call(DEFAULT_METHOD_UnOpNeg_Hash,ci_us(ci_dm_neg,false),0);
+end;
+
+procedure vmop_sounop_not_ign;
+begin
+  do_so_method_call(DEFAULT_METHOD_UnOpNot_Hash,ci_us(ci_dm_not,false),0);
+end;
+
 {call binary operation on so object}
+
+procedure vmop_sobinop_add_ign;
 begin
-  case TInsSOBinaryOp(template_ip_operand) of
-    sobinop_add: do_so_method_call(DEFAULT_METHOD_BinOpAdd_Hash,ci_us(ci_dm_add,false),1);
-    sobinop_sub: do_so_method_call(DEFAULT_METHOD_BinOpSub_Hash,ci_us(ci_dm_sub,false),1);
-    sobinop_mul: do_so_method_call(DEFAULT_METHOD_BinOpMul_Hash,ci_us(ci_dm_mul,false),1);
-    sobinop_div: do_so_method_call(DEFAULT_METHOD_BinOpDiv_Hash,ci_us(ci_dm_div,false),1);
-    sobinop_mod: do_so_method_call(DEFAULT_METHOD_BinOpMod_Hash,ci_us(ci_dm_mod,false),1);
-    sobinop_shl: do_so_method_call(DEFAULT_METHOD_BinOpShl_Hash,ci_us(ci_dm_shl,false),1);
-    sobinop_shr: do_so_method_call(DEFAULT_METHOD_BinOpShr_Hash,ci_us(ci_dm_shr,false),1);
-    sobinop_rol: do_so_method_call(DEFAULT_METHOD_BinOpRol_Hash,ci_us(ci_dm_rol,false),1);
-    sobinop_ror: do_so_method_call(DEFAULT_METHOD_BinOpRor_Hash,ci_us(ci_dm_ror,false),1);
-    sobinop_and: do_so_method_call(DEFAULT_METHOD_BinOpAnd_Hash,ci_us(ci_dm_and,false),1);
-    sobinop_or: do_so_method_call(DEFAULT_METHOD_BinOpOr_Hash,ci_us(ci_dm_or,false),1);
-    sobinop_xor: do_so_method_call(DEFAULT_METHOD_BinOpXor_Hash,ci_us(ci_dm_xor,false),1);
-    else
-      put_internalerror(2011122061);
-  end;
+  do_so_method_call(DEFAULT_METHOD_BinOpAdd_Hash,ci_us(ci_dm_add,false),1);
 end;
 
-procedure vmop_object_operation_setget;
+procedure vmop_sobinop_sub_ign;
 begin
-  case template_ip_opcode of
-    isc_o_setm_stab:
-      begin
-        {need fix, currently its: <caller,value>, we need <caller,name,value> -> push stab entry
-         and switch}
-        runtimestack_push(so_string_init_ucfs(template_stabentry(template_ip_operand,true),false));
-        runtimestack_switch(0,1);
-        do_so_method_call(DEFAULT_METHOD_SetMember_Hash,ci_us(ci_dm_setmember,false),2);
-      end;
-    isc_o_getm_stab:
-      begin
-        {push stab entry}
-        runtimestack_push(so_string_init_ucfs(template_stabentry(template_ip_operand,true),false));
-        do_so_method_call(DEFAULT_METHOD_GetMember_Hash,ci_us(ci_dm_getmember,false),1);
-      end;
-    isc_o_seti_ign: do_so_method_call(DEFAULT_METHOD_SetIndex_Hash,ci_us(ci_dm_setindex,false),2);
-    isc_o_geti_ign: do_so_method_call(DEFAULT_METHOD_GetIndex_Hash,ci_us(ci_dm_getindex,false),1);
-    else
-      put_internalerror(2011120970);
-  end;
+  do_so_method_call(DEFAULT_METHOD_BinOpSub_Hash,ci_us(ci_dm_sub,false),1);
 end;
 
-procedure vmop_m_calltranslate;
+procedure vmop_sobinop_mul_ign;
+begin
+  do_so_method_call(DEFAULT_METHOD_BinOpMul_Hash,ci_us(ci_dm_mul,false),1);
+end;
+
+procedure vmop_sobinop_div_ign;
+begin
+  do_so_method_call(DEFAULT_METHOD_BinOpDiv_Hash,ci_us(ci_dm_div,false),1);
+end;
+
+procedure vmop_sobinop_mod_ign;
+begin
+  do_so_method_call(DEFAULT_METHOD_BinOpMod_Hash,ci_us(ci_dm_mod,false),1);
+end;
+
+procedure vmop_sobinop_shl_ign;
+begin
+  do_so_method_call(DEFAULT_METHOD_BinOpShl_Hash,ci_us(ci_dm_shl,false),1);
+end;
+
+procedure vmop_sobinop_shr_ign;
+begin
+  do_so_method_call(DEFAULT_METHOD_BinOpShr_Hash,ci_us(ci_dm_shr,false),1);
+end;
+
+procedure vmop_sobinop_rol_ign;
+begin
+  do_so_method_call(DEFAULT_METHOD_BinOpRol_Hash,ci_us(ci_dm_rol,false),1);
+end;
+
+procedure vmop_sobinop_ror_ign;
+begin
+  do_so_method_call(DEFAULT_METHOD_BinOpRor_Hash,ci_us(ci_dm_ror,false),1);
+end;
+
+procedure vmop_sobinop_and_ign;
+begin
+  do_so_method_call(DEFAULT_METHOD_BinOpAnd_Hash,ci_us(ci_dm_and,false),1);
+end;
+
+procedure vmop_sobinop_or_ign;
+begin
+  do_so_method_call(DEFAULT_METHOD_BinOpOr_Hash,ci_us(ci_dm_or,false),1);
+end;
+
+procedure vmop_sobinop_xor_ign;
+begin
+  do_so_method_call(DEFAULT_METHOD_BinOpXor_Hash,ci_us(ci_dm_xor,false),1);
+end;
+
+{special ops}
+
+procedure vmop_setm_stab;
+begin
+  {need fix, currently its: <caller,value>, we need <caller,name,value> -> push stab entry
+   and switch}
+  runtimestack_push(so_string_init_ucfs(template_stabentry(template_ip_operand,true),false));
+  runtimestack_switch(0,1);
+  do_so_method_call(DEFAULT_METHOD_SetMember_Hash,ci_us(ci_dm_setmember,false),2);
+end;
+
+procedure vmop_getm_stab;
+begin
+  {push stab entry}
+  runtimestack_push(so_string_init_ucfs(template_stabentry(template_ip_operand,true),false));
+  do_so_method_call(DEFAULT_METHOD_GetMember_Hash,ci_us(ci_dm_getmember,false),1);
+end;
+
+procedure vmop_seti_ign;
+begin
+  do_so_method_call(DEFAULT_METHOD_SetIndex_Hash,ci_us(ci_dm_setindex,false),2);
+end;
+
+procedure vmop_geti_ign;
+begin
+  do_so_method_call(DEFAULT_METHOD_GetIndex_Hash,ci_us(ci_dm_getindex,false),1);
+end;
+
+{calls}
+
+procedure vmop_callm_opern;
 var name: PUCFS32String;
 begin
-  case template_ip_opcode of
-    isc_o_callm_nrops:
-      begin
-        {simple, no interface check since every so object has a methodcall
-         interface}
-        ASSERT( runtimestack_get(0)^.GetTypeCls = so_string_class ); // invalid stack layout
-        check_so_maxargs(template_ip_operand);
-        {$WARNING this should come from stab somehow}
-        name := so_string_get_ucfs(runtimestack_get(0),true);
-        runtimestack_pop(1);
-        ASSERT(ucfs_length(name) > 0);
+  {simple, no interface check since every so object has a methodcall
+   interface}
+  ASSERT( runtimestack_get(0)^.GetTypeCls = so_string_class ); // invalid stack layout
+  check_so_maxargs(template_ip_operand);
+{$NOTE this should come from stab somehow}
+  name := so_string_get_ucfs(runtimestack_get(0),true);
+  runtimestack_pop(1);
+  ASSERT(ucfs_length(name) > 0);
 {$IFDEF DEBUG}
-        try
-          do_so_method_call(mas3hash_sigma(name),name,template_ip_operand);
-        finally
-          ucfs_release(name);
-        end;
-{$ELSE}
-        do_so_method_call(mas3hash_sigma(name),name,template_ip_operand);
-        ucfs_release(name);
-{$ENDIF}
-      end;
-    isc_o_callcall_nrops:
-      begin
-        check_so_maxargs(template_ip_operand);
-        do_so_method_call(DEFAULT_METHOD_DirectCall_Hash,ci_us(ci_dm_call,false),template_ip_operand);
-      end;
-    else
-      put_internalerror(2011121110);
+  try
+    do_so_method_call(mas3hash_sigma(name),name,template_ip_operand);
+  finally
+    ucfs_release(name);
   end;
+{$ELSE}
+  do_so_method_call(mas3hash_sigma(name),name,template_ip_operand);
+  ucfs_release(name);
+{$ENDIF}
+end;
+
+procedure vmop_callcall_opern;
+begin
+  check_so_maxargs(template_ip_operand);
+  do_so_method_call(DEFAULT_METHOD_DirectCall_Hash,ci_us(ci_dm_call,false),template_ip_operand);
 end;
 
 end.

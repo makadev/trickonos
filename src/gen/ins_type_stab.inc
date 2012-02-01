@@ -1,3 +1,4 @@
+isc_put_stab,
 isc_setenv_stab,
 isc_getenv_stab,
 isc_include_stab,

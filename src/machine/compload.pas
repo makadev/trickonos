@@ -30,7 +30,7 @@ uses SysUtils, Classes, commontl, eomsg, ccbase, cscan, csyms, ccstatn,
 
 
 {file path relative load}
-function LoadTemplate( incmode: TInsMIncludeMode;
+function LoadTemplate( incmode: Boolean;
   const fname: String ): PCodeReference;
 
 procedure SetByteCodeMode( WriteBC: Boolean );
@@ -38,11 +38,9 @@ procedure SetByteCodeMode( WriteBC: Boolean );
 procedure SetByteCodeDebugMode( switch: Boolean );
 
 const
-  Precompiled_Extension: array[TInsMIncludeMode] of String =
-    ( '',
-      '.pct',
-      '.pcu',
-      '' );
+  Precompiled_Extension: array[Boolean] of String =
+    ( '.pct',
+      '.pcu' );
 
 implementation
 
@@ -81,7 +79,7 @@ begin
   writecode := WriteBC;
 end;
 
-procedure TryLoadPreCompiledTemplate( incmode: TInsMIncludeMode; cacheref: PCodeReference );
+procedure TryLoadPreCompiledTemplate( incmode: Boolean; cacheref: PCodeReference );
 var
   mstream: TMemoryStream;
   ext: String;
@@ -138,7 +136,7 @@ begin
     end;
 end;
 
-function LoadTemplate( incmode: TInsMIncludeMode;
+function LoadTemplate( incmode: Boolean;
   const fname: String ): PCodeReference;
 var pnode: TParserNode;
     fstream: TFileStream;
@@ -152,10 +150,10 @@ begin
           put_info('Compiling "'+Result^.fullname+'"');
           {setup compiler/parser/scanner}
           InitCC;
-          if incmode = mincl_use then
-            InitScanner(true,Result^.shortname,Result^.fullname)
+          if incmode then
+            InitScanner(false,Result^.shortname,Result^.fullname)
           else
-            InitScanner(false,Result^.shortname,Result^.fullname);
+            InitScanner(true,Result^.shortname,Result^.fullname);
           {parse}
           pnode := TTemplateFile.Parse;
           if not Assigned(pnode) then
@@ -167,7 +165,7 @@ begin
               Result^.pbcode := New(PByteCodeBlock);
               Fillbyte(Result^.pbcode^,SizeOf(TByteCodeBlock),0);
               Result^.pbcode^.Init;
-              Result^.pbcode^.inclmode := incmode;
+              Result^.pbcode^.incl := incmode;
               if pnode.Assembly.LinkAndWrite(Result^.pbcode^) then
                 begin
                   if writecode then
@@ -212,7 +210,7 @@ begin
         codewrite(Result);
     end;
   if Assigned(Result^.pbcode) and
-     (Result^.pbcode^.inclmode <> incmode) then
+     (Result^.pbcode^.incl <> incmode) then
     put_critical('Wrong Inclusion Mode (reinclusion in differrent mode not supported!)');
 end;
 

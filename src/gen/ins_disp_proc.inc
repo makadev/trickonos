@@ -1,7 +1,7 @@
 procedure vmop_halt_ign;
-procedure vmop_nop_ign;
 procedure vmop_dup_opern;
 procedure vmop_pop_opern;
+procedure vmop_put_stab;
 procedure vmop_jmp_addr;
 procedure vmop_jmp_true_addr;
 procedure vmop_jmp_false_nil_addr;

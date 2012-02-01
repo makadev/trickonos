@@ -201,13 +201,13 @@ begin
   exlab := Assembly.GenLabel;
   hallab := Assembly.GenLabel;
   {jmp false nil @ halt}
-  Assembly.InsLRefOp(Line,Column,isc_m_jmp_false_nil_addr,hallab);
+  Assembly.InsLRefOp(Line,Column,isc_jmp_false_nil_addr,hallab);
   {otherwise, pop 1, jmp @ exit}
-  Assembly.InsOperand(Line,Column,isc_m_pop_nr,1);
-  Assembly.InsLRefOp(Line,Column,isc_m_jmp_addr,exlab);
+  Assembly.InsOperand(Line,Column,isc_pop_opern,1);
+  Assembly.InsLRefOp(Line,Column,isc_jmp_addr,exlab);
   {now halt on false/nil, which is still on stack}
   Assembly.AppendLabel(hallab);
-  Assembly.InsNoOperand(Line,Column,isc_m_halt_ign);
+  Assembly.InsNoOperand(Line,Column,isc_halt_ign);
   {and finally, ne normal flow}
   Assembly.AppendLabel(exlab);
   DecRec;
@@ -248,7 +248,7 @@ end;
 function TCoreMacro_Echo_Subst.Compile: Boolean;
 begin
   Result := inherited Compile;
-  Assembly.InsOperand(Line,Column,isc_m_echo,Ord(mecho_echosubst));
+  Assembly.InsNoOperand(Line,Column,isc_echosubst_ign);
 end;
 
 { TCoreMacro_Echo_Fmt }
@@ -256,7 +256,7 @@ end;
 function TCoreMacro_Echo_Fmt.Compile: Boolean;
 begin
   Result := inherited Compile;
-  Assembly.InsOperand(Line,Column,isc_m_echo,Ord(mecho_echofmt));
+  Assembly.InsNoOperand(Line,Column,isc_echofmt_ign);
 end;
 
 { TCoreMacro_Echo_Ext }
@@ -327,16 +327,16 @@ begin
         begin
           Result := TParserNode(Occ[1]).Compile;
           Assembly.AppendAssembly(TParserNode(Occ[1]).Assembly);
-          Assembly.InsOperand(Line,Column,isc_m_echo,Ord(mecho_echoln));
+          Assembly.InsNoOperand(Line,Column,isc_echoln_ign);
         end
       else
-        Assembly.InsOperand(Line,Column,isc_m_echo,Ord(mecho_echonl));
+        Assembly.InsNoOperand(Line,Column,isc_echonl_ign);
     end
   else
     begin
       Result := TParserNode(Occ[1]).Compile;
       Assembly.AppendAssembly(TParserNode(Occ[1]).Assembly);
-      Assembly.InsOperand(Line,Column,isc_m_echo,Ord(mecho_echo));
+      Assembly.InsNoOperand(Line,Column,isc_echo_ign);
     end;
   DecRec;
 end;
@@ -351,7 +351,7 @@ begin
   Result := TParserNode(Occ[1]).Compile;
   Assembly.AppendAssembly(TParserNode(Occ[1]).Assembly);
   {now include}
-  Assembly.InsOperand(Line,Column,isc_m_include,Ord(mincl_use));
+  Assembly.InsNoOperand(Line,Column,isc_use_ign);
   DecRec;
 end;
 
@@ -365,7 +365,7 @@ begin
   Result := TParserNode(Occ[1]).Compile;
   Assembly.AppendAssembly(TParserNode(Occ[1]).Assembly);
   {now include}
-  Assembly.InsOperand(Line,Column,isc_m_include,Ord(mincl_include));
+  Assembly.InsNoOperand(Line,Column,isc_include_ign);
   DecRec;
 end;
 
@@ -396,15 +396,15 @@ begin
     begin
       if Count = 1 then
         begin
-          Assembly.InsOperand(Line,Column,isc_m_load_type,Ord(soload_true));
-          Assembly.InsNoOperand(Line,Column,isc_m_halt_ign);
+          Assembly.InsNoOperand(Line,Column,isc_soload_true_ign);
+          Assembly.InsNoOperand(Line,Column,isc_halt_ign);
         end
       else
         begin
           ASSERT(Occ[1] is TParserNode);
           Result := TParserNode(Occ[1]).Compile;
           Assembly.AppendAssembly(TParserNode(Occ[1]).Assembly);
-          Assembly.InsNoOperand(Line,Column,isc_m_halt_ign);
+          Assembly.InsNoOperand(Line,Column,isc_halt_ign);
         end;
     end
   else
@@ -425,7 +425,7 @@ begin
   ASSERT(Occ[1] is TParserNode);
   Result := TParserNode(Occ[1]).Compile;
   Assembly.AppendAssembly(TParserNode(Occ[1]).Assembly);
-  Assembly.InsOperand(Line,Column,isc_m_outputop,Ord(mout_open));
+  Assembly.InsNoOperand(Line,Column,isc_output_open_ign);
   DecRec;
 end;
 
@@ -438,7 +438,7 @@ begin
   ASSERT(Occ[1] is TParserNode);
   Result := TParserNode(Occ[1]).Compile;
   Assembly.AppendAssembly(TParserNode(Occ[1]).Assembly);
-  Assembly.InsOperand(Line,Column,isc_m_outputop,Ord(mout_reopen));
+  Assembly.InsNoOperand(Line,Column,isc_output_reopen_ign);
   DecRec;
 end;
 
@@ -451,7 +451,7 @@ begin
   ASSERT(Occ[1] is TParserNode);
   Result := TParserNode(Occ[1]).Compile;
   Assembly.AppendAssembly(TParserNode(Occ[1]).Assembly);
-  Assembly.InsOperand(Line,Column,isc_m_outputop,Ord(mout_path));
+  Assembly.InsNoOperand(Line,Column,isc_output_path_ign);
   DecRec;
 end;
 
@@ -475,7 +475,7 @@ begin
   CreateAssembly;
   IncRec;
   ASSERT(Count <= 1);
-  Assembly.InsOperand(Line,Column,isc_m_outputop,Ord(mout_close));
+  Assembly.InsNoOperand(Line,Column,isc_output_close_ign);
   Result := true;
   DecRec;
 end;

@@ -365,7 +365,7 @@ begin
 
   {correct code, if last node is label, we need a nop as target}
   if Assigned(LastAsLab) then
-    InsNoOperand(0,0,isc_m_nop_ign);
+    InsNoOperand(0,0,isc_nop_ign);
 
   {check stab lengths}
   if not check_bc_maxstab(StabEntryNr) then

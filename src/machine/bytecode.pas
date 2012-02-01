@@ -66,7 +66,7 @@ type
 
   PByteCodeBlock = ^TByteCodeBlock;
   TByteCodeBlock = object
-    inclmode: TInsMIncludeMode;
+    incl: Boolean;
     stab: array of PUCFS32String;
     image: TByteCodeImage;
     bcsize: VMInt;
@@ -107,10 +107,13 @@ begin
     Exit(bcec_noncompat);
 
   {check incl mode range}
-  if (bchead.incmode <= Ord(mincl_invalid)) or
-     (bchead.incmode >= Ord(mincl_terminator)) then
+  if (bchead.incmode <= 0) or
+     (bchead.incmode >= 3) then
     Exit(bcec_invalidincl);
-  inclmode := TInsMIncludeMode(bchead.incmode);
+  if bchead.incmode = 1 then
+    incl := true
+  else
+    incl := false;
 
   {check stab entry cnt}
   if not check_bc_maxstab(bchead.stab_entries) then
@@ -178,7 +181,10 @@ begin
     begin
       magic := VMWord(CBCMagic);
       compat := CBCCompatCode;
-      incmode := Ord(inclmode);
+      if incl then
+        incmode := 1
+      else
+        incmode := 2;
       stab_entries := Length(stab);
       code_entries := Length(image);
       appendix_size := 0;

@@ -1,7 +1,7 @@
 @vmop_halt_ign,
-@vmop_nop_ign,
 @vmop_dup_opern,
 @vmop_pop_opern,
+@vmop_put_stab,
 @vmop_jmp_addr,
 @vmop_jmp_true_addr,
 @vmop_jmp_false_nil_addr,

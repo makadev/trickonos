@@ -245,7 +245,7 @@ begin
   ASSERT( Occ[0].ClassType = TScanRecord );
   Result := true;
   {create a new class}
-  Assembly.InsStabLoad(Line,Column,isc_m_class_stab,TScanRecord(Occ[0]).Pattern);
+  Assembly.InsStabLoad(Line,Column,isc_decl_class_stab,TScanRecord(Occ[0]).Pattern);
   {push class frame, so functions now they are methods and a class is on stack}
   FrameStackPush(ccft_class);
   for i := 1 to Count-1 do
@@ -257,7 +257,7 @@ begin
     end;
   {write back Name, pop TOS}
   ExprAssembleTOSSetter(Line,Column,Assembly,TScanRecord(Occ[0]).Pattern);
-  Assembly.InsOperand(Line,Column,isc_m_pop_nr,1);
+  Assembly.InsOperand(Line,Column,isc_pop_opern,1);
   {pop cls frame}
   FrameStackPop;
   DecRec;
@@ -323,25 +323,25 @@ begin
       Result := TParserNode(Occ[2]).Compile and Result;
       Assembly.AppendAssembly(TParserNode(Occ[1]).Assembly);
       {emit iterator creation}
-      Assembly.InsStabLoad(Line,Column,isc_m_load_string_stab,ci_us(ci_name_iterator,false));
-      Assembly.InsCall(Line,Column,isc_o_callm_nrops,0);
+      Assembly.InsStabLoad(Line,Column,isc_soload_string_stab,ci_us(ci_name_iterator,false));
+      Assembly.InsCall(Line,Column,isc_callm_opern,0);
       {introlabel}
       Assembly.AppendLabel(FrameStackTop^.reentry_lab);
       {dup iterator, otherwise it is gone after next call}
-      Assembly.InsOperand(Line,Column,isc_m_stackdup_nr,1);
+      Assembly.InsOperand(Line,Column,isc_dup_opern,1);
       {iter fails or pushes Iterator Object, call Next which pushes bool}
-      Assembly.InsStabLoad(Line,Column,isc_m_load_string_stab,ci_us(ci_name_next,false));
-      Assembly.InsCall(Line,Column,isc_o_callm_nrops,0);
+      Assembly.InsStabLoad(Line,Column,isc_soload_string_stab,ci_us(ci_name_next,false));
+      Assembly.InsCall(Line,Column,isc_callm_opern,0);
       {check if iterator returned false -> exit on false, proceed on true}
-      Assembly.InsLRefOp(Line,Column,isc_m_jmppop_false_nil_addr,FrameStackTop^.exit_lab);
+      Assembly.InsLRefOp(Line,Column,isc_jmppop_false_nil_addr,FrameStackTop^.exit_lab);
       {pop bool if true otherwise}
-      Assembly.InsOperand(Line,Column,isc_m_pop_nr,1);
+      Assembly.InsOperand(Line,Column,isc_pop_opern,1);
       {dup Iterator again, for member access call}
-      Assembly.InsOperand(Line,Column,isc_m_stackdup_nr,1);
+      Assembly.InsOperand(Line,Column,isc_dup_opern,1);
       {get the current listelement and set ID}
-      Assembly.InsStabLoad(Line,Column,isc_o_getm_stab,ci_us(ci_name_current,false));
+      Assembly.InsStabLoad(Line,Column,isc_getm_stab,ci_us(ci_name_current,false));
       ExprAssembleTOSSetter(Column,Line,Assembly,TScanRecord(Occ[0]).Pattern);
-      Assembly.InsOperand(Line,Column,isc_m_pop_nr,1);
+      Assembly.InsOperand(Line,Column,isc_pop_opern,1);
       {stats code}
       Assembly.AppendAssembly(TParserNode(Occ[2]).Assembly);
     end
@@ -353,37 +353,37 @@ begin
       Result := TParserNode(Occ[3]).Compile and Result;
       Assembly.AppendAssembly(TParserNode(Occ[2]).Assembly);
       {emit iterator start/next}
-      Assembly.InsStabLoad(Line,Column,isc_m_load_string_stab,ci_us(ci_name_iterator,false));
-      Assembly.InsCall(Line,Column,isc_o_callm_nrops,0);
+      Assembly.InsStabLoad(Line,Column,isc_soload_string_stab,ci_us(ci_name_iterator,false));
+      Assembly.InsCall(Line,Column,isc_callm_opern,0);
       {introlabel}
       Assembly.AppendLabel(FrameStackTop^.reentry_lab);
       {dup iterator for next call}
-      Assembly.InsOperand(Line,Column,isc_m_stackdup_nr,1);
+      Assembly.InsOperand(Line,Column,isc_dup_opern,1);
       {iter fails or pushes Iterator Object -> set ID:ID from key, value}
-      Assembly.InsStabLoad(Line,Column,isc_m_load_string_stab,ci_us(ci_name_next,false));
-      Assembly.InsCall(Line,Column,isc_o_callm_nrops,0);
+      Assembly.InsStabLoad(Line,Column,isc_soload_string_stab,ci_us(ci_name_next,false));
+      Assembly.InsCall(Line,Column,isc_callm_opern,0);
       {check if iterator returned true/false -> exit on false, proceed on true}
-      Assembly.InsLRefOp(Line,Column,isc_m_jmppop_false_nil_addr,FrameStackTop^.exit_lab);
+      Assembly.InsLRefOp(Line,Column,isc_jmppop_false_nil_addr,FrameStackTop^.exit_lab);
       {pop bool otherwise}
-      Assembly.InsOperand(Line,Column,isc_m_pop_nr,1);
+      Assembly.InsOperand(Line,Column,isc_pop_opern,1);
       {dup iterator 2 member access calls}
-      Assembly.InsOperand(Line,Column,isc_m_stackdup_nr,2);
-      Assembly.InsStabLoad(Line,Column,isc_o_getm_stab,ci_us(ci_name_currentkey,false));
+      Assembly.InsOperand(Line,Column,isc_dup_opern,2);
+      Assembly.InsStabLoad(Line,Column,isc_getm_stab,ci_us(ci_name_currentkey,false));
       ExprAssembleTOSSetter(Column,Line,Assembly,TScanRecord(Occ[0]).Pattern);
-      Assembly.InsOperand(Line,Column,isc_m_pop_nr,1);
-      Assembly.InsStabLoad(Line,Column,isc_o_getm_stab,ci_us(ci_name_currentvalue,false));
+      Assembly.InsOperand(Line,Column,isc_pop_opern,1);
+      Assembly.InsStabLoad(Line,Column,isc_getm_stab,ci_us(ci_name_currentvalue,false));
       ExprAssembleTOSSetter(Column,Line,Assembly,TScanRecord(Occ[1]).Pattern);
-      Assembly.InsOperand(Line,Column,isc_m_pop_nr,1);
+      Assembly.InsOperand(Line,Column,isc_pop_opern,1);
       {stats code}
       Assembly.AppendAssembly(TParserNode(Occ[3]).Assembly);
     end;
 
   {back jmp @ intro}
-  Assembly.InsLRefOp(Line,Column,isc_m_jmp_addr,FrameStackTop^.reentry_lab);
+  Assembly.InsLRefOp(Line,Column,isc_jmp_addr,FrameStackTop^.reentry_lab);
   {exitlabel}
   Assembly.AppendLabel(FrameStackTop^.exit_lab);
   {cleanup -> pop iterator object}
-  Assembly.InsOperand(Line,Column,isc_m_pop_nr,1);
+  Assembly.InsOperand(Line,Column,isc_pop_opern,1);
   FrameStackPop;
   DecRec;
 end;
@@ -433,8 +433,8 @@ begin
   Assembly.AppendAssembly(TParserNode(Occ[1]).Assembly);
 
   {jmppop on false/nil @ loop intro, otherwise pop expression val}
-  Assembly.InsLRefOp(Line,Column,isc_m_jmppop_false_nil_addr,Assembly.FirstAsLab);
-  Assembly.InsOperand(Line,Column,isc_m_pop_nr,1);
+  Assembly.InsLRefOp(Line,Column,isc_jmppop_false_nil_addr,Assembly.FirstAsLab);
+  Assembly.InsOperand(Line,Column,isc_pop_opern,1);
 
   {append exitlabel}
   Assembly.AppendLabel(FrameStackTop^.exit_lab);
@@ -488,15 +488,15 @@ begin
   FrameStackTop^.exit_lab := Assembly.GenLabel;
 
   {append exit jmppop on false/nil, otherwise pop expression result explicit}
-  Assembly.InsLRefOp(Line,Column,isc_m_jmppop_false_nil_addr,FrameStackTop^.exit_lab);
-  Assembly.InsOperand(Line,Column,isc_m_pop_nr,1);
+  Assembly.InsLRefOp(Line,Column,isc_jmppop_false_nil_addr,FrameStackTop^.exit_lab);
+  Assembly.InsOperand(Line,Column,isc_pop_opern,1);
 
   {compile and add stats}
   Result := TParserNode(Occ[1]).Compile and Result;
   Assembly.AppendAssembly(TParserNode(Occ[1]).Assembly);
 
   {jmp @ head}
-  Assembly.InsLRefOp(Line,Column,isc_m_jmp_addr,FrameStackTop^.reentry_lab);
+  Assembly.InsLRefOp(Line,Column,isc_jmp_addr,FrameStackTop^.reentry_lab);
 
   {append exitlabel}
   Assembly.AppendLabel(FrameStackTop^.exit_lab);
@@ -593,7 +593,7 @@ begin
   {assemble the initial intro:
     loc_0: jmp @exitdecl_lab
     .callintro_lab: }
-  Assembly.InsLRefOp(Line,Column,isc_m_jmp_addr,FrameStackTop^.exitdecl_lab);
+  Assembly.InsLRefOp(Line,Column,isc_jmp_addr,FrameStackTop^.exitdecl_lab);
   Assembly.AppendLabel(FrameStackTop^.callintro_lab);
 
   (*
@@ -727,7 +727,7 @@ begin
         begin
           {the body jump if no def. expr is evaluated}
           bodylab := Assembly.GenLabel;
-          Assembly.InsLRefOp(Line,Column,isc_m_jmp_addr,bodylab);
+          Assembly.InsLRefOp(Line,Column,isc_jmp_addr,bodylab);
         end;
 
       if varargexpr or (not varg) then
@@ -735,15 +735,15 @@ begin
           {add jumptable entries}
           for i := argsn downto argsf+2 do
             begin
-              Assembly.InsLRefOp(Line,Column,isc_m_jmp_addr,
+              Assembly.InsLRefOp(Line,Column,isc_jmp_addr,
                 TParserNode(Occ[i*2]).Assembly.FirstAsLab);
             end;
           {add code}
           for i := argsf+1 to argsn do
             begin
               Assembly.AppendAssembly(TParserNode(Occ[i*2]).Assembly);
-              Assembly.InsOperand(Line,Column,isc_m_fprel_set_slot,i+1);
-              Assembly.InsOperand(Line,Column,isc_m_pop_nr,1);
+              Assembly.InsOperand(Line,Column,isc_fprel_set_slot,i+1);
+              Assembly.InsOperand(Line,Column,isc_pop_opern,1);
             end;
         end
       else
@@ -751,19 +751,19 @@ begin
           {initialize vararg to nil if its not with default expr
             -> need an extra entry}
           varglab := Assembly.GenLabel;
-          Assembly.InsLRefOp(Line,Column,isc_m_jmp_addr,varglab);
+          Assembly.InsLRefOp(Line,Column,isc_jmp_addr,varglab);
           {add jumptable entries}
           for i := argsn-1 downto argsf+2 do
             begin
-              Assembly.InsLRefOp(Line,Column,isc_m_jmp_addr,
+              Assembly.InsLRefOp(Line,Column,isc_jmp_addr,
                 TParserNode(Occ[i*2]).Assembly.FirstAsLab);
             end;
           {add code, one node short since vararg is added seperate}
           for i := argsf+1 to argsn-1 do
             begin
               Assembly.AppendAssembly(TParserNode(Occ[i*2]).Assembly);
-              Assembly.InsOperand(Line,Column,isc_m_fprel_set_slot,i+1);
-              Assembly.InsOperand(Line,Column,isc_m_pop_nr,1);
+              Assembly.InsOperand(Line,Column,isc_fprel_set_slot,i+1);
+              Assembly.InsOperand(Line,Column,isc_pop_opern,1);
             end;
         end;
 
@@ -772,9 +772,9 @@ begin
       if Assigned(varglab) then
         begin
           Assembly.AppendLabel(varglab);
-          Assembly.InsOperand(Line,Column,isc_m_load_type,Ord(soload_nil));
-          Assembly.InsOperand(Line,Column,isc_m_fprel_set_slot,argsn+1);
-          Assembly.InsOperand(Line,Column,isc_m_pop_nr,1);
+          Assembly.InsNoOperand(Line,Column,isc_soload_nil_ign);
+          Assembly.InsOperand(Line,Column,isc_fprel_set_slot,argsn+1);
+          Assembly.InsOperand(Line,Column,isc_pop_opern,1);
         end;
 
       {body label}
@@ -857,19 +857,19 @@ begin
    {exitlabel}
    Assembly.AppendLabel(FrameStackTop^.exit_lab);
    {ret RESULT}
-   Assembly.InsOperand(Line,Column,isc_m_ret_slot,PtrInt(idxtab^.Lookup(ci_us(ci_name_result,false))-nil));
+   Assembly.InsOperand(Line,Column,isc_ret_slot,PtrInt(idxtab^.Lookup(ci_us(ci_name_result,false))-nil));
 
    {exit decl}
    Assembly.AppendLabel(FrameStackTop^.exitdecl_lab);
    {Function DECL}
-   Assembly.InsOperand(Line,Column,isc_m_load_int_oper,argsf);         // fixed args
-   Assembly.InsOperand(Line,Column,isc_m_load_int_oper,argsn);         // all args
-   Assembly.InsOperand(Line,Column,isc_m_load_int_oper,slotn);         // slots in frame (local vars inclusive args)
+   Assembly.InsOperand(Line,Column,isc_soload_int_operi,argsf);         // fixed args
+   Assembly.InsOperand(Line,Column,isc_soload_int_operi,argsn);         // all args
+   Assembly.InsOperand(Line,Column,isc_soload_int_operi,slotn);         // slots in frame (local vars inclusive args)
    if varg then                                                         // vararg or not
-     Assembly.InsOperand(Line,Column,isc_m_load_type,Ord(soload_true))
+     Assembly.InsNoOperand(Line,Column,isc_soload_true_ign)
    else
-     Assembly.InsOperand(Line,Column,isc_m_load_type,Ord(soload_false));
-   Assembly.InsLRefOp(Line,Column,isc_m_decl_fun_addr,FrameStackTop^.callintro_lab); // and declare
+     Assembly.InsNoOperand(Line,Column,isc_soload_false_ign);
+   Assembly.InsLRefOp(Line,Column,isc_decl_fun_addr,FrameStackTop^.callintro_lab); // and declare
 
    FrameStackPop;
 
@@ -877,14 +877,14 @@ begin
      begin
        // declare method in current class
        // this will enter the function into the class
-       Assembly.InsStabLoad(Line,Column,isc_m_decl_method_stab,TScanRecord(Occ[0]).Pattern);
+       Assembly.InsStabLoad(Line,Column,isc_decl_method_stab,TScanRecord(Occ[0]).Pattern);
      end
    else
      begin
        // compile TOS setting after FrameStackPop since it will set it in the frame below
        // which may be again a function
        ExprAssembleTOSSetter(Line,Column,Assembly,TScanRecord(Occ[0]).Pattern); // function @ TOS -> set by name
-       Assembly.InsOperand(Line,Column,isc_m_pop_nr,1); // pop after setting
+       Assembly.InsOperand(Line,Column,isc_pop_opern,1); // pop after setting
      end;
 
    if not check_cc_maxframe(slotn) then
@@ -996,17 +996,17 @@ begin
     begin
       {append exit jump to stats}
       TParserNode(Occ[i+1]).Assembly.InsLRefOp(Occ[Count-1].Line,Occ[Count-1].Column,
-        isc_m_jmp_addr,TParserNode(Occ[Count-1]).Assembly.LastAsLab);
+        isc_jmp_addr,TParserNode(Occ[Count-1]).Assembly.LastAsLab);
       {append next label to stats}
       TParserNode(Occ[i+1]).Assembly.AppendLabel;
       {expr->TOS}
       Assembly.AppendAssembly(TParserNode(Occ[i]).Assembly);
       {jmpfalsenil(TOS),Pop -> next label}
       Assembly.InsLRefOp(Occ[Count-1].Line,Occ[Count-1].Column,
-        isc_m_jmppop_false_nil_addr,TParserNode(Occ[i+1]).Assembly.LastAsLab);
+        isc_jmppop_false_nil_addr,TParserNode(Occ[i+1]).Assembly.LastAsLab);
       {otherwise, explict Pop expr}
       Assembly.InsOperand(Occ[i+1].Line,Occ[i+1].Column,
-        isc_m_pop_nr,1);
+        isc_pop_opern,1);
       Assembly.AppendAssembly(TParserNode(Occ[i+1]).Assembly);
       {> expr, jmpfalsenil next, stats, jmp exit, :next}
       Inc(i,2);
@@ -1075,7 +1075,7 @@ begin
   for i := 0 to Count-1 do
     begin
       ASSERT(Occ[i].ClassType = TScanRecord);
-      Assembly.InsStabLoad(Line,Column,isc_m_puts_stab,TScanRecord(Occ[i]).Pattern);
+      Assembly.InsStabLoad(Line,Column,isc_put_stab,TScanRecord(Occ[i]).Pattern);
     end;
   Result := true;
   DecRec;
@@ -1130,7 +1130,7 @@ begin
   ASSERT(Occ[0] is TParserNode);
   Result := TParserNode(Occ[0]).Compile;
   Assembly.AppendAssembly(TParserNode(Occ[0]).Assembly);
-  Assembly.InsOperand(Occ[0].Line,Occ[0].Column,isc_m_pop_nr,1);
+  Assembly.InsOperand(Occ[0].Line,Occ[0].Column,isc_pop_opern,1);
   DecRec;
 end;
 

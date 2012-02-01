@@ -1,5 +1,4 @@
 isc_halt_ign,
-isc_nop_ign,
 isc_include_ign,
 isc_use_ign,
 isc_echo_ign,

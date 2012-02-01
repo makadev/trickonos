@@ -5,11 +5,6 @@
     ign,['obj'],0,0);
     
   OpcodeDef(
-    'nop',
-    'no operation',
-    ign,[],0,0);
-    
-  OpcodeDef(
     'dup',
     'dup tos <operand> times',
     opern,['obj'],-1,0);
@@ -19,7 +14,10 @@
     'pop <operand> times',
     opern,[],0,-1);
 
-
+  OpcodeDef(
+    'put',
+    'output stab entry ',
+    stab,[],0,0);
 
   OpcodeDef(
     'jmp',

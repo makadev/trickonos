@@ -580,7 +580,7 @@ begin
   SetLength(FStartBootCoder,0);
   if OnlyCompile then
     begin
-      LoadTemplate(mincl_include,fname);
+      LoadTemplate(true,fname);
       ExitCode := 0;
     end
   else
@@ -592,7 +592,7 @@ begin
       ucfs_release(tmps);
       if bootblock.OpcodeAdd < 0 then
         put_internalerror(2011123001);
-      bootblock.image[High(bootblock.image)].SetOpcode(isc_m_include_stab);
+      bootblock.image[High(bootblock.image)].SetOpcode(isc_include_stab);
       bootblock.image[High(bootblock.image)].SetOperand(High(bootblock.stab));
     end;
   for i := 0 to High(FShutdownBootCoder) do
@@ -601,11 +601,11 @@ begin
   // append Halt, so machine knows its all done
   if bootblock.OpcodeAdd < 0 then
     put_internalerror(2011123002);
-  bootblock.image[High(bootblock.image)].SetOpcode(isc_m_load_type);
-  bootblock.image[High(bootblock.image)].SetOperand(Ord(soload_true));
+  bootblock.image[High(bootblock.image)].SetOpcode(isc_soload_true_ign);
+  bootblock.image[High(bootblock.image)].SetOperand(0);
   if bootblock.OpcodeAdd < 0 then
     put_internalerror(2011123003);
-  bootblock.image[High(bootblock.image)].SetOpcode(isc_m_halt_ign);
+  bootblock.image[High(bootblock.image)].SetOpcode(isc_halt_ign);
   bootblock.image[High(bootblock.image)].ClearOperand;
   {set lineinfo instruction based}
   for i := 0 to High(bootblock.image) do

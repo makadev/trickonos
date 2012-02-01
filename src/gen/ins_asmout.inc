@@ -1,7 +1,7 @@
 isc_halt_ign: Result := 'HALT; TOSOPS 1: TOS=obj;';
-isc_nop_ign: Result := 'NOP;';
 isc_dup_opern: Result := 'DUP; OP NUM ('+IntToStr(operand)+'); TOSOPS 1: TOS=obj; PUSHES <STATE DEP>;';
 isc_pop_opern: Result := 'POP; OP NUM ('+IntToStr(operand)+'); POPS <STATE DEP>;';
+isc_put_stab: Result := 'PUT; OP STAB['+IntToStr(operand)+'];';
 isc_jmp_addr: Result := 'JMP; OP IP+('+IntToStr(operand)+');';
 isc_jmp_true_addr: Result := 'JMP_TRUE; OP IP+('+IntToStr(operand)+'); TOSOPS 1: TOS=obj;';
 isc_jmp_false_nil_addr: Result := 'JMP_FALSE_NIL; OP IP+('+IntToStr(operand)+'); TOSOPS 1: TOS=obj;';

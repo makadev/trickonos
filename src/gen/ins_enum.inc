@@ -2,10 +2,6 @@
 OPSTR: HALT; TOSOPS 1: TOS=obj;
 }
 isc_halt_ign,
-{DOC>> no operation @br
-OPSTR: NOP;
-}
-isc_nop_ign,
 {DOC>> dup tos <operand> times @br
 OPSTR: DUP; OP NUM ('+IntToStr(operand)+'); TOSOPS 1: TOS=obj; PUSHES <STATE DEP>;
 }
@@ -14,6 +10,10 @@ isc_dup_opern,
 OPSTR: POP; OP NUM ('+IntToStr(operand)+'); POPS <STATE DEP>;
 }
 isc_pop_opern,
+{DOC>> output stab entry  @br
+OPSTR: PUT; OP STAB['+IntToStr(operand)+'];
+}
+isc_put_stab,
 {DOC>> jmp @ addr @br
 OPSTR: JMP; OP IP+('+IntToStr(operand)+');
 }
