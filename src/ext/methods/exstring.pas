@@ -200,8 +200,7 @@ begin
                               begin
                                 {real match, copy (l+1)..(j-1), add to list}
                                 pins := so_string_init_ucfs(ucfs_cpy(tmps,l+1,j-(l+1)),false);
-                                Result := so_list_append(Result,@pins,1);
-                                Result^.DecRef;
+                                so_list_append_one(Result,pins,false);
                                 {update last match/new end}
                                 l := i;
                                 i := i + ucfs_length(tmpsplits);
@@ -248,8 +247,7 @@ begin
                               if ucfs_submatch(tmps,tmpsplits,i,ucfs_length(tmpsplits)) then
                                 begin
                                   pins := so_string_init_ucfs(ucfs_cpy(tmps,l+1,i-(l+1)),false);
-                                  Result := so_list_append(Result,@pins,1);
-                                  Result^.DecRef;
+                                  so_list_append_one(Result,pins,false);
                                   i := i+ucfs_length(tmpsplits);
                                   l := i-1;
                                 end
@@ -262,15 +260,13 @@ begin
                 if (ucfs_length(tmps)-l) > 0 then
                   begin
                     pins := so_string_init_ucfs(ucfs_cpy(tmps,l+1,ucfs_length(tmps)-l),false);
-                    Result := so_list_append(Result,@pins,1);
-                    Result^.DecRef;
+                    so_list_append_one(Result,pins,false);
                   end
                 else
                   begin
                     {nothing left -> match at end, put ''}
                     pins := so_string_init_empty;
-                    Result := so_list_append(Result,@pins,1);
-                    Result^.DecRef;
+                    so_list_append_one(Result,pins,false);
                   end;
                 end
               else if (ucfs_length(tmpsplits) = ucfs_length(tmps)) and
@@ -279,20 +275,15 @@ begin
                 begin
                   {full match split - splitstr = string -> ['','']}
                   pins := so_string_init_empty;
-                  Result := so_list_append(Result,@pins,1);
-                  // fix refcount since append increfs again
-                  Result^.DecRef;
-                  pins := so_string_init_empty;
-                  Result := so_list_append(Result,@pins,1);
-                  // fix refcount since append increfs again
-                  Result^.DecRef;
+                  so_list_append_one(Result,pins,true);
+                  so_list_append_one(Result,pins,false);
                 end
               else
                 begin
                   {splitstr < str or splitstr=''
                    -> return string since they cant match}
                   pins := soself;
-                  Result := so_list_append(Result,@pins,1);
+                  so_list_append_one(Result,pins,true);
                 end;
             end
           else

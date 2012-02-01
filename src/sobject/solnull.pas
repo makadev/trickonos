@@ -114,7 +114,14 @@ function so_integer_string( soint: PSOInstance ): String; inline;
 
 {list}
 function so_list_init: PSOInstance; inline;
+{DOC>> list append method wrapper.
+       Appends multiple Arguments and Increfs them.
+       @returns Error Instance on fail (locked list, max items, ..) or
+       the list Instance itself (Increfed! for pass).}
 function so_list_append( soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: Integer ): PSOInstance; inline;
+{DOC>> Internal List Append. Appends elem, increfs elem if incref=true.
+       No Lock Checking!}
+procedure so_list_append_one( solist: PSOInstance; e: PSOInstance; incref: Boolean ); inline;
 function so_list_count( plst: PSOInstance ): VMInt;
 {DOC>> Low Level List Access. @br
   iter=nil: get first, iter<>nil: get next,

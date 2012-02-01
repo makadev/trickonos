@@ -24,6 +24,8 @@ unit socore;
 {$mode objfpc}{$H+}
 {$PACKRECORDS 1}
 
+{$DEFINE NO_FLAT_MORTAL_TRACE}
+
 interface
 
 uses SysUtils, commontl, eomsg, gens, ucfs;
@@ -167,6 +169,8 @@ type
 
       procedure IncLocks; inline;
       procedure DecLocks; inline;
+
+      function IsTraceable: Boolean; inline;
   end;
 
 (******************************************************************************
@@ -220,10 +224,15 @@ procedure DoneInstance(soinstance: PSOInstance); inline;
  Table then it will be swapped with another entry such that it is the last.
  Afterwards it is popped from the Tracer Table and Freed}
 begin
-  if soinstance^.centry <> SOInstanceTable.Count-1 then
-    SwapAndFix(soinstance^.centry,SOInstanceTable.Count-1);
-  SOInstanceTable.Items[SOInstanceTable.Count-1] := nil;
-  SOInstanceTable.Pop;
+  if Assigned(soinstance^.clsptr^.PreDestructor) then
+    soinstance^.clsptr^.PreDestructor(soinstance);
+  if soinstance^.IsTraceable then
+    begin
+      if soinstance^.centry <> SOInstanceTable.Count-1 then
+        SwapAndFix(soinstance^.centry,SOInstanceTable.Count-1);
+      SOInstanceTable.Items[SOInstanceTable.Count-1] := nil;
+      SOInstanceTable.Pop;
+    end;
   Freemem(soinstance,soinstance^.clsptr^.InstanceSize);
 end;
 
@@ -246,16 +255,9 @@ begin
       if Assigned(SOInstanceTable.Items[i]^.clsptr^.GCEnumerator) then
         SOInstanceTable.Items[i]^.clsptr^.GCEnumerator(SOInstanceTable.Items[i],@DecRefProc);
     end;
-  {call Pre Destructor now, with all objects still alive (allows some
-   internal interchange between objects before destroy)}
-  for i := SOInstanceTable.Count-1 downto SweepPointer do
-    begin
-      if Assigned(SOInstanceTable.Items[i]^.clsptr^.PreDestructor) then
-        SOInstanceTable.Items[i]^.clsptr^.PreDestructor(SOInstanceTable.Items[i]);
-    end;
   {clean the garbage}
   while SweepPointer < SOInstanceTable.Count do
-    DoneInstance(SOInstanceTable.Items[SOInstanceTable.Count-1]); // trace removed in doneinstance
+    DoneInstance(SOInstanceTable.Items[SOInstanceTable.Count-1]);
 end;
 
 procedure Ref0SweepCheck(soinstance: PSOInstance); inline;
@@ -264,32 +266,32 @@ procedure Ref0SweepCheck(soinstance: PSOInstance); inline;
  will be release, so swap in above the sweeppointer for combined collection.
  otherwise start sweepmode.}
 begin
-  if not SweepMode then
+  if soinstance^.IsTraceAble then
     begin
-      if not Assigned(soinstance^.clsptr^.GCEnumerator) then
+      if not SweepMode then
         begin
-          SweepPointer := SOInstanceTable.Count-1;
-          if Assigned(soinstance^.clsptr^.PreDestructor) then
-            soinstance^.clsptr^.PreDestructor(soinstance);
-          DoneInstance(soinstance);
+          if not Assigned(soinstance^.clsptr^.GCEnumerator) then
+            DoneInstance(soinstance)
+          else
+            begin
+              SweepMode := true;
+              SweepPointer := SOInstanceTable.Count-1;
+              SwapAndFix(soinstance^.centry,SweepPointer);
+              Sweep;
+              SweepMode := false;
+            end;
         end
       else
         begin
-          SweepMode := true;
-          SweepPointer := SOInstanceTable.Count-1;
-          SwapAndFix(soinstance^.centry,SweepPointer);
-          Sweep;
-          SweepMode := false;
+          if soinstance^.centry < SweepPointer then
+            begin
+              Dec(SweepPointer,1);
+              SwapAndFix(soinstance^.centry,SweepPointer);
+            end;
         end;
     end
   else
-    begin
-      if soinstance^.centry < SweepPointer then
-        begin
-          Dec(SweepPointer,1);
-          SwapAndFix(soinstance^.centry,SweepPointer);
-        end;
-    end;
+    DoneInstance(soinstance);
 end;
 
 function InitInstance(classptr: PSOTypeCls): PSOInstance;
@@ -304,10 +306,15 @@ begin
   if classptr^.Wipe then
     FillByte(Result^,isize,0);
   Result^.clsptr := classptr;
-  Result^.centry := SOInstanceTable.Push(Result);
+  if Result^.IsTraceAble then
+    Result^.centry := SOInstanceTable.Push(Result)
+  else
+    Result^.centry := High(VMWord);
   Result^.refcnt := 1;
   Result^.lockcnt := 0;
+{$IFNDEF NO_FLAT_MORTAL_TRACE}
   check_so_maxobjects(Result^.centry+1);
+{$ENDIF}
   if Assigned(classptr^.PostConstructor) then
     classptr^.PostConstructor(Result);
 end;
@@ -315,10 +322,26 @@ end;
 procedure MarkReachable(soinstance: PSOInstance);
 {reorder all reachables below the sweep pointer}
 begin
-  if soinstance^.centry >= SweepPointer then
+  if soinstance^.IsTraceAble and
+     (soinstance^.centry >= SweepPointer) then
     begin
       SwapAndFix(soinstance^.centry,SweepPointer);
       Inc(SweepPointer,1);
+    end;
+end;
+
+procedure FindImmortals; inline;
+{find all immortals}
+var i: MachineInt;
+begin
+  SweepPointer := 0;
+  for i := 0 to SOInstanceTable.Count-1 do
+    begin
+      if not SOInstanceTable.Items[i]^.clsptr^.IsMortal then
+        begin
+          SwapAndFix(i,SweepPointer);
+          Inc(SweepPointer,1);
+        end;
     end;
 end;
 
@@ -333,16 +356,7 @@ begin
     end;
   SweepMode := true;
 
-  SweepPointer := 0;
-  {find all immortals}
-  for i := 0 to SOInstanceTable.Count-1 do
-    begin
-      if not SOInstanceTable.Items[i]^.clsptr^.IsMortal then
-        begin
-          SwapAndFix(i,SweepPointer);
-          Inc(SweepPointer,1);
-        end;
-    end;
+  FindImmortals;
 
   i := 0;
   {scan reachables / mark reachables by adjusting the sweeppointer}
@@ -373,17 +387,28 @@ end;
 procedure socore_done;
 begin
   {tracer}
+{$IFDEF CLEANSHUTDOWN}
   if SOInstanceTable.Count > 0 then
     begin
-      for SweepPointer := SOInstanceTable.Count-1 downto 0 do
-        begin
-          if Assigned(SOInstanceTable.Items[SweepPointer]^.clsptr^.PreDestructor) then
-            SOInstanceTable.Items[SweepPointer]^.clsptr^.PreDestructor(SOInstanceTable.Items[SweepPointer]);
-        end;
+  {$IFNDEF NO_FLAT_MORTAL_TRACE}
       for SweepPointer := SOInstanceTable.Count-1 downto 0 do
         DoneInstance(SOInstanceTable.Items[SweepPointer]);
+  {$ELSE}
+     {sweepmode active -> crashed in sweeping,
+      try again would probably crash too, so skip}
+     if SweepMode then
+        Exit;
+     SweepMode := true;
+     SweepPointer := 0;
+     Sweep;
+     {now kill all immortals}
+     for SweepPointer := SOInstanceTable.Count-1 downto 0 do
+       DoneInstance(SOInstanceTable.Items[SweepPointer]);
+     SweepMode := false;
+  {$ENDIF}
     end;
   SOInstanceTable.Free;
+{$ENDIF}
 end;
 
 { TSOInstance }
@@ -452,6 +477,16 @@ begin
     Dec(lockcnt,1)
   else
     put_internalerror(2011121730);
+end;
+
+function TSOInstance.IsTraceable: Boolean;
+begin
+{$IFDEF NO_FLAT_MORTAL_TRACE}
+  Result := (not clsptr^.IsMortal) or
+            Assigned(clsptr^.GCEnumerator);
+{$ELSE}
+  Result := true;
+{$ENDIF}
 end;
 
 {$IFDEF SELFCHECK}

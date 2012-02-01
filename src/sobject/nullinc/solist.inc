@@ -227,39 +227,42 @@ begin
   Result := InitInstance(so_list_class);
 end;
 
-function internal_list_append( soself: PSOInstance; soargs: PSOMethodVarArgs; argnum: VMInt ): PSOInstance;
+function so_list_append(soself: PSOInstance; soargs: PSOMethodVarArgs;
+  argnum: Integer): PSOInstance;
 var elem: PSOListElement;
     i: Integer;
 begin
-  check_so_maxargs(argnum);
-  for i := 0 to argnum-1 do
-    begin
-      elem := New(PSOListElement);
-      elem^.next := nil;
-      elem^.prev := PSO_List(soself)^.last;
-      elem^.elem := soargs^[i];
-      if Assigned(PSO_List(soself)^.last) then
-        PSO_List(soself)^.last^.next := elem
-      else
-        PSO_List(soself)^.first := elem;
-      PSO_List(soself)^.last := elem;
-      Inc(PSO_List(soself)^.count,1);
-      elem^.elem^.IncRef;
-    end;
-  soself^.IncRef;
-  Result := soself;
-end;
-
-function so_list_append(soself: PSOInstance; soargs: PSOMethodVarArgs;
-  argnum: Integer): PSOInstance;
-begin
+  {$IFDEF SELFCHECK}SelfCheck(soself,so_list_class);{$ENDIF}
   check_so_maxcollection( PSO_List(soself)^.count + argnum );
   if not soself^.GetLocked then
     begin
-      Result := internal_list_append(soself,soargs,argnum);
+      check_so_maxargs(argnum);
+      for i := 0 to argnum-1 do
+        so_list_append_one(soself,soargs^[i],true);
+      soself^.IncRef;
+      Result := soself;
     end
   else
     Result := init_lockmod(soself,C_STDCALLM_LIST__APPEND);
+end;
+
+procedure so_list_append_one(solist: PSOInstance; e: PSOInstance;
+  incref: Boolean);
+var elem: PSOListElement;
+begin
+  {$IFDEF SELFCHECK}SelfCheck(solist,so_list_class);{$ENDIF}
+  elem := New(PSOListElement);
+  elem^.next := nil;
+  elem^.prev := PSO_List(solist)^.last;
+  elem^.elem := e;
+  if Assigned(PSO_List(solist)^.last) then
+    PSO_List(solist)^.last^.next := elem
+  else
+    PSO_List(solist)^.first := elem;
+  PSO_List(solist)^.last := elem;
+  Inc(PSO_List(solist)^.count,1);
+  if incref then
+    elem^.elem^.IncRef;
 end;
 
 function so_list_count(plst: PSOInstance): VMInt;
@@ -330,15 +333,7 @@ begin
     begin
       {$IFDEF SELFCHECK}SelfCheck(soself,so_list_class);{$ENDIF}
       if argnum > 0 then
-        begin
-          if not soself^.GetLocked then
-            begin
-              check_so_maxcollection( PSO_List(soself)^.count + argnum );
-              Result := internal_list_append(soself,soargs,argnum);
-            end
-          else
-            Result := init_lockmod(soself,name);
-        end
+        Result := so_list_append(soself,soargs,argnum)
       else
         Result := init_invargnum_error(soself,argnum,name);
     end;

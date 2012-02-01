@@ -22,19 +22,26 @@ SRC_PATH = src
 
 ## defs
 DEFAULT_DEFS =
-RELEASE_DEFS = RELEASE
+
+RELEASE_DEFS = RELEASE NO_FLAT_MORTAL_TRACE
 DEBUG_DEFS = DEBUG SELFCHECK
 MEMDEBUG_DEFS = DEBUG CLEANSHUTDOWN
+MEMRELEASE_DEFS = RELEASE CLEANSHUTDOWN NO_FLAT_MORTAL_TRACE
 VGDEBUG_DEFS = DEBUG CLEANSHUTDOWN
-VGRELEASE_DEFS = RELEASE
+VGRELEASE_DEFS = $(RELEASE_DEFS)
 
 ## flags
 DEFAULT_FLAGS = -Sg- -Sh -Sm- -Mobjfpc -Sc- -Ss-
-RELEASE_FLAGS = -B -Si -Sa- -Ci- -Co- -Cr- -Ct- -CR- -O2 -CX -XX -gs -gl
-DEBUG_FLAGS = -Si- -Sa -Cior -O- -CR -g -gl -gh-
-MEMDEBUG_FLAGS = -Si- -Sa -Cior -O- -CR -g -gl -gh
-VGDEBUG_FLAGS = -Si- -Sa -Cior -O- -CR -g -gl -gh- -gv -gp
-VGRELEASE_FLAGS = -B -Si -Sa- -Ci- -Co- -Cr- -Ct- -CR- -O2 -CX -Xs -XX -gh- -gl -gp -gv
+
+RELF=-B -Si -Sa- -Ci- -Co- -Cr- -Ct- -CR- -O2 -CX -XX -gs -gl
+DBGF=-Si- -Sa -Cior -O- -CR -g -gl
+
+RELEASE_FLAGS = $(RELF) -gh-
+DEBUG_FLAGS = $(DBGF) -gh-
+MEMDEBUG_FLAGS = $(DBGF) -gh
+MEMRELEASE_FLAGS = $(RELF) -gh
+VGDEBUG_FLAGS = $(DBGF) -gh- -gv -gp
+VGRELEASE_FLAGS = $(RELF) -gh- -gp -gv
 
 ## default test vars for tc
 
@@ -58,6 +65,7 @@ FPCFLAGS = $(DEFAULT_FLAGS) \
 RELEASE_FLAGS += $(foreach def,$(RELEASE_DEFS),-d$(def))
 DEBUG_FLAGS += $(foreach def,$(DEBUG_DEFS),-d$(def))
 MEMDEBUG_FLAGS += $(foreach def,$(MEMDEBUG_DEFS),-d$(def))
+MEMRELEASE_FLAGS += $(foreach def,$(MEMRELEASE_DEFS),-d$(def))
 VGDEBUG_FLAGS += $(foreach def,$(VGDEBUG_DEFS),-d$(def))
 VGRELEASE_FLAGS += $(foreach def,$(VGRELEASE_DEFS),-d$(def))
 
@@ -89,6 +97,9 @@ debug: makepathes
 memdebug: makepathes
 	$(MAKE) -C $(SRC_PATH) memdebug
 
+memrelease: makepathes
+	$(MAKE) -C $(SRC_PATH) memrelease
+
 vgdebug: makepathes
 	$(MAKE) -C $(SRC_PATH) vgdebug
 
@@ -111,6 +122,10 @@ memtest: clean memdebug
 	$(MAKE) -C test clean
 	$(MAKE) -C test VALGRIND=
 
+rmemtest: clean memrelease
+	$(MAKE) -C test clean
+	$(MAKE) -C test VALGRIND=
+
 vgtest: clean vgdebug
 	$(MAKE) -C test clean
 	$(MAKE) -C test
@@ -125,6 +140,10 @@ releasetestext: clean release
 	$(MAKE) -C testext VALGRIND=
 
 memtestext: clean memdebug
+	$(MAKE) -C testext clean
+	$(MAKE) -C testext VALGRIND=
+
+rmemtestext: clean memrelease
 	$(MAKE) -C testext clean
 	$(MAKE) -C testext VALGRIND=
 
@@ -147,6 +166,12 @@ releasetestall: clean release
 	$(MAKE) -C testext VALGRIND=
 
 memtestall: clean memdebug
+	$(MAKE) -C test clean
+	$(MAKE) -C test VALGRIND=
+	$(MAKE) -C testext clean
+	$(MAKE) -C testext VALGRIND=
+
+rmemtestall: clean memrelease
 	$(MAKE) -C test clean
 	$(MAKE) -C test VALGRIND=
 	$(MAKE) -C testext clean
