@@ -39,8 +39,8 @@ procedure SetByteCodeDebugMode( switch: Boolean );
 
 const
   Precompiled_Extension: array[Boolean] of String =
-    ( '.pct',
-      '.pcu' );
+    ( '.pcu',
+      '.pct' );
 
 implementation
 
