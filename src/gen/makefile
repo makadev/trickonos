@@ -1,18 +1,19 @@
 
-INCLGEN = ctab_imp.tpl ctab_int.tpl nulltypes.tpl
+INCLGEN = ctab.tpl nulltypes.tpl
+
+INCCLEAN = $(wildcard *.inc)
 
 ##
 
-INCL = $(INCLGEN:.tpl=.inc)
+.PHONY: clean cleaninc regen check_tc $(INCLGEN)
 
-.SUFFIXES: .tpl .inc
+cleaninc:
+	-$(RM) $(INCCLEAN)
 
-.PHONY: clean regen check_tc $(INCLGEN)
+*.tpl:
+	$(TCCI) -vc -f $@
 
-.tpl.inc:
-	$(TCCI) -vc -f $*.tpl > $*.inc
-
-regen: check_tc $(INCL)
+regen: check_tc cleaninc $(INCLGEN)
 
 check_tc:
-	$(TCCI) -vs -oc ctab.use
+	$(TCCI) -vs -oc nulltypes.tpl

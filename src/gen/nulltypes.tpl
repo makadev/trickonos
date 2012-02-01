@@ -1,4 +1,5 @@
-(* Generated Type Classes, dont modify
+{? open 'nulltypes.inc'; 
+?}(* Generated Type Classes, dont modify
  * This file is part of Trickonos.  
  *)
 

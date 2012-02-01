@@ -1,7 +1,25 @@
 {?
-  USE "ctab.use";
-  USE "cindex";
-  USE "mindex";
+  USE "rel://ctab/ctab.use";
+  USE "rel://ctab/cindex";
+  USE "rel://ctab/mindex";
+  
+  OPEN 'ctab_imp.inc';
+
+  /* write resourcestring index reload (for intl) */
+  
+?}
+
+procedure rst_reloadindex; 
+begin
+{? foreach k:v in resourcestr.con do ?}
+  {? write '_mi[mi_'+k.lowercase()+'] := rst_' + k.lowercase()+';';
+  end; ?}
+end;
+
+{? 
+  CLOSE;
+  
+  OPEN 'ctab_int.inc';
   
   /* write constant index */
   
