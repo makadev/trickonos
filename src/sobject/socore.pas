@@ -24,8 +24,6 @@ unit socore;
 {$mode objfpc}{$H+}
 {$PACKRECORDS 1}
 
-{$DEFINE NO_FLAT_MORTAL_TRACE}
-
 interface
 
 uses SysUtils, commontl, eomsg, gens, ucfs;
