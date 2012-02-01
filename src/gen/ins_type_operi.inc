@@ -1,0 +1,1 @@
+isc_soload_int_operi

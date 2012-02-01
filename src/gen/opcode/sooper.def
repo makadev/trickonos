@@ -1,0 +1,106 @@
+
+  OpcodeDef(
+    'setm',
+    'call setmember on TOS-1',
+    stab,['obj','obj'],1,2);
+
+  OpcodeDef(
+    'getm',
+    'call getmember on TOS',
+    stab,['obj'],1,1);
+
+  OpcodeDef(
+    'seti',
+    'call setindex on TOS-2',
+    ign,['obj','index','obj'],1,3);
+
+  OpcodeDef(
+    'geti',
+    'call getmember on TOS-1',
+    ign,['obj','index'],1,2);
+
+  OpcodeDef(
+    'callcall',
+    'call call obj with oper args (obj is at sp-args)',
+    opern,['obj','multiarg'],1,-1);
+
+  OpcodeDef(
+    'callm',
+    'call method on obj with oper args, methodname on tos',
+    opern,['obj','multiarg','name'],1,-1);
+
+
+  OpcodeDef(
+    'sounop_abs',
+    'call ABS on TOS',
+    ign,['obj'],1,1);
+
+  OpcodeDef(
+    'sounop_neg',
+    'call NEG on TOS',
+    ign,['obj'],1,1);
+
+  OpcodeDef(
+    'sounop_not',
+    'call NOT on TOS',
+    ign,['obj'],1,1);
+
+  OpcodeDef(
+    'sobinop_add',
+    'call ADD on TOS-1 with arg TOS',
+    ign,['obj','operand'],1,2);
+
+  OpcodeDef(
+    'sobinop_sub',
+    'call SUB on TOS-1 with arg TOS',
+    ign,['obj','operand'],1,2);
+
+  OpcodeDef(
+    'sobinop_mul',
+    'call MUL on TOS-1 with arg TOS',
+    ign,['obj','operand'],1,2);
+
+  OpcodeDef(
+    'sobinop_div',
+    'call DIV on TOS-1 with arg TOS',
+    ign,['obj','operand'],1,2);
+
+  OpcodeDef(
+    'sobinop_mod',
+    'call MOD on TOS-1 with arg TOS',
+    ign,['obj','operand'],1,2);
+
+  OpcodeDef(
+    'sobinop_shl',
+    'call SHL on TOS-1 with arg TOS',
+    ign,['obj','operand'],1,2);
+
+  OpcodeDef(
+    'sobinop_shr',
+    'call SHR on TOS-1 with arg TOS',
+    ign,['obj','operand'],1,2);
+
+  OpcodeDef(
+    'sobinop_rol',
+    'call ROL on TOS-1 with arg TOS',
+    ign,['obj','operand'],1,2);
+
+  OpcodeDef(
+    'sobinop_ror',
+    'call ROR on TOS-1 with arg TOS',
+    ign,['obj','operand'],1,2);
+
+  OpcodeDef(
+    'sobinop_xor',
+    'call XOR on TOS-1 with arg TOS',
+    ign,['obj','operand'],1,2);
+
+  OpcodeDef(
+    'sobinop_and',
+    'call AND on TOS-1 with arg TOS',
+    ign,['obj','operand'],1,2);
+
+  OpcodeDef(
+    'sobinop_OR',
+    'call OR on TOS-1 with arg TOS',
+    ign,['obj','operand'],1,2);

@@ -1,5 +1,5 @@
 
-INCLGEN = ctab.tpl nulltypes.tpl
+INCLGEN = $(wildcard *.tpl)
 
 INCCLEAN = $(wildcard *.inc)
 
@@ -11,7 +11,7 @@ cleaninc:
 	-$(RM) $(INCCLEAN)
 
 *.tpl:
-	$(TCCI) -vc -f $@
+	$(TCCI) -vi -f $@
 
 regen: check_tc cleaninc $(INCLGEN)
 

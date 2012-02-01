@@ -1,0 +1,30 @@
+
+  OpcodeDef(
+    'socmp_lt',
+    'compare TOS-1 < TOS, push result',
+    ign,['obj','operand'],1,2);
+
+  OpcodeDef(
+    'socmp_gt',
+    'compare TOS-1 > TOS, push result',
+    ign,['obj','operand'],1,2);
+
+  OpcodeDef(
+    'socmp_le',
+    'compare TOS-1 <= TOS, push result',
+    ign,['obj','operand'],1,2);
+
+  OpcodeDef(
+    'socmp_ge',
+    'compare TOS-1 >= TOS, push result',
+    ign,['obj','operand'],1,2);
+
+  OpcodeDef(
+    'socmp_equ',
+    'compare TOS-1 = TOS, push result',
+    ign,['obj','operand'],1,2);
+
+  OpcodeDef(
+    'socmp_neq',
+    'compare TOS-1 <> TOS, push result',
+    ign,['obj','operand'],1,2);

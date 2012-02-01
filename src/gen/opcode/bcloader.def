@@ -1,0 +1,15 @@
+
+  OpcodeDef(
+    'include',
+    'include template on tos',
+    ign,['string'],0,1);
+
+  OpcodeDef(
+    'include',
+    'include template from stab (bootstrap)',
+    stab,[],0,0);
+    
+  OpcodeDef(
+    'use',
+    'include template on tos (USE MODE)',
+    ign,['string'],0,1);

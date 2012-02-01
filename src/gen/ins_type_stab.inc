@@ -1,0 +1,10 @@
+isc_setenv_stab,
+isc_getenv_stab,
+isc_include_stab,
+isc_soload_int_stab,
+isc_soload_string_stab,
+isc_setm_stab,
+isc_getm_stab,
+isc_typecheck_stab,
+isc_decl_class_stab,
+isc_decl_method_stab

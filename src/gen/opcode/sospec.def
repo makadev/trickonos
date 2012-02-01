@@ -1,0 +1,26 @@
+
+  OpcodeDef(
+    'listappend',
+    'append <oper> args to list (list is at TOS-opers)',
+    opern,[],1,-1);
+
+  OpcodeDef(
+    'typecheck',
+    'typecheck TOS with typename from stab, push result (true/false)',
+    stab,['obj'],1,1);
+
+  OpcodeDef(
+    'decl_fun',
+    'declare function @ ip addr, push function',
+    addr,['argfix','argnum','slotnum','canvar','name'],1,5);
+
+  OpcodeDef(
+    'decl_class',
+    'create class object, push class',
+    stab,[],1,0);
+
+  OpcodeDef(
+    'decl_method',
+    'declare method with name from stab in class object, pop function',
+    stab,['class','function'],0,1);
+

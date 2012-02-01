@@ -1,0 +1,3 @@
+isc_fprel_set_slot,
+isc_fprel_load_slot,
+isc_ret_slot

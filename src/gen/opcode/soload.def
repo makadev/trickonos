@@ -1,0 +1,40 @@
+
+  OpcodeDef(
+    'soload_nil',
+    'push nil',
+    ign,[],1,0);
+
+  OpcodeDef(
+    'soload_true',
+    'push true',
+    ign,[],1,0);
+
+  OpcodeDef(
+    'soload_false',
+    'push false',
+    ign,[],1,0);
+
+  OpcodeDef(
+    'soload_list',
+    'push empty list',
+    ign,[],1,0);
+
+  OpcodeDef(
+    'soload_dict',
+    'push empty dict',
+    ign,[],1,0);
+
+  OpcodeDef(
+    'soload_int',
+    'load (vmint size) int from oper',
+    operi,[],1,0);
+
+  OpcodeDef(
+    'soload_int',
+    'load q number hex int from stab',
+    stab,[],1,0);
+
+  OpcodeDef(
+    'soload_string',
+    'load string from stab',
+    stab,[],1,0);

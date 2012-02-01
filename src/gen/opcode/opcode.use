@@ -1,0 +1,90 @@
+
+  OpcodeCType := {
+    ign: 'IGN',
+    addr: 'ADDR',
+    operi: 'OPERI',
+    opern: 'OPERN',
+    slot: 'SLOT',
+    stab: 'STAB'
+  };
+
+  ign := OpcodeCType.ign;
+  addr := OpcodeCType.addr;
+  operi := OpcodeCType.operi;
+  opern := OpcodeCType.opern;
+  slot := OpcodeCType.slot;
+  stab := OpcodeCType.stab;
+  
+  opcodetab := {};
+  
+  opcodelst := [];
+
+  class OpcodeDef
+    function Create(opname,
+                    docstring,
+                    opertype := ign,
+                    tosops := [],
+                    pushes := 0,
+                    pops := 0);
+      
+      ASSERT opname is string;
+      ASSERT docstring is string;
+      ASSERT OpcodeCType[opertype] <> nil;
+      
+      self.opname := (opname+'_'+opertype).lowercase();
+
+      ASSERT opcodetab[self.opname] = nil; // no duplicate opcodes
+      opcodetab[self.opname] := self;
+
+      self.optype := opertype;
+
+      self.opstring := opname.upcase() + ';';
+
+      self.docstring := docstring;
+
+      if opertype = addr then
+        self.opstring := self.opstring + " OP IP+('+IntToStr(operand)+');";
+      elseif opertype = operi then
+        self.opstring := self.opstring + " OP INT ('+IntToStr(operand)+');";
+      elseif opertype = opern then
+        self.opstring := self.opstring + " OP NUM ('+IntToStr(operand)+');";
+      elseif opertype = slot then
+        self.opstring := self.opstring + " OP SLOT['+IntToStr(operand)+'];";
+      elseif opertype = stab then
+        self.opstring := self.opstring + " OP STAB['+IntToStr(operand)+'];";
+      end;
+
+      ASSERT tosops is list;
+      if tosops <> [] then
+        c := tosops.length();
+        self.opstring := self.opstring + ' TOSOPS '+c.tostr() + ':' ;
+        foreach x in tosops do
+          c := c-1;
+          if c > 0 then
+            self.opstring := self.opstring + ' TOS-' + c.tostr() + '=' + x.lowercase() + ',';
+          else
+            self.opstring := self.opstring + ' TOS=' + x.lowercase() + ';';
+          end;
+        end;
+      end;
+      
+      if pushes <> 0 then
+        if pushes > 0 then
+          self.opstring := self.opstring + ' PUSHES ' + pushes.tostr() + ';';
+        else
+          self.opstring := self.opstring + ' PUSHES <STATE DEP>;';
+        end;
+      end;
+      
+      if pops <> 0 then
+        if pops > 0 then
+          self.opstring := self.opstring + ' POPS ' + pops.tostr() + ';';
+        else
+          self.opstring := self.opstring + ' POPS <STATE DEP>;';
+        end;
+      end;
+      
+      opcodelst.Append(self);
+    end;
+    
+  end;

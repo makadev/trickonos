@@ -1,0 +1,79 @@
+
+  OpcodeDef(
+    'halt',
+    'halt machine',
+    ign,['obj'],0,0);
+    
+  OpcodeDef(
+    'nop',
+    'no operation',
+    ign,[],0,0);
+    
+  OpcodeDef(
+    'dup',
+    'dup tos <operand> times',
+    opern,['obj'],-1,0);
+  
+  OpcodeDef(
+    'pop',
+    'pop <operand> times',
+    opern,[],0,-1);
+
+
+
+  OpcodeDef(
+    'jmp',
+    'jmp @ addr',
+    addr,[],0,0);
+
+  OpcodeDef(
+    'jmp_true',
+    'jmp @ addr if TOS=true',
+    addr,['obj'],0,0);
+
+  OpcodeDef(
+    'jmp_false_nil',
+    'jmp @ addr if TOS=false or nil',
+    addr,['obj'],0,0);
+
+  OpcodeDef(
+    'jmppop_false_nil',
+    'jmp @ addr if TOS=false or nil, pop before jump',
+    addr,['obj'],0,1);
+
+  OpcodeDef(
+    'tos1_false_nil_rot_pop_jmp',
+    'jmp @ addr if TOS-1=false or nil, pop 2, push',
+    addr,['obj'],-1,-1);
+
+  OpcodeDef(
+    'tos1_true_rot_pop_jmp',
+    'jmp @ addr if TOS-1=true or nil, pop 2, push',
+    addr,['obj'],-1,-1);
+    
+
+
+  OpcodeDef(
+    'setenv',
+    'set TOS in ENV[stab[oper]]',
+    stab,['obj'],0,0);
+
+  OpcodeDef(
+    'getenv',
+    'push ENV[stab[oper]]',
+    stab,[],1,0);
+  
+  OpcodeDef(
+    'fprel_set',
+    'move TOS into slot (fp relative stack addr)',
+    slot,[],0,0);
+
+  OpcodeDef(
+    'fprel_load',
+    'push slot',
+    slot,[],0,0);
+
+  OpcodeDef(
+    'ret',
+    'pop current fp, return with result at slot',
+    slot,[],1,-1);

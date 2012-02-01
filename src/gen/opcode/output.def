@@ -1,0 +1,20 @@
+
+  OpcodeDef(
+    'output_open',
+    'open file TOS (create)',
+    ign,['string'],0,1);
+
+  OpcodeDef(
+    'output_reopen',
+    'reopen file TOS (create or open append)',
+    ign,['string'],0,1);
+
+  OpcodeDef(
+    'output_path',
+    'open directory TOS (set/push new path for outputs)',
+    ign,['string'],0,1);
+
+  OpcodeDef(
+    'output_close',
+    'close (pop last directory or file entry from outstack)',
+    ign,[],0,0);

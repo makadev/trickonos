@@ -1,0 +1,25 @@
+
+  OpcodeDef(
+    'echo',
+    'write TOS',
+    ign,['obj'],0,1);
+
+  OpcodeDef(
+    'echoln',
+    'write TOS, write newline',
+    ign,['obj'],0,1);
+
+  OpcodeDef(
+    'echonl',
+    'write newline',
+    ign,[],0,0);
+
+  OpcodeDef(
+    'echofmt',
+    'format string with elements in list',
+    ign,['string','list'],0,2);
+
+  OpcodeDef(
+    'echosubst',
+    'substitude string with elements from dict',
+    ign,['string','dict'],0,2);
