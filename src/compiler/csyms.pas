@@ -180,6 +180,7 @@ const
   C_Char_Small_t = Ord('t');
   C_Char_Small_n = Ord('n');
   C_Char_Small_l = Ord('l');
+  C_Char_Small_u = Ord('u');
 
   C_Char_Plus = Ord('+');
   C_Char_Minus = Ord('-');

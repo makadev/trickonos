@@ -365,6 +365,73 @@ begin
 end;
 
 function ScanToken: TScanRecord;
+
+  procedure scan_uescape;
+  var s: String;
+      cnt: VMInt;
+  begin
+    cnt := 36;
+    case CChar of
+      C_Char_Ampersand:
+        begin
+          s := '&';
+          while (cnt > 0) and
+                LookAhead and
+                (LAChar in C_Set_OctNum_Follow) do
+            begin
+              NextChar;
+              s := s + Chr(CChar);
+              Dec(cnt,1);
+            end;
+        end;
+      C_Char_Dollar:
+        begin
+          s := '$';
+          while (cnt > 0) and
+                LookAhead and
+                (LAChar in C_Set_HexNum_Follow) do
+            begin
+              NextChar;
+              s := s + Chr(CChar);
+              Dec(cnt,1);
+            end;
+        end;
+      C_Char_Percent:
+        begin
+          s := '%';
+          while (cnt > 0) and
+                LookAhead and
+                (LAChar in C_Set_BinNum_Follow) do
+            begin
+              NextChar;
+              s := s + Chr(CChar);
+              Dec(cnt,1);
+            end;
+        end;
+      else
+        begin
+          s := Chr(CChar);
+          while (cnt > 0) and
+                LookAhead and
+                (LAChar in C_Set_Num_Follow) do
+            begin
+              NextChar;
+              s := s + Chr(CChar);
+              Dec(cnt,1);
+            end;
+        end;
+    end;
+
+    if (cnt > 0) then
+      begin
+        CChar := StrToInt64Def(s,-1);
+        if CChar > High(LongInt) then
+          CChar := -1;
+      end
+    else
+      CChar := -1;
+  end;
+
 begin
   Result := TScanRecord.Create;
 
@@ -647,6 +714,24 @@ begin
                 C_Char_Small_n: CChar := 10;
                 C_Char_Small_t: CChar := 9;
                 C_Char_Small_l: CChar := 13;
+                C_Char_Small_u:
+                  begin
+                    if LookAhead and
+                       (LAChar in [C_Char_Ampersand,C_Char_Dollar,C_Char_Percent,
+                                   C_Char_Digit_One..C_Char_Digit_Nine]) then
+                      begin
+                        NextChar;
+                        scan_uescape;
+                      end
+                    else
+                      CChar := -1;
+                    if CChar < 0 then
+                      begin
+                        {hmm, unknown escape -> error}
+                        Result.PatternSetS('Invalid Character Sequence');
+                        Exit(Result);
+                      end;
+                  end;
                 C_Char_DQuote, C_Char_BackSlash: {no need for conversion};
                 else
                   begin
