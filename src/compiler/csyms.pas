@@ -252,7 +252,7 @@ initialization
     begin
       if Length(C_Reserved_Symbol[i]) > maxreslen then
         maxreslen := Length(C_Reserved_Symbol[i]);
-      ResTrie.Add(Upcase(C_Reserved_Symbol[i]),Pointer(PtrInt(i)+nil));
+      ResTrie.Add(Upcase(C_Reserved_Symbol[i]),Pointer(PtrInt(i)));
     end;
 
 finalization

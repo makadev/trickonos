@@ -125,12 +125,12 @@ begin
   if not STabLookupTrie.Exists(s) then
     begin
       Result := StabEntryNr;
-      STabLookupTrie.Add(s,PtrInt(StabEntryNr)+nil);
+      STabLookupTrie.Add(s,Pointer(PtrInt(StabEntryNr)));
       Inc(StabEntryNr,1);
     end
   else
     begin
-      Result := PtrInt(STabLookupTrie.Lookup(s)-nil);
+      Result := PtrInt(STabLookupTrie.Lookup(s));
     end;
 end;
 

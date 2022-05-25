@@ -688,7 +688,7 @@ begin
               if Assigned(Occ[i+1]) then
                 varargexpr := true;
             end;
-          idxtab^.Add(TScanRecord(Occ[i]).Pattern,PtrInt(argsn+1)+nil);
+          idxtab^.Add(TScanRecord(Occ[i]).Pattern,Pointer(PtrInt(argsn+1)));
         end
       else
         begin
@@ -796,7 +796,7 @@ begin
        if idxtab^.Lookup(ci_us(ci_name_self,false)) = nil then
          begin
            i := 1;
-           idxtab^.Add(ci_us(ci_name_self,false),PtrInt(i)+nil);
+           idxtab^.Add(ci_us(ci_name_self,false),Pointer(PtrInt(i)));
          end;
      end
    else
@@ -806,7 +806,7 @@ begin
        if idxtab^.Lookup(TScanRecord(Occ[0]).Pattern) = nil then
          begin
            i := 1;
-           idxtab^.Add(TScanRecord(Occ[0]).Pattern,PtrInt(i)+nil);
+           idxtab^.Add(TScanRecord(Occ[0]).Pattern,Pointer(PtrInt(i)));
          end;
      end;
 
@@ -818,7 +818,7 @@ begin
        if idxtab^.Lookup(ci_us(ci_name_result,false)) = nil then
          begin
            i := 1;
-           idxtab^.Add(ci_us(ci_name_result,false),PtrInt(i)+nil);
+           idxtab^.Add(ci_us(ci_name_result,false),Pointer(PtrInt(i)));
          end;
      end
    else
@@ -828,7 +828,7 @@ begin
        if idxtab^.Lookup(ci_us(ci_name_result,false)) = nil then
          begin
            Inc(slotn,1);
-           idxtab^.Add(ci_us(ci_name_result,false),PtrInt(slotn)+nil);
+           idxtab^.Add(ci_us(ci_name_result,false),Pointer(PtrInt(slotn)));
          end;
      end;
 
@@ -839,7 +839,7 @@ begin
        if idxtab^.Lookup(TScanRecord(TParserNode(Occ[Count-2]).Occ[i]).Pattern) = nil then
          begin
            Inc(slotn,1);
-           idxtab^.Add(TScanRecord(TParserNode(Occ[Count-2]).Occ[i]).Pattern,PtrInt(slotn)+nil);
+           idxtab^.Add(TScanRecord(TParserNode(Occ[Count-2]).Occ[i]).Pattern,Pointer(PtrInt(slotn)));
          end
        else
          begin
