@@ -8,4 +8,5 @@ apidoc/*
 *.lps
 *.log
 
-
+## for vscode plugin alefragnani.pascal
+.vscode/GTEMP.pas

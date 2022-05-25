@@ -1,0 +1,26 @@
+{
+    "name": "FPC Dev Container",
+    "dockerComposeFile": [
+        "../docker-compose.yml"
+    ],
+    "service": "fpc-dev-container",
+    "shutdownAction": "stopCompose",
+    // Set *default* container specific settings.json values on container create.
+    "settings": {
+        "terminal.integrated.shell.linux": "/bin/bash",
+        "terminal.integrated.defaultProfile.linux": "/bin/bash",
+        "go.toolsManagement.checkForUpdates": "off",
+        "go.gopath": "/go"
+    },
+    // Add the IDs of extensions you want installed when the container is created.
+    "extensions": [
+        "ms-azuretools.vscode-docker",
+        "ms-vscode.makefile-tools",
+        "alefragnani.pascal"
+    ],
+    "workspaceFolder": "/app",
+    // Use 'postCreateCommand' to run commands after the container is created.
+    "postCreateCommand": "fpc -h",
+    // Uncomment to connect as a non-root user. See https://aka.ms/vscode-remote/containers/non-root.
+    "remoteUser": "developer"
+}
