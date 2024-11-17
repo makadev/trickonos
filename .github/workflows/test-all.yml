@@ -1,0 +1,22 @@
+name: Build & Test TCCI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    container: freepascal/fpc:3.2.2-bookworm-full
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: run all tests (debug build)
+        run: make testall
+      
+      - name: run all tests (release build)
+        run: make releasetestall
