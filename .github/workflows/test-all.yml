@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     container: freepascal/fpc:3.2.2-bookworm-full
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: run all tests (debug build)
         run: make testall
