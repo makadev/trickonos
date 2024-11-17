@@ -1,5 +1,5 @@
 ARG WORKSPACE=/app
-ARG FPC_VARIANT=3.2.2-focal-full
+ARG FPC_VARIANT=3.2.2-bookworm-full
 #ARG DEBIAN_VARIANT=focal
 
 ## stage for fpc
@@ -20,7 +20,8 @@ RUN apt-get update \
         ## f.e. https, git+ssh, signing
         git ca-certificates openssl openssh-client gnupg2 \
         ## might be needed here and there
-        python \
+        python-is-python3 \
+        python3-pygments \
         ## general usefull tools which might be needed here and there
         wget \
         xz-utils \
@@ -29,7 +30,6 @@ RUN apt-get update \
         locales-all \
         ## extra for freepascal vscode plugin
         global exuberant-ctags pip \
-    && pip install pygments \
     && groupadd --gid ${USER_GID} ${USERNAME} \
     && useradd --uid ${USER_UID} --gid ${USER_GID} -m ${USERNAME} \
     && echo ${USERNAME} ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/${USERNAME} \
